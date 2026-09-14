@@ -2,6 +2,8 @@
 
 담당: 지석 / 협업 가이드 작업 번호 2 / 브랜치 `feat/socket`.
 
+실제 GitHub 추적: [Issue #3](https://github.com/hkg109/infosys-investking/issues/3), [PR #2](https://github.com/hkg109/infosys-investking/pull/2). 가이드 작업 번호와 GitHub 번호는 동일하지 않습니다.
+
 ## 연결
 
 기본 서버 주소는 `http://localhost:3000`, Socket.IO 기본 경로는 `/socket.io`입니다. `CLIENT_URL`은 브라우저 프론트엔드 origin이며 기본값은 `http://localhost:5173`입니다. 서버는 HTTP long-polling과 WebSocket을 지원합니다.
@@ -28,5 +30,9 @@ npm test
 ```
 
 테스트가 임시 포트에 서버를 실행하고 관리자 역할 1개와 사용자 역할 3개의 클라이언트 연결, 전체 동시 수신, 연결 해제·재연결 후 수신, Health Check와 CORS 헤더를 확인합니다. 종료 시 서버와 연결을 정리합니다. `socket.io-client`는 테스트용 개발 의존성입니다.
+
+여기서 관리자·사용자는 테스트 시나리오상의 이름뿐이며 네 연결은 모두 같은 권한입니다. 테스트는 Node.js 클라이언트로 수행합니다. 실제 브라우저의 CORS 차단 동작, UI 상호작용, 관리자 인증, 대규모 부하, 자동 재연결·상태 복구까지 검증한 것은 아닙니다. 재연결 테스트는 명시적인 `disconnect()`와 `connect()` 호출입니다.
+
+`CLIENT_URL`은 브라우저 origin 설정이며 네트워크 접근 제한이 아닙니다. 현재 서버를 인터넷에 공개하거나 실제 참가자 운영에 사용하지 않습니다.
 
 실제 브라우저의 관리자 버튼과 사용자 화면은 아직 연결하지 않았습니다. 재헌의 Frontend 작업에서 위 규약에 맞춰 연동합니다. 기존 기획·협업 문서는 원문을 유지합니다.
