@@ -1,14 +1,9 @@
 import express from 'express'
 import { createServer } from 'node:http'
 import { Server } from 'socket.io'
-import { fileURLToPath } from 'node:url'
-
-// Load the root .env when present; shell environment variables take precedence.
-try {
-  process.loadEnvFile(fileURLToPath(new URL('../../.env', import.meta.url)))
-} catch (error) {
-  if (error.code !== 'ENOENT') throw error
-}
+import './config.js'
+import { pool } from './db.js'
+import { createUserRouter } from './users.js'
 
 const app = express()
 const port = process.env.PORT || 3000
@@ -30,10 +25,22 @@ io.on('connection', (socket) => {
   })
 })
 
-app.use(express.json())
+app.use(express.json({ limit: '8kb' }))
+app.use('/api/users', createUserRouter(pool, {
+  clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
+  secureCookies: process.env.NODE_ENV === 'production',
+}))
 
 app.get('/api/health', (_request, response) => {
   response.status(200).json({ status: 'ok' })
+})
+
+app.use((error, _request, response, _next) => {
+  if (error.type === 'entity.parse.failed') return response.status(400).json({ error: 'INVALID_JSON' })
+  if (error.type === 'entity.too.large') return response.status(413).json({ error: 'PAYLOAD_TOO_LARGE' })
+  // Never log request bodies, PINs, connection strings, or database error details.
+  console.error('API request failed')
+  response.status(503).json({ error: 'SERVICE_UNAVAILABLE' })
 })
 
 httpServer.listen(port, () => {
