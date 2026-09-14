@@ -4,13 +4,13 @@
 
 ## 현재 개발 단계
 
-**Project Scaffold** — 이후 기능별 병렬 개발을 위한 React 프론트엔드와 Express 백엔드의 공통 기반만 구성되어 있습니다. Socket.IO, 데이터베이스, 인증, 실제 게임 로직은 아직 포함하지 않습니다.
+**1단계 — 지석 담당 Socket.IO 기본 연결**. 서버 연결·해제 로그와 `game:start` 테스트 이벤트 전달을 제공합니다. Frontend는 초기 mock 화면이며 아직 Socket.IO에 연결되지 않았습니다. 데이터베이스, 인증, 실제 게임 로직은 후속 단계입니다.
 
 ## 기술 스택
 
 - Frontend: React + Vite + React Router
 - Backend: Node.js + Express
-- Realtime: Socket.IO 예정
+- Realtime: Socket.IO (서버 기본 연결)
 - Database: PostgreSQL 예정
 
 ## 디렉터리 구조
@@ -40,7 +40,7 @@ infosys-investking/
 
 ## 사전 요구사항
 
-- Node.js 20.19 이상 또는 22.12 이상
+- Node.js 22.12 이상 (검증 환경: 24.14.1)
 - npm
 
 ## Frontend 설치 및 실행
@@ -76,7 +76,8 @@ DATABASE_URL=
 ADMIN_PASSWORD=
 ```
 
-현재 scaffold에서 서버가 사용하는 값은 `PORT`뿐입니다. 나머지는 이후 기능을 위한 자리표시자입니다.
+현재 서버는 `PORT`와 Socket.IO의 허용 브라우저 origin인 `CLIENT_URL`을 사용합니다. `DATABASE_URL`과 `ADMIN_PASSWORD`는 이후 기능을 위한 자리표시자입니다.
+서버는 루트 `.env`를 자동으로 읽으며, 이미 설정된 셸 환경변수를 우선합니다.
 
 ## Health Check
 
@@ -91,6 +92,8 @@ ADMIN_PASSWORD=
 ```
 
 ## 주요 문서
+
+- [Socket.IO 연결 규약 및 검증](docs/SOCKET_PROTOCOL.md)
 
 - [프로젝트 명세](docs/PROJECT_SPEC.md)
 - [협업 가이드](docs/COLLABORATION_GUIDE.md)
