@@ -9,7 +9,7 @@
 - 성공 시 서버의 거래 가격·수량·금액을 표시하고 account로 현금/보유량 갱신. 주기 조회와 수동 새로고침 제공.
 - 각 주문은 UUID orderId를 한 번 생성. LAN HTTP에서 randomUUID가 없으면 getRandomValues 기반 UUID v4를 사용. 보내기 전에 사용자별 sessionStorage 키에 원문 주문 보관.
 - 네트워크/timeout/5xx/잘못된 성공 응답은 불확실 상태 유지. 다른 주문 입력을 잠그고 동일 orderId·종목·수량으로 명시적으로 재요청. 새로고침 후에도 복원.
-- 4xx 확정 거절은 오류 표시 후 해당 보관 기록 정리. 성공 또는 duplicate 응답도 확인 후 정리.
+- 거래 API의 확정 거절은 오류 표시 후 해당 보관 기록 정리. 성공 또는 duplicate 응답도 확인 후 정리. 단, 인증·origin·timeout·요청 제한(401/403/408/429)은 기존 주문의 체결 여부를 확정하지 못하므로 기록을 유지한다. 로그인 만료 시 같은 닉네임과 PIN으로 복구 후 재확인한다.
 - 같은 주문 확인은 읽기 전용 조회가 아니다. 이전 요청이 서버에 도착하지 않았다면 동일한 주문을 실제 처리할 수 있음을 UI에 안내.
 - sessionStorage 접근 불가 시 새 주문을 보내지 않는다. 탭을 완전히 닫으면 sessionStorage는 없어질 수 있으며 다른 기기 복원은 서버 주문 조회 API가 필요하다.
 
@@ -33,7 +33,7 @@
 
 실제 실행은 README의 PostgreSQL 설정 및 `server`의 `npm run db:migrate`가 필요하다. Frontend는 `client`에서 `npm install`, `npm run dev`. 기본 Vite 프록시를 사용하면 추가 API 주소 설정은 필요 없다.
 
-- `cd client && npm test`: 12개 통과. 수량 경계, 거래 상태 차단, 현금/보유량 검사, 실제 응답 매핑, 동일 주문 ID 재전송, 불확실 응답 구분 등.
+- `cd client && npm test`: 13개 통과. 수량 경계, 거래 상태 차단, 현금/보유량 검사, 실제 응답 매핑, 동일 주문 ID 재전송, 불확실 응답 구분 등.
 - `cd client && npm run build`: 성공.
 - 브라우저 fixture: 실제 GameEngine/GameRouter로 관리자 시작·일시정지·재개 인증 및 상태 전달 검증. 거래/계정 응답은 메모리 fixture이며 실제 DB가 아니다.
 - 매수 2주 → 현금 980,000원/2주, 매도 1주 → 990,000원/1주, 보유량 초과 매도 안내, PAUSED 입력 비활성 확인.
@@ -61,7 +61,26 @@ VITE_API_BASE_URL=http://localhost:3100 npm run dev
 curl -X POST http://127.0.0.1:3100/fixture/drop-next
 ```
 
-실제 PostgreSQL과 브라우저 쿠키를 통한 전체 참가→거래 통합 검증, 행사 스마트폰 테스트는 별도 필요하다. 이 환경에는 PostgreSQL 실행 파일과 TEST_DATABASE_URL이 없어 실제 DB 테스트는 수행하지 않았다.
+## 실제 PostgreSQL 검증 (2026-09-15)
 
-- 서버 회귀 테스트: 8개 통과, PostgreSQL 통합 테스트 2개는 TEST_DATABASE_URL 미설정으로 skip.
-- 데스크톱 브라우저 화면 검증 완료. 자동 브라우저의 모바일 크기 변경이 적용되지 않아 실제 스마트폰 레이아웃 검증은 미완료.
+Homebrew PostgreSQL 17.11을 설치하고 운영 데이터와 분리된 테스트 클러스터를 127.0.0.1:55432에서 실행했다. 자동 시작 서비스는 등록하지 않았다.
+
+- 실제 DB를 지정한 서버 테스트 **11개 통과, skip 0개**.
+- 추가 `server/test/phase4-flow.test.js`는 실제 사용자 API, 실제 GameEngine, 실제 거래 API, Frontend의 getTrading/sendOrder를 함께 사용한다.
+- 참가 → 매수 → 체결 뒤 응답 유실 → 일시정지 → 로그아웃 → 인증 만료 시 미확인 유지 → PIN 복구 → 동일 주문 재확인 검증. 최종 원장 2건, 잔액 990,000원, A 보유 1주.
+- 동시 매수의 현금 초과 차단, 같은 orderId의 동시 전송, 거래 마감 이후 신규 주문 차단은 실제 DB 거래 테스트로 통과.
+- 브라우저에서도 실제 참가 쿠키로 매수 2주 → 매도 1주 → 로그아웃 → PIN 복구를 수행. 화면의 990,000원/1주와 PostgreSQL 조회 결과(원장 2건)가 일치했다.
+- 실제 관리자 API로 일시정지 후 사용자 주문 입력 비활성 확인.
+
+재실행: 개발용 DB 주소를 TEST_DATABASE_URL에 지정하고 server에서 npm test를 실행한다. 테스트는 임시 스키마만 만들고 정리한다. 브라우저 확인은 README대로 별도의 개발 DB에 마이그레이션 후 실제 server와 client를 실행한다.
+
+## 모바일 화면 너비 검증
+
+자동 브라우저의 viewport 설정이 반영되지 않는 문제는 실제 앱을 지정 너비 iframe으로 여는 개발 전용 `client/test/mobile.html`로 해결했다. 이 파일은 production build에 포함되지 않는다.
+
+- 개발 서버의 `/test/mobile.html`에서 320, 360, 390, 430, 768px 선택 가능.
+- 각 너비에서 iframe 문서의 clientWidth와 scrollWidth가 동일함을 확인(화면 전체 가로 넘침 없음).
+- 390px 화면의 주문 입력 배치를 육안 확인. 320px에서 종목·거래 종류 선택, 수량 입력 및 보유량 초과 매도 안내 검증.
+- 실제 DB 자산 복구 및 실시간 일시정지 차단도 좁은 화면에서 확인.
+
+이는 CSS 반응형 검증이다. 실제 스마트폰의 터치, 숫자 키보드, Safari/Chrome 동작, Wi-Fi 연결 검증은 기기에서 별도로 수행해야 한다. 실제 기기 확인 없이 완료로 기록하지 않는다.

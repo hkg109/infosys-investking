@@ -60,3 +60,11 @@ test('LAN HTTP UUID fallback preserves UUID v4 version and variant', () => {
   assert.match(uuid, /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/)
   assert.throws(() => newOrderId({}))
 })
+
+test('session expiry, origin rejection and throttling cannot discard an earlier uncertain order', async (t) => {
+  const mock = t.mock.method(globalThis, 'fetch')
+  for (const status of [401, 403, 408, 429]) {
+    mock.mock.mockImplementation(async () => Response.json({ error: 'AUTH_REQUIRED' }, { status }))
+    await assert.rejects(sendOrder(order), error => error.uncertain === true)
+  }
+})

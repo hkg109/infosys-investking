@@ -12,7 +12,10 @@ async function request(path, order) {
     })
   } catch { throw new TradingError('NETWORK_ERROR', Boolean(order)) }
   const data = await response.json().catch(() => null)
-  if (!response.ok) throw new TradingError(data?.error || 'REQUEST_FAILED', Boolean(order) && response.status >= 500)
+  // Authentication, origin and rate-limit failures happen before an order lookup.
+  // They cannot establish whether a previous attempt already committed.
+  if (!response.ok) throw new TradingError(data?.error || 'REQUEST_FAILED', Boolean(order) &&
+    (response.status >= 500 || [401, 403, 408, 429].includes(response.status)))
   return data
 }
 export async function getTrading() {

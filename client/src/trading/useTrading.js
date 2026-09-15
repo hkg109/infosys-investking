@@ -72,7 +72,9 @@ export function useTrading(userId) {
       if (!failure.uncertain) {
         try { sessionStorage.removeItem(key); setUnresolved(null) } catch { setStorageReady(false) }
       }
-      setError(failure.uncertain ? '주문 결과를 아직 확인하지 못했습니다. 같은 주문 확인 버튼으로 결과를 확인해 주세요.' : tradingError(failure))
+      setError(failure.message === 'AUTH_REQUIRED'
+        ? '로그인이 만료되었습니다. 로그아웃 후 같은 닉네임과 PIN으로 계정을 복구하면 미확인 주문을 계속 확인할 수 있습니다.'
+        : failure.uncertain ? '주문 결과를 아직 확인하지 못했습니다. 같은 주문 확인 버튼으로 결과를 확인해 주세요.' : tradingError(failure))
     } finally {
       lock.current = false
       if (mounted.current) { setPending(false); refresh() }

@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<title>모바일 화면 검증</title>
+<style>
+  body { margin: 16px; font: 16px system-ui; background: #e8edf3; }
+  label { display: block; margin-bottom: 12px; }
+  iframe { display: block; border: 0; height: 844px; background: white; }
+</style>
+<label>검증 너비
+  <select id="width"><option>320</option><option>360</option><option selected>390</option><option>430</option><option>768</option></select> px
+</label>
+<p>실제 휴대폰의 터치·키보드 검증과 별개인 CSS 화면 너비 검사입니다.</p>
+<iframe title="모바일 게임 화면" src="/game" width="390"></iframe>
+<script>
+  document.querySelector('select').addEventListener('change', (event) => {
+    document.querySelector('iframe').width = event.target.value
+  })
+</script>
+</html>
