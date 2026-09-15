@@ -74,10 +74,35 @@ th { color: #65748a; font-size: 0.78rem; }
 .empty-state { margin: 0; color: #778499; }
 .ranking { display: grid; grid-template-columns: auto 1fr auto; gap: 14px; margin: 0; }
 .control-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.dashboard-notice { margin: 0 0 20px; padding: 14px 16px; border: 1px solid #cbdcf6; border-radius: 10px; color: #214578; background: #eaf1fc; line-height: 1.6; }
+.control-help { margin: 0 0 16px; color: #60708a; line-height: 1.6; }
+.control-grid button:disabled { cursor: not-allowed; opacity: 0.5; }
+.control-grid button:focus-visible { outline: 3px solid #316cde; outline-offset: 3px; }
 
 @media (min-width: 760px) {
   .hero-card { padding: 42px; }
   .content-grid { grid-template-columns: repeat(2, 1fr); }
   .content-grid .panel:first-child { grid-row: span 2; }
   .control-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+.dashboard-notice { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.game-summary { margin-bottom: 20px; padding: 20px; border-left: 4px solid #225cc5; background: #eaf1fc; border-radius: 10px; }
+.game-summary strong { color: #214578; font-size: 1.15rem; }
+.game-summary p { line-height: 1.6; }
+.end-confirmation { margin-top: 20px; padding: 22px; border: 1px solid #edc7bb; border-radius: 14px; background: #fff6f0; }
+.end-confirmation h2 { margin-top: 0; font-size: 1.2rem; }
+.end-confirmation .primary-button { margin-top: 0; background: #a32c21; }
+.news-list, .holdings-list { list-style: none; padding: 0; margin: 0; }
+.news-list li + li, .holdings-list li + li { border-top: 1px solid #dce3ed; margin-top: 16px; padding-top: 16px; }
+.news-list h3 { margin: 0 0 8px; font-size: 1rem; }
+.news-list p { margin: 0; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
+.holdings-list li { display: flex; justify-content: space-between; gap: 12px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+@media (max-width: 480px) {
+  .site-header { flex-wrap: wrap; gap: 12px; padding: 16px; }
+  .site-header nav { flex-wrap: wrap; gap: 12px; }
+  .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stat-card { padding: 16px 12px; overflow-wrap: anywhere; }
+  .panel { padding: 16px; }
 }

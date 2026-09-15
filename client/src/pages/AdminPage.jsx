@@ -1,26 +1,29 @@
-import Panel from '../components/Panel'
-import StatCard from '../components/StatCard'
+import { useState } from 'react'
+import AdminDashboard from '../components/AdminDashboard'
+import GameConnection from '../components/GameConnection'
 import PageLayout from '../layouts/PageLayout'
-
-const controls = ['게임 시작', '일시정지', '재개', '종료', '거래 중지', '거래 재개']
+import { useGame } from '../game/useGame'
 
 function AdminPage() {
+  const gameState = useGame()
+  const [confirmEnd, setConfirmEnd] = useState(false)
+  const handleControl = (action) => {
+    if (action === 'end') setConfirmEnd(true)
+    else gameState.control(action)
+  }
   return (
-    <PageLayout title="관리자 대시보드" subtitle="관리 버튼은 현재 UI만 제공하며 서버 동작과 연결되지 않습니다.">
-      <div className="stats-grid">
-        <StatCard label="현재 게임 상태" value="대기 중" tone="accent" />
-        <StatCard label="현재 월" value="1월" />
-        <StatCard label="남은 시간" value="10:00" />
-        <StatCard label="접속 참가자 수" value="0명" />
-        <StatCard label="거래 상태" value="중지" />
-      </div>
-      <Panel title="게임 제어">
+    <PageLayout title="관리자 대시보드" subtitle="게임 진행 상황을 확인하고 관리합니다.">
+      <GameConnection {...gameState} />
+      <AdminDashboard {...gameState} onControl={handleControl} />
+      {confirmEnd && <section className="end-confirmation" aria-label="게임 종료 확인">
+        <h2>게임을 종료할까요?</h2>
+        <p>종료하면 참가자의 거래가 중지됩니다.</p>
         <div className="control-grid">
-          {controls.map((control) => <button className="secondary-button" key={control} type="button">{control}</button>)}
+          <button className="secondary-button" type="button" autoFocus onClick={() => setConfirmEnd(false)}>취소</button>
+          <button className="primary-button" type="button" disabled={!gameState.canControl || gameState.pending} onClick={() => { setConfirmEnd(false); gameState.control('end') }}>종료 확정</button>
         </div>
-      </Panel>
+      </section>}
     </PageLayout>
   )
 }
-
 export default AdminPage
