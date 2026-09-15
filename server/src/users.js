@@ -1,25 +1,20 @@
 import { Router } from 'express'
-import { createHash, randomBytes, randomUUID } from 'node:crypto'
+import { randomBytes, randomUUID } from 'node:crypto'
 import { hashPin, verifyPin } from './pin.js'
+import {
+  SESSION_COOKIE_NAME,
+  SESSION_COOKIE_PATH,
+  digestSessionToken,
+  findSessionUser,
+  publicUser,
+  readSessionTokens,
+} from './session-auth.js'
 
-const cookieName = 'investking_session'
 const sessionDurationMs = 7 * 24 * 60 * 60 * 1000
-const digestToken = (token) => createHash('sha256').update(token).digest('hex')
-
-function readToken(request) {
-  const cookie = request.headers.cookie?.split(';').map((value) => value.trim())
-    .find((value) => value.startsWith(`${cookieName}=`))
-  const token = cookie?.slice(cookieName.length + 1)
-  return /^[a-f0-9]{64}$/.test(token || '') ? token : null
-}
-
-function publicUser(row) {
-  return { userId: row.id, nickname: row.nickname, role: row.role, createdAt: row.created_at }
-}
 
 export function createUserRouter(database, { clientUrl, secureCookies = false }) {
   const router = Router()
-  const cookieOptions = { httpOnly: true, sameSite: 'strict', secure: secureCookies, path: '/api/users' }
+  const cookieOptions = { httpOnly: true, sameSite: 'strict', secure: secureCookies, path: SESSION_COOKIE_PATH }
 
   router.use((request, response, next) => {
     response.set('Cache-Control', 'no-store')
@@ -56,11 +51,11 @@ export function createUserRouter(database, { clientUrl, secureCookies = false })
 
   async function insertSession(client, userId, request) {
     const token = randomBytes(32).toString('hex')
-    const previous = readToken(request)
-    if (previous) await client.query('DELETE FROM user_sessions WHERE token_hash = $1', [digestToken(previous)])
+    const previousHashes = readSessionTokens(request).map(digestSessionToken)
+    if (previousHashes.length) await client.query('DELETE FROM user_sessions WHERE token_hash = ANY($1::text[])', [previousHashes])
     await client.query('DELETE FROM user_sessions WHERE expires_at <= NOW()')
     await client.query('INSERT INTO user_sessions (token_hash, user_id, expires_at) VALUES ($1, $2, $3)',
-      [digestToken(token), userId, new Date(Date.now() + sessionDurationMs)])
+      [digestSessionToken(token), userId, new Date(Date.now() + sessionDurationMs)])
     return token
   }
 
@@ -75,7 +70,7 @@ export function createUserRouter(database, { clientUrl, secureCookies = false })
         [randomUUID(), nickname, encoded])
       const token = await insertSession(client, result.rows[0].id, request)
       await client.query('COMMIT')
-      response.cookie(cookieName, token, { ...cookieOptions, maxAge: sessionDurationMs })
+      response.cookie(SESSION_COOKIE_NAME, token, { ...cookieOptions, maxAge: sessionDurationMs })
       response.status(201).json({ user: publicUser(result.rows[0]) })
     } catch (error) {
       if (client) await client.query('ROLLBACK').catch(() => {})
@@ -97,7 +92,7 @@ export function createUserRouter(database, { clientUrl, secureCookies = false })
       await client.query('BEGIN')
       const token = await insertSession(client, user.id, request)
       await client.query('COMMIT')
-      response.cookie(cookieName, token, { ...cookieOptions, maxAge: sessionDurationMs })
+      response.cookie(SESSION_COOKIE_NAME, token, { ...cookieOptions, maxAge: sessionDurationMs })
       response.json({ user: publicUser(user) })
     } catch (error) {
       if (client) await client.query('ROLLBACK').catch(() => {})
@@ -106,18 +101,15 @@ export function createUserRouter(database, { clientUrl, secureCookies = false })
   })
 
   router.get('/me', async (request, response) => {
-    const token = readToken(request)
-    if (!token) return response.status(401).json({ error: 'AUTH_REQUIRED' })
-    const result = await database.query(`SELECT u.* FROM user_sessions s JOIN users u ON u.id = s.user_id
-      WHERE s.token_hash = $1 AND s.expires_at > NOW()`, [digestToken(token)])
-    if (!result.rows[0]) return response.status(401).json({ error: 'AUTH_REQUIRED' })
-    response.json({ user: publicUser(result.rows[0]) })
+    const user = await findSessionUser(database, request)
+    if (!user) return response.status(401).json({ error: 'AUTH_REQUIRED' })
+    response.json({ user: publicUser(user) })
   })
 
   router.post('/logout', async (request, response) => {
-    const token = readToken(request)
-    if (token) await database.query('DELETE FROM user_sessions WHERE token_hash = $1', [digestToken(token)])
-    response.clearCookie(cookieName, cookieOptions)
+    const hashes = readSessionTokens(request).map(digestSessionToken)
+    if (hashes.length) await database.query('DELETE FROM user_sessions WHERE token_hash = ANY($1::text[])', [hashes])
+    response.clearCookie(SESSION_COOKIE_NAME, cookieOptions)
     response.sendStatus(204)
   })
 

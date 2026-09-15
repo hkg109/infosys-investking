@@ -7,7 +7,13 @@ import { io } from 'socket.io-client'
 
 test('health check, authenticated game controls, concurrent delivery and reconnect state', { timeout: 15000 }, async (t) => {
   const server = spawn(process.execPath, [fileURLToPath(new URL('../src/server.js', import.meta.url))], {
-    env: { ...process.env, PORT: '0', CLIENT_URL: 'http://localhost:5173', ADMIN_PASSWORD: 'test-admin-password' },
+    env: {
+      ...process.env,
+      PORT: '0',
+      CLIENT_URL: 'http://localhost:5173',
+      ADMIN_PASSWORD: 'test-admin-password',
+      DATABASE_URL: '',
+    },
     stdio: ['ignore', 'pipe', 'pipe'],
   })
   const clients = []

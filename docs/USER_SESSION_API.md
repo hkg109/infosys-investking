@@ -32,7 +32,7 @@ user 응답 필드: `userId`, `nickname`, `role`, `createdAt`.
 
 ## 세션 및 Frontend 인계
 
-서버는 무작위 256비트 세션 토큰을 HttpOnly·SameSite=Strict 쿠키에 저장합니다. DB에는 토큰의 SHA-256 해시만 보관합니다. 쿠키 경로는 `/api/users`이며 유효 기간은 발급 후 7일입니다.
+서버는 무작위 256비트 세션 토큰을 HttpOnly·SameSite=Strict 쿠키에 저장합니다. DB에는 토큰의 SHA-256 해시만 보관합니다. 거래 API에서도 같은 로그인을 사용하도록 쿠키 경로는 `/api`이며 유효 기간은 발급 후 7일입니다.
 
 Frontend는 요청 시 `credentials: 'include'`를 사용합니다. 예:
 
@@ -55,7 +55,7 @@ const result = await response.json()
 ## 저장·복구 범위
 
 사용자와 세션을 PostgreSQL에 저장하므로 HTTP 서버 재시작 후에도 복구할 수 있습니다. DB 연결이 없으면 임시 메모리 사용자로 대체하지 않습니다.
-현재 자산·게임 상태 테이블은 아직 없으므로 해당 값의 조회·복구는 구현하지 않습니다. 이후 Wallet/Game 조회는 검증된 세션의 userId를 기준으로 추가합니다.
+4단계부터 자산과 게임 상태를 PostgreSQL에 저장하며 Wallet/Portfolio 조회는 검증된 세션의 userId를 기준으로 수행합니다.
 관리자 인증, Socket 연결 인증, `user:join`은 이번 범위에 포함하지 않습니다. Frontend는 참가·복구·자동 세션 확인·로그아웃 API와 연결되어 있으며 자산·게임 상태는 아직 예시 화면입니다.
 
 ## 검증

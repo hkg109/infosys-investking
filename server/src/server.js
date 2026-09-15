@@ -5,7 +5,9 @@ import './config.js'
 import { pool } from './db.js'
 import { GameEngine } from './game-engine.js'
 import { createGameRouter } from './game-routes.js'
+import { loadGameState, saveGameState } from './game-store.js'
 import { createUserRouter } from './users.js'
+import { createTradingRouter } from './trading.js'
 
 function positiveInteger(value, fallback, name) {
   if (value === undefined || value === '') return fallback
@@ -17,11 +19,25 @@ function positiveInteger(value, fallback, name) {
 const app = express()
 const port = process.env.PORT || 3000
 const httpServer = createServer(app)
-const game = new GameEngine({
+const gameDefaults = {
   totalRounds: positiveInteger(process.env.GAME_TOTAL_ROUNDS, 12, 'GAME_TOTAL_ROUNDS'),
   roundDurationMs: positiveInteger(process.env.GAME_ROUND_DURATION_MS, 10 * 60 * 1000, 'GAME_ROUND_DURATION_MS'),
   tradingDurationMs: positiveInteger(process.env.GAME_TRADING_DURATION_MS, 9 * 60 * 1000, 'GAME_TRADING_DURATION_MS'),
-})
+}
+let initialGameState = null
+if (pool) {
+  try {
+    initialGameState = await loadGameState(pool, gameDefaults)
+  } catch (error) {
+    // A freshly checked-out server may start before the explicit migration command.
+    if (error.code !== '42P01') console.error('Failed to restore game state from PostgreSQL')
+  }
+}
+const game = new GameEngine({ ...gameDefaults, initialState: initialGameState })
+const reportGamePersistenceError = (error) => {
+  if (error.code !== '42P01') console.error('Failed to persist game state')
+}
+let gamePersistence = saveGameState(pool, game.getSnapshot()).catch(reportGamePersistenceError)
 const io = new Server(httpServer, {
   cors: { origin: process.env.CLIENT_URL || 'http://localhost:5173' },
 })
@@ -38,6 +54,7 @@ io.on('connection', (socket) => {
 game.on('game-event', ({ name, payload }) => {
   io.emit(name, payload)
   io.emit('game:state', payload)
+  gamePersistence = gamePersistence.then(() => saveGameState(pool, payload)).catch(reportGamePersistenceError)
 })
 
 app.use(express.json({ limit: '8kb' }))
@@ -48,6 +65,10 @@ app.use('/api/users', createUserRouter(pool, {
 app.use('/api/game', createGameRouter(game, {
   adminPassword: process.env.ADMIN_PASSWORD,
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
+}))
+app.use('/api/trading', createTradingRouter(pool, game, {
+  clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
+  initialCash: positiveInteger(process.env.INITIAL_CASH, 1_000_000, 'INITIAL_CASH'),
 }))
 
 app.get('/api/health', (_request, response) => {

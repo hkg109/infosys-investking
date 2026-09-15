@@ -33,6 +33,7 @@ export class GameEngine extends EventEmitter {
     totalRounds = 12,
     roundDurationMs = 10 * 60 * 1000,
     tradingDurationMs = 9 * 60 * 1000,
+    initialState = null,
   } = {}) {
     super()
     if (!Number.isInteger(totalRounds) || totalRounds < 1) throw new TypeError('totalRounds must be a positive integer')
@@ -58,6 +59,7 @@ export class GameEngine extends EventEmitter {
     this.pausedAt = null
     this.pausedPhase = null
     this.pausedRemainingMs = null
+    if (initialState) this._restore(initialState)
   }
 
   start() {
@@ -123,6 +125,26 @@ export class GameEngine extends EventEmitter {
   shutdown() {
     this._cancelTimer()
     this.removeAllListeners()
+  }
+
+  _restore(state) {
+    if (!Object.values(GAME_STATUS).includes(state.status) || !Object.values(GAME_PHASE).includes(state.phase)) {
+      throw new TypeError('Invalid persisted game state')
+    }
+    this.status = state.status
+    this.phase = state.phase
+    this.totalRounds = state.totalRounds
+    this.roundDurationMs = state.roundDurationMs
+    this.tradingDurationMs = state.tradingDurationMs
+    this.currentRound = state.currentRound
+    this.startedAt = state.startedAt
+    this.roundStartedAt = state.roundStartedAt
+    this.deadlineAt = state.deadlineAt
+    this.finishedAt = state.finishedAt
+    this.pausedAt = state.pausedAt
+    this.pausedPhase = state.phaseBeforePause
+    this.pausedRemainingMs = state.pausedRemainingMs
+    if (this.status === GAME_STATUS.RUNNING) this._sync()
   }
 
   _beginRound(round, startedAt) {
