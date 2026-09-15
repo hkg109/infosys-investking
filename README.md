@@ -4,7 +4,7 @@
 
 ## 현재 개발 단계
 
-**3단계 — 게임 상태·서버 타이머 Backend**. `WAITING`·`RUNNING`·`PAUSED`·`FINISHED` 상태, 서버 기준 9분 거래·1분 결과 구간, 관리자 제어 API와 Socket 상태 동기화를 제공합니다. 상태는 아직 메모리 기반이며 관리자·사용자 3단계 UI와 게임 DB 영속화는 후속 작업입니다.
+**4단계 — DB·주식 거래 Backend**. 게임 상태를 PostgreSQL에서 복원하고, 기업·지갑·포트폴리오·거래 원장을 저장합니다. 로그인 사용자는 서버 거래 시간 안에 정수 수량을 매수·매도할 수 있으며 같은 사용자의 동시 거래와 `orderId` 재전송을 DB에서 보호합니다.
 
 클라이언트가 보낸 Socket 제어 이벤트는 더 이상 처리하지 않습니다. 관리자는 `ADMIN_PASSWORD`로 인증된 HTTP API를 사용하고 서버가 상태 변경 후 Socket 이벤트를 전파합니다. 사용자 HTTP 세션과 Socket 연결 인증은 아직 분리되어 있습니다.
 
@@ -18,7 +18,7 @@
 - Frontend: React + Vite + React Router
 - Backend: Node.js + Express
 - Realtime: Socket.IO (서버 기본 연결)
-- Database: PostgreSQL (사용자·세션 테이블)
+- Database: PostgreSQL (사용자·세션·게임·기업·지갑·포트폴리오·거래)
 
 ## 디렉터리 구조
 
@@ -83,7 +83,7 @@ npm run db:migrate
 npm test
 ```
 
-`db:migrate`는 사용자·세션 테이블을 준비합니다. DB 설정이 없으면 사용자 API는 503을 반환하며 Health Check와 기존 Socket 연결 테스트는 사용할 수 있습니다. `/api/health`는 프로세스 생존 확인이며 DB readiness 검사가 아닙니다.
+`db:migrate`는 사용자·세션·게임·거래 테이블과 기본 기업 7개를 준비합니다. DB 설정이 없으면 사용자·거래 API는 503을 반환하며 Health Check와 Socket 연결은 사용할 수 있습니다. `/api/health`는 프로세스 생존 확인이며 DB readiness 검사가 아닙니다.
 
 실제 DB 통합 검증에는 루트 `.env`의 `TEST_DATABASE_URL`이 필요합니다. 지정 DB 안에 테스트별 임시 스키마를 생성하고 해당 스키마만 삭제합니다. 설정하지 않으면 PostgreSQL 테스트가 명시적으로 skip됩니다. 개발 DB를 사용하고 행사 운영 DB를 테스트 대상으로 지정하지 않습니다.
 
@@ -96,9 +96,10 @@ PORT=3000
 CLIENT_URL=http://localhost:5173
 DATABASE_URL=
 ADMIN_PASSWORD=
+INITIAL_CASH=1000000
 ```
 
-서버는 `PORT`, 브라우저 허용 origin `CLIENT_URL`, PostgreSQL 접속 `DATABASE_URL`을 사용합니다. `ADMIN_PASSWORD`는 아직 사용하지 않습니다. `NODE_ENV=production`에서는 세션 쿠키에 Secure가 적용되므로 HTTPS가 필요합니다.
+서버는 `PORT`, 브라우저 허용 origin `CLIENT_URL`, PostgreSQL 접속 `DATABASE_URL`, 관리자 제어용 `ADMIN_PASSWORD`를 사용합니다. `INITIAL_CASH` 기본값은 1,000,000원입니다. `NODE_ENV=production`에서는 세션 쿠키에 Secure가 적용되므로 HTTPS가 필요합니다.
 서버는 루트 `.env`를 자동으로 읽으며, 이미 설정된 셸 환경변수를 우선합니다.
 
 ## Health Check
@@ -118,6 +119,7 @@ ADMIN_PASSWORD=
 - [Socket.IO 연결 규약 및 검증](docs/SOCKET_PROTOCOL.md)
 - [사용자 세션 API 및 정책](docs/USER_SESSION_API.md)
 - [게임 상태·서버 타이머 API](docs/GAME_STATE_API.md)
+- [DB·주식 거래 API](docs/TRADING_API.md)
 
 - [프로젝트 명세](docs/PROJECT_SPEC.md)
 - [협업 가이드](docs/COLLABORATION_GUIDE.md)

@@ -5,7 +5,7 @@ if (!pool) throw new Error('DATABASE_URL is required. Configure the root .env fi
 try {
   const sql = await readFile(new URL('./schema.sql', import.meta.url), 'utf8')
   await pool.query(sql)
-  console.log('User and session tables are ready.')
+  console.log('User, game, market and trading tables are ready.')
 } finally {
   await pool.end()
 }
