@@ -1,3 +1,7 @@
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { ApiError } from '../api/users'
+import { useSession } from '../auth/SessionContext'
 import Panel from '../components/Panel'
 import StatCard from '../components/StatCard'
 import PageLayout from '../layouts/PageLayout'
@@ -9,8 +13,33 @@ const stocks = [
 ]
 
 function GamePage() {
+  const navigate = useNavigate()
+  const { logout, user } = useSession()
+  const [logoutError, setLogoutError] = useState('')
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true)
+    setLogoutError('')
+    try {
+      await logout()
+      navigate('/', { replace: true })
+    } catch (error) {
+      setLogoutError(error instanceof ApiError && error.code === 'NETWORK_ERROR'
+        ? '서버에 연결할 수 없어 로그아웃하지 못했습니다.'
+        : '로그아웃하지 못했습니다. 잠시 후 다시 시도해 주세요.')
+    } finally {
+      setIsLoggingOut(false)
+    }
+  }
+
   return (
-    <PageLayout title="투자 현황" subtitle="표시된 값은 화면 구성을 위한 예시 데이터입니다.">
+    <PageLayout
+      title="투자 현황"
+      subtitle={`${user.nickname}님으로 참가했습니다. 자산과 주가 데이터는 다음 개발 단계에서 연결됩니다.`}
+      actions={<button className="header-button" type="button" onClick={handleLogout} disabled={isLoggingOut}>{isLoggingOut ? '로그아웃 중...' : '로그아웃'}</button>}
+    >
+      {logoutError && <p className="page-error" role="alert">{logoutError}</p>}
       <div className="stats-grid">
         <StatCard label="현재 월" value="1월" tone="accent" />
         <StatCard label="남은 시간" value="09:32" />
