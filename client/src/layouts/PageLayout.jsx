@@ -14,7 +14,7 @@ function PageLayout({ actions, children, title, subtitle }) {
 
       <main className="page-container">
         <section className="page-heading">
-          <p className="eyebrow">MOCK SCREEN</p>
+          <p className="eyebrow">INVESTKING</p>
           <h1>{title}</h1>
           {subtitle && <p>{subtitle}</p>}
         </section>
