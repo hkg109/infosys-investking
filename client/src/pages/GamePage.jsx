@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { ApiError } from '../api/users'
 import { useSession } from '../auth/SessionContext'
 import GameConnection from '../components/GameConnection'
+import TradingPanel from '../components/TradingPanel'
+import { useTrading } from '../trading/useTrading'
+import { displayAccount } from '../trading/model'
 import UserDashboard from '../components/UserDashboard'
 import { useGame } from '../game/useGame'
 import PageLayout from '../layouts/PageLayout'
@@ -11,6 +14,13 @@ function GamePage() {
   const gameState = useGame()
   const navigate = useNavigate()
   const { logout, user } = useSession()
+  const trading = useTrading(user.userId)
+  const snapshot = {
+    ...gameState.snapshot,
+    account: displayAccount(trading.account),
+    stocks: trading.companies?.map((item) => ({ ...item, id: item.companyId })),
+    holdings: trading.account?.holdings.filter((item) => item.quantity > 0),
+  }
   const [logoutError, setLogoutError] = useState('')
   const [isLoggingOut, setIsLoggingOut] = useState(false)
 
@@ -37,7 +47,8 @@ function GamePage() {
     >
       {logoutError && <p className="page-error" role="alert">{logoutError}</p>}
       <GameConnection {...gameState} />
-      <UserDashboard game={gameState.game} snapshot={gameState.snapshot} />
+      <TradingPanel game={gameState.game} stale={gameState.loading || Boolean(gameState.error)} trading={trading} />
+      <UserDashboard game={gameState.game} snapshot={snapshot} />
     </PageLayout>
   )
 }
