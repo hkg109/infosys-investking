@@ -4,9 +4,9 @@
 
 ## 현재 개발 단계
 
-**2단계 — 지석 담당 사용자 세션 Backend**. PostgreSQL 기반 참가·PIN 계정 복구·세션 조회·로그아웃 API를 제공합니다. Frontend는 초기 mock 화면으로 아직 참가 API에 연결되지 않았습니다. 관리자 인증, 실제 자산·게임 상태·거래는 후속 단계입니다.
+**2단계 — 사용자 세션**. PostgreSQL 기반 참가·PIN 계정 복구·세션 조회·로그아웃 API와 Frontend 참가·복구 화면을 연결했습니다. 새로고침 시 HttpOnly 쿠키로 기존 참가자를 확인하고, 인증되지 않은 `/game` 접근을 참가 화면으로 돌려보냅니다. 관리자 인증, 실제 자산·게임 상태·거래는 후속 단계입니다.
 
-현재 `game:start` 이벤트는 1단계 로컬 연결 테스트용입니다. 사용자 HTTP 세션과 Socket 인증은 아직 연결되지 않았으며, 실제 운영 전 관리자 권한 검증이 필요합니다.
+현재 `game:start` 이벤트는 1단계 로컬 연결 테스트용입니다. 사용자 HTTP 세션은 Frontend와 연결됐지만 Socket 인증은 아직 연결되지 않았으며, 실제 운영 전 관리자 권한 검증이 필요합니다.
 
 - 현재 사용자 세션 작업: [Issue #4](https://github.com/hkg109/infosys-investking/issues/4)
 - 완료한 Socket 서버 작업: [Issue #3](https://github.com/hkg109/infosys-investking/issues/3), [PR #2](https://github.com/hkg109/infosys-investking/pull/2)
