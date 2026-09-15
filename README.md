@@ -4,11 +4,12 @@
 
 ## 현재 개발 단계
 
-**2단계 — 사용자 세션**. PostgreSQL 기반 참가·PIN 계정 복구·세션 조회·로그아웃 API와 Frontend 참가·복구 화면을 연결했습니다. 새로고침 시 HttpOnly 쿠키로 기존 참가자를 확인하고, 인증되지 않은 `/game` 접근을 참가 화면으로 돌려보냅니다. 관리자 인증, 실제 자산·게임 상태·거래는 후속 단계입니다.
+**3단계 — 게임 상태·서버 타이머 Backend**. `WAITING`·`RUNNING`·`PAUSED`·`FINISHED` 상태, 서버 기준 9분 거래·1분 결과 구간, 관리자 제어 API와 Socket 상태 동기화를 제공합니다. 상태는 아직 메모리 기반이며 관리자·사용자 3단계 UI와 게임 DB 영속화는 후속 작업입니다.
 
-현재 `game:start` 이벤트는 1단계 로컬 연결 테스트용입니다. 사용자 HTTP 세션은 Frontend와 연결됐지만 Socket 인증은 아직 연결되지 않았으며, 실제 운영 전 관리자 권한 검증이 필요합니다.
+클라이언트가 보낸 Socket 제어 이벤트는 더 이상 처리하지 않습니다. 관리자는 `ADMIN_PASSWORD`로 인증된 HTTP API를 사용하고 서버가 상태 변경 후 Socket 이벤트를 전파합니다. 사용자 HTTP 세션과 Socket 연결 인증은 아직 분리되어 있습니다.
 
-- 현재 사용자 세션 작업: [Issue #4](https://github.com/hkg109/infosys-investking/issues/4)
+- 완료한 사용자 세션 Backend: [Issue #4](https://github.com/hkg109/infosys-investking/issues/4), [PR #5](https://github.com/hkg109/infosys-investking/pull/5)
+- 완료한 사용자 세션 Frontend: [PR #6](https://github.com/hkg109/infosys-investking/pull/6)
 - 완료한 Socket 서버 작업: [Issue #3](https://github.com/hkg109/infosys-investking/issues/3), [PR #2](https://github.com/hkg109/infosys-investking/pull/2)
 - 브라우저 통합 검증 및 후속 작업 순서: [개발 인계](docs/DEVELOPMENT_HANDOFF.md)
 
@@ -116,6 +117,7 @@ ADMIN_PASSWORD=
 
 - [Socket.IO 연결 규약 및 검증](docs/SOCKET_PROTOCOL.md)
 - [사용자 세션 API 및 정책](docs/USER_SESSION_API.md)
+- [게임 상태·서버 타이머 API](docs/GAME_STATE_API.md)
 
 - [프로젝트 명세](docs/PROJECT_SPEC.md)
 - [협업 가이드](docs/COLLABORATION_GUIDE.md)
