@@ -5,9 +5,9 @@ import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { io } from 'socket.io-client'
 
-test('health check, concurrent delivery, disconnect and reconnect', { timeout: 15000 }, async (t) => {
+test('health check, authenticated game controls, concurrent delivery and reconnect state', { timeout: 15000 }, async (t) => {
   const server = spawn(process.execPath, [fileURLToPath(new URL('../src/server.js', import.meta.url))], {
-    env: { ...process.env, PORT: '0', CLIENT_URL: 'http://localhost:5173' },
+    env: { ...process.env, PORT: '0', CLIENT_URL: 'http://localhost:5173', ADMIN_PASSWORD: 'test-admin-password' },
     stdio: ['ignore', 'pipe', 'pipe'],
   })
   const clients = []
@@ -42,31 +42,89 @@ test('health check, concurrent delivery, disconnect and reconnect', { timeout: 1
   })
   assert.equal(handshake.headers.get('access-control-allow-origin'), 'http://localhost:5173')
 
-  // One administrator stand-in and three user stand-ins. No frontend changes.
+  const initialStates = []
   for (let index = 0; index < 4; index += 1) {
     const client = io(url, { autoConnect: false, reconnection: false, timeout: 3000 })
     clients.push(client)
+    const initialState = once(client, 'game:state')
     const connected = Promise.race([
       once(client, 'connect'),
       once(client, 'connect_error').then(([error]) => { throw error }),
     ])
     client.connect()
     await connected
+    initialStates.push((await initialState)[0])
   }
+  assert.ok(initialStates.every((game) => game.status === 'WAITING'))
+
+  clients[0].emit('game:start')
+  await new Promise((resolve) => setTimeout(resolve, 30))
+  const unchanged = await fetch(`${url}/api/game`)
+  assert.equal((await unchanged.json()).game.status, 'WAITING')
+
+  const rejectedOrigin = await fetch(`${url}/api/game`, { headers: { Origin: 'https://example.com' } })
+  assert.equal(rejectedOrigin.status, 403)
+
+  const preflight = await fetch(`${url}/api/game/admin/start`, {
+    method: 'OPTIONS',
+    headers: { Origin: 'http://localhost:5173' },
+  })
+  assert.equal(preflight.status, 204)
+  assert.equal(preflight.headers.get('access-control-allow-origin'), 'http://localhost:5173')
+  assert.match(preflight.headers.get('access-control-allow-headers'), /Authorization/)
+
+  const unauthorized = await fetch(`${url}/api/game/admin/start`, { method: 'POST' })
+  assert.equal(unauthorized.status, 401)
+  assert.deepEqual(await unauthorized.json(), { error: 'ADMIN_AUTH_REQUIRED' })
+
   const received = clients.map((client) => once(client, 'game:start'))
-  clients[0].emit('game:start', { ignoredClientPayload: true })
-  assert.deepEqual(await Promise.all(received), [[], [], [], []])
+  const startResponse = await fetch(`${url}/api/game/admin/start`, {
+    method: 'POST',
+    headers: { Authorization: 'Bearer test-admin-password' },
+  })
+  assert.equal(startResponse.status, 200)
+  assert.equal((await startResponse.json()).game.status, 'RUNNING')
+  const startEvents = await Promise.all(received)
+  assert.ok(startEvents.every(([game]) => game.status === 'RUNNING' && game.currentRound === 1))
 
   const reconnecting = clients[3]
   const oldId = reconnecting.id
   reconnecting.disconnect()
   const connectedAgain = once(reconnecting, 'connect')
+  const restoredState = once(reconnecting, 'game:state')
   reconnecting.connect()
   await connectedAgain
   assert.notEqual(reconnecting.id, oldId)
-  const receivedAgain = clients.map((client) => once(client, 'game:start'))
-  clients[0].emit('game:start')
-  await Promise.all(receivedAgain)
+  assert.equal((await restoredState)[0].status, 'RUNNING')
+
+  const pausedEvent = once(clients[0], 'game:pause')
+  const pauseResponse = await fetch(`${url}/api/game/admin/pause`, {
+    method: 'POST',
+    headers: { Authorization: 'Bearer test-admin-password' },
+  })
+  assert.equal(pauseResponse.status, 200)
+  assert.equal((await pausedEvent)[0].status, 'PAUSED')
+
+  const conflict = await fetch(`${url}/api/game/admin/pause`, {
+    method: 'POST',
+    headers: { Authorization: 'Bearer test-admin-password' },
+  })
+  assert.equal(conflict.status, 409)
+  assert.equal((await conflict.json()).error, 'INVALID_GAME_STATE')
+
+  const resumedEvent = once(clients[0], 'game:resume')
+  await fetch(`${url}/api/game/admin/resume`, {
+    method: 'POST',
+    headers: { Authorization: 'Bearer test-admin-password' },
+  })
+  assert.equal((await resumedEvent)[0].status, 'RUNNING')
+
+  const endedEvent = once(clients[0], 'game:end')
+  await fetch(`${url}/api/game/admin/end`, {
+    method: 'POST',
+    headers: { Authorization: 'Bearer test-admin-password' },
+  })
+  assert.equal((await endedEvent)[0].status, 'FINISHED')
   assert.match(logs, /Socket connected:/)
   assert.match(logs, /Socket disconnected:/)
   assert.equal(errors, '')
