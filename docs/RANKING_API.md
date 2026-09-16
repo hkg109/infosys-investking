@@ -11,7 +11,27 @@ GET /api/rankings
 Cookie: investking_session=...
 ```
 
-응답에는 `top3`, 전체 `rankings`, 로그인한 참가자의 `me`, 참가자 수와 계산 시각이 포함됩니다. 공개 순위 항목은 `nickname`, `rank`, `totalAssets`만 제공하고, `me`에는 본인의 `cash`, `stockValue`도 포함합니다. 내부 `userId`는 공개하지 않습니다.
+응답에는 `top3`, 전체 `rankings`, 로그인한 참가자의 `me`, 참가자 수와 계산 시각이 포함됩니다. `rankings`와 `top3`의 모든 항목은 `rank`, `totalAssets`, `isMe`만 제공합니다. 다른 참가자의 닉네임·`userId`·현금·주식 평가액은 공개하지 않으며 로그인한 본인 항목 하나만 `isMe: true`입니다. `me`에는 본인 계정의 닉네임, 현금, 주식 평가액과 총자산을 계속 제공합니다.
+
+```json
+{
+  "final": false,
+  "totalParticipants": 3,
+  "rankings": [
+    { "rank": 1, "totalAssets": 1250000, "isMe": false },
+    { "rank": 2, "totalAssets": 1100000, "isMe": true },
+    { "rank": 3, "totalAssets": 900000, "isMe": false }
+  ],
+  "me": {
+    "nickname": "내 닉네임",
+    "rank": 2,
+    "cash": 600000,
+    "stockValue": 500000,
+    "totalAssets": 1100000,
+    "isMe": true
+  }
+}
+```
 
 ## 관리자 조회
 
@@ -20,7 +40,7 @@ GET /api/rankings/admin
 Authorization: Bearer <ADMIN_PASSWORD>
 ```
 
-관리자 조회는 전체 참가자의 `cash`, `stockValue`, `totalAssets`를 포함합니다. 관리자 인증이 없거나 틀리면 `401 ADMIN_AUTH_REQUIRED`입니다.
+관리자 조회는 운영을 위해 전체 참가자의 닉네임, `cash`, `stockValue`, `totalAssets`를 포함합니다. 관리자 인증이 없거나 틀리면 `401 ADMIN_AUTH_REQUIRED`입니다.
 
 ## Socket 이벤트
 
@@ -36,7 +56,7 @@ ranking:update
 - 거래 마감 후 해당 라운드 사건과 주가 변경 완료
 - 게임 종료 및 최종 순위 확정
 
-Payload는 조회 API의 공개 순위 구조와 같으며 `final`로 최종 결과 여부를 구분합니다. 재연결 또는 새로고침 시 `GET /api/rankings`로 복구합니다.
+인증되지 않은 연결에는 모든 항목이 `isMe: false`인 익명 Payload를 전송합니다. 참가자 세션 쿠키가 확인된 Socket은 사용자별 room에 들어가며, 그 연결에만 본인 항목이 `isMe: true`인 Payload를 전송합니다. 같은 사용자의 여러 탭에는 같은 사용자별 Payload가 전달됩니다. `final`로 최종 결과 여부를 구분하며 재연결 또는 새로고침 시 `GET /api/rankings`로 복구합니다.
 
 ## 최종 순위
 
