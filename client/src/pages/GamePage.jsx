@@ -24,10 +24,12 @@ function GamePage() {
     stocks: trading.companies?.map((item) => ({ ...item, id: item.companyId })),
     holdings: trading.account?.holdings.filter((item) => item.quantity > 0),
   }
+  const [showInfo, setShowInfo] = useState(false)
   const [logoutError, setLogoutError] = useState('')
   const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   const handleLogout = async () => {
+    if (isLoggingOut || trading.pending) return
     setIsLoggingOut(true)
     setLogoutError('')
     try {
@@ -46,8 +48,17 @@ function GamePage() {
     <PageLayout
       title="투자 현황"
       subtitle={`${user.nickname}님으로 참가했습니다. 게임 진행과 투자 현황을 확인하세요.`}
-      actions={<button className="header-button" type="button" onClick={handleLogout} disabled={isLoggingOut}>{isLoggingOut ? '로그아웃 중...' : '로그아웃'}</button>}
+      actions={<button className="header-button" type="button" aria-expanded={showInfo} aria-controls="my-info" onClick={() => setShowInfo(value => !value)}>내 정보</button>}
     >
+      {showInfo && <section className="panel my-info" id="my-info" aria-label="내 정보">
+        <h2>내 정보</h2>
+        <p className="ranking-name"><strong>닉네임:</strong> {user.nickname}</p>
+        <p>로그아웃 후에도 계정과 거래 내역은 남습니다. 같은 닉네임과 가입할 때 정한 4자리 PIN으로 복구할 수 있습니다.</p>
+        <p>PIN은 보안을 위해 표시하지 않습니다. 로그아웃하기 전에 PIN을 기억하는지 확인하세요.</p>
+        {trading.unresolved && <p className="trading-help">결과를 확인하지 못한 주문이 있습니다. 다시 로그인한 뒤 같은 주문을 확인할 수 있습니다.</p>}
+        {trading.pending && <p role="status">주문 처리 중입니다. 처리가 끝나면 로그아웃할 수 있습니다.</p>}
+        <button className="secondary-button" type="button" onClick={handleLogout} disabled={isLoggingOut || trading.pending}>{isLoggingOut ? '로그아웃 중...' : '로그아웃'}</button>
+      </section>}
       {logoutError && <p className="page-error" role="alert">{logoutError}</p>}
       <GameConnection {...gameState} />
       <RankingPanel userId={user.userId} game={gameState.game} revision={gameState.snapshot} />
