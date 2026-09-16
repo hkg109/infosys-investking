@@ -9,7 +9,7 @@ import '../src/config.js'
 import { createUserRouter } from '../src/users.js'
 import { createTradingRouter } from '../src/trading.js'
 import { GameEngine } from '../src/game-engine.js'
-import { getTrading, sendOrder } from '../../client/src/trading/api.js'
+import { getTrading, sendOrder, prepareOrder, cancelOrder } from '../../client/src/trading/api.js'
 
 test('real DB and frontend API: join, trade, lost response, recover and retry after close', {
   skip: !process.env.TEST_DATABASE_URL && 'Set TEST_DATABASE_URL to run PostgreSQL tests',
@@ -78,6 +78,52 @@ test('real DB and frontend API: join, trade, lost response, recover and retry af
   assert.equal(confirmed.account.cash, 990_000)
   assert.equal(confirmed.account.holdings.find(h => h.companyId === 'A').quantity, 1)
   await assert.rejects(sendOrder({ ...sale, orderId: randomUUID() }), /GAME_NOT_RUNNING/)
+  // A second browser has no cookie or local order ID. Recover by PIN and read durable intent.
+  game.resume()
+  const pending = { orderId: randomUUID(), companyId: 'B', type: 'BUY', quantity: 3 }
+  await prepareOrder(pending)
+  const firstDeviceCookie = cookie
+  cookie = ''
+  await auth('recover')
+  assert.notEqual(cookie, firstDeviceCookie)
+  assert.deepEqual((await getTrading()).recovery.pending, pending)
+  const secondIntent = { ...pending, orderId: randomUUID() }
+  await assert.rejects(prepareOrder(secondIntent), /PENDING_ORDER_EXISTS/)
+  await assert.rejects(sendOrder(secondIntent), /PENDING_ORDER_EXISTS/)
+  const [filled, replayed] = await Promise.all([sendOrder(pending), sendOrder(pending)])
+  assert.deepEqual([filled.duplicate, replayed.duplicate].sort(), [false, true])
+  assert.equal((await getTrading()).recovery.pending, null)
+  assert.equal((await getTrading()).account.cash, 960_000)
+  assert.equal((await getTrading()).account.totalAssets, 1_000_000)
+  assert.equal((await cancelOrder(pending)).cancelled, false)
+
+  // A cancellation races safely with execution: exactly one wins.
+  const race = { orderId: randomUUID(), companyId: 'C', type: 'BUY', quantity: 1 }
+  await prepareOrder(race)
+  const outcomes = await Promise.allSettled([cancelOrder(race), sendOrder(race)])
+  const raceCount = Number((await database.query('SELECT COUNT(*) FROM transactions WHERE order_id=$1', [race.orderId])).rows[0].count)
+  assert.ok(raceCount === 0 || raceCount === 1)
+  if (outcomes[0].value.cancelled) {
+    assert.equal(raceCount, 0)
+    assert.equal(outcomes[1].status, 'rejected')
+    await assert.rejects(prepareOrder(race), /ORDER_CANCELLED/)
+    await assert.rejects(sendOrder(race), /ORDER_CANCELLED/)
+  } else { assert.equal(raceCount, 1) }
+  const neverSent = { orderId: randomUUID(), companyId: 'D', type: 'BUY', quantity: 1 }
+  assert.equal((await cancelOrder(neverSent)).cancelled, true)
+  await assert.rejects(prepareOrder(neverSent), /ORDER_CANCELLED/)
+  await assert.rejects(sendOrder(neverSent), /ORDER_CANCELLED/)
+
+  // Another participant cannot discover or modify this user's saved order.
+  cookie = ''
+  const outsider = await fetch('/api/users/join', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nickname: '다른 참가자', pin: '9876' }) })
+  assert.equal(outsider.status, 201)
+  assert.deepEqual((await getTrading()).recovery, { pending: null, history: [] })
+  await assert.rejects(prepareOrder(pending), /ORDER_ID_CONFLICT/)
+  await assert.rejects(cancelOrder(pending), /ORDER_ID_CONFLICT/)
+  await assert.rejects(sendOrder(pending), /ORDER_ID_CONFLICT/)
+  await database.query("UPDATE companies SET current_price=12000 WHERE id='A'")
+  assert.equal((await getTrading()).companies.find(c => c.companyId === 'A').changeRate, 20)
   const count = await database.query('SELECT COUNT(*)::int AS n FROM transactions WHERE user_id = $1', [userId])
-  assert.equal(count.rows[0].n, 2)
+  assert.equal(count.rows[0].n, 3 + raceCount)
 })

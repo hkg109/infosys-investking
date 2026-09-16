@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getTrading, sendOrder, tradingError } from './api'
+import { getTrading, sendOrder, prepareOrder, cancelOrder, tradingError } from './api'
 
 export function useTrading(userId) {
   const [data, setData] = useState(null)
@@ -13,6 +13,7 @@ export function useTrading(userId) {
   const generation = useRef(0)
   const fetching = useRef(false)
   const mounted = useRef(false)
+  const unresolvedRef = useRef(null)
   const key = `investking_pending_order:${userId}`
 
   const refresh = useCallback(async () => {
@@ -21,11 +22,24 @@ export function useTrading(userId) {
     const id = ++generation.current
     try {
       const next = await getTrading()
-      if (mounted.current && id === generation.current) { setData(next); setLoadError('') }
+      if (mounted.current && id === generation.current) {
+        setData(next); setLoadError('')
+        const local = unresolvedRef.current
+        const filled = next.recovery.history.find(tx => tx.orderId === local?.orderId)
+        const recovered = next.recovery.pending || (filled ? null : local)
+        if (filled) setResult({ ...filled, duplicate: true })
+        else if (recovered && recovered.orderId !== local?.orderId) setResult(null)
+        unresolvedRef.current = recovered
+        setUnresolved(recovered)
+        try {
+          if (recovered) sessionStorage.setItem(key, JSON.stringify(recovered))
+          else sessionStorage.removeItem(key)
+        } catch { /* Server recovery remains available when local storage is unavailable. */ }
+      }
     } catch (failure) {
       if (mounted.current && id === generation.current) setLoadError(tradingError(failure))
     } finally { fetching.current = false }
-  }, [])
+  }, [key])
 
   useEffect(() => {
     mounted.current = true
@@ -34,10 +48,11 @@ export function useTrading(userId) {
       if (stored) {
         const order = JSON.parse(stored)
         if (typeof order.orderId !== 'string' || typeof order.companyId !== 'string' || !['BUY', 'SELL'].includes(order.type) || !Number.isSafeInteger(order.quantity) || order.quantity < 1 || order.quantity > 1_000_000) throw new Error('Invalid pending order')
+        unresolvedRef.current = order
         setUnresolved(order)
       }
-      setStorageReady(true)
-    } catch { setError('주문 복구 정보를 읽을 수 없어 거래를 중지했습니다. 브라우저 저장소 설정을 확인해 주세요.') }
+    } catch { /* Server recovery is authoritative; local storage is only a backup. */ }
+    setStorageReady(true)
     refresh()
     const timer = setInterval(refresh, 5000)
     const focus = () => { if (!document.hidden) refresh() }
@@ -47,30 +62,26 @@ export function useTrading(userId) {
 
   const submit = async (order) => {
     if (lock.current || !storageReady) return
-    // Persist before sending so a reload cannot silently produce a second orderId.
-    try { sessionStorage.setItem(key, JSON.stringify(order)) } catch {
-      setStorageReady(false)
-      setError('주문 정보를 보관할 수 없어 전송하지 않았습니다. 브라우저 저장소 설정을 확인해 주세요.')
-      return
-    }
+    try { sessionStorage.setItem(key, JSON.stringify(order)) } catch { /* Prepare must commit before execution. */ }
     lock.current = true
     ++generation.current
     setPending(true)
+    unresolvedRef.current = order
     setUnresolved(order)
     setResult(null)
     try {
+      await prepareOrder(order)
       const response = await sendOrder(order)
       if (!mounted.current) return
       setData((current) => ({ ...current, account: response.account }))
       setResult({ ...response.transaction, duplicate: response.duplicate })
-      try { sessionStorage.removeItem(key); setUnresolved(null); setError('') } catch {
-        setStorageReady(false)
-        setError('거래는 완료됐지만 주문 기록을 정리하지 못했습니다. 브라우저 저장소 설정을 확인해 주세요.')
-      }
+      try { sessionStorage.removeItem(key) } catch {}
+      unresolvedRef.current = null; setUnresolved(null); setError('')
     } catch (failure) {
       if (!mounted.current) return
-      if (!failure.uncertain) {
-        try { sessionStorage.removeItem(key); setUnresolved(null) } catch { setStorageReady(false) }
+      if (['ORDER_CANCELLED', 'PENDING_ORDER_EXISTS', 'ORDER_ID_CONFLICT'].includes(failure.message)) {
+        try { sessionStorage.removeItem(key) } catch {}
+        unresolvedRef.current = null; setUnresolved(null)
       }
       setError(failure.message === 'AUTH_REQUIRED'
         ? '로그인이 만료되었습니다. 로그아웃 후 같은 닉네임과 PIN으로 계정을 복구하면 미확인 주문을 계속 확인할 수 있습니다.'
@@ -80,5 +91,18 @@ export function useTrading(userId) {
       if (mounted.current) { setPending(false); refresh() }
     }
   }
-  return { ...data, error: error || loadError, pending, unresolved, result, submit, refresh, ready: storageReady && Boolean(data) && !loadError }
+  const cancel = async () => {
+    const order = unresolvedRef.current
+    if (!order || lock.current) return
+    lock.current = true; ++generation.current; setPending(true)
+    try {
+      const response = await cancelOrder(order)
+      if (!mounted.current) return
+      setResult(response.cancelled ? { cancelled: true } : { ...response.transaction, duplicate: true })
+      unresolvedRef.current = null; setUnresolved(null); setError('')
+      try { sessionStorage.removeItem(key) } catch {}
+    } catch (failure) { if (mounted.current) setError(tradingError(failure)) }
+    finally { lock.current = false; if (mounted.current) { setPending(false); refresh() } }
+  }
+  return { ...data, cancel, error: error || loadError, pending, unresolved, result, submit, refresh, ready: storageReady && Boolean(data) && !loadError }
 }

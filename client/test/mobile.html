@@ -8,13 +8,17 @@
   iframe { display: block; border: 0; height: 844px; background: white; }
 </style>
 <label>검증 너비
-  <select id="width"><option>320</option><option>360</option><option selected>390</option><option>430</option><option>768</option></select> px
+  <select id="width"><option>320</option><option>360</option><option selected>390</option><option>412</option><option>430</option><option>768</option></select> px
 </label>
+<label>검증 화면 <select id="route"><option value="/game">사용자 게임</option><option value="/admin">관리자</option><option value="/">참가·복구</option></select></label>
 <p>실제 휴대폰의 터치·키보드 검증과 별개인 CSS 화면 너비 검사입니다.</p>
 <iframe title="모바일 게임 화면" src="/game" width="390"></iframe>
 <script>
-  document.querySelector('select').addEventListener('change', (event) => {
+  document.querySelector('#width').addEventListener('change', (event) => {
     document.querySelector('iframe').width = event.target.value
+  })
+  document.querySelector('#route').addEventListener('change', (event) => {
+    document.querySelector('iframe').src = event.target.value
   })
 </script>
 </html>

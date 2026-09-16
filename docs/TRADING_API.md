@@ -39,3 +39,13 @@ Frontend 요청에는 사용자 API에서 발급받은 HttpOnly 쿠키가 포함
 ## 게임 상태 복원
 
 단일 활성 게임은 고정 내부 ID로 저장합니다. 상태·현재 라운드·마감 시각·일시정지 잔여 시간을 복원하며, 상태 이벤트 저장 순서는 서버 내부 Promise queue로 보장합니다. 5단계 사건·주가 변경은 거래 마감 후 적용되며, 6단계 순위 확정은 갱신된 현재가와 거래 원장 위에서 이어서 구현합니다.
+
+## 기기 간 주문 복구 (5단계 UI 보완)
+
+세션 인증 필수. `POST /api/trading/orders/prepare`는 기존 주문 body `{orderId, companyId, type, quantity}`를 받아 `{order}`를 반환한다. 이 확인 후 `/orders`로 체결한다. 사용자당 PENDING 주문은 하나이며 다른 번호는 `409 PENDING_ORDER_EXISTS`로 거절한다.
+
+`GET /api/trading/orders/recovery`는 `{pending: 주문 또는 null, history: 최근 본인 체결 20건}`을 반환한다. 닉네임+PIN 복구로 새 세션을 발급받아도 동일 결과를 조회한다.
+
+`POST /api/trading/orders/cancel`은 같은 주문 body를 받는다. 미체결이면 `{cancelled:true}`, 이미 체결이면 `{cancelled:false,transaction}`. 취소한 번호는 다시 실행할 수 없다(`ORDER_CANCELLED`). 다른 사용자 번호는 충돌 오류로 처리하며 데이터를 공개하지 않는다.
+
+시장 응답에 `initialPrice`, `changeRate`(초기 대비 %, 소수 둘째 자리)가 추가된다. 계좌 응답에 `stockValue`, `totalAssets`가 추가된다. 기존 응답 필드는 유지한다.

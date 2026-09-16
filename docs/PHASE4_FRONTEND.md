@@ -1,5 +1,7 @@
 # 4단계 재헌: 실제 API 기반 거래 UI
 
+> 아래는 4단계 당시 기록이다. 서버 주문 보관·기기 간 복구·등락률·서버 자산 계산 보완은 [5단계 문서](PHASE5_FRONTEND.md)를 따른다.
+
 ## 구현
 
 - `GET /api/trading/market`, `GET /api/trading/portfolio`, `POST /api/trading/orders`를 실제 Backend 규약으로 연결.

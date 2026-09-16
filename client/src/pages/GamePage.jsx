@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import EventNews from '../events/EventNews'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ApiError } from '../api/users'
 import { useSession } from '../auth/SessionContext'
@@ -15,6 +16,7 @@ function GamePage() {
   const navigate = useNavigate()
   const { logout, user } = useSession()
   const trading = useTrading(user.userId)
+  useEffect(() => { trading.refresh() }, [gameState.snapshot, trading.refresh])
   const snapshot = {
     ...gameState.snapshot,
     account: displayAccount(trading.account),
@@ -48,6 +50,7 @@ function GamePage() {
       {logoutError && <p className="page-error" role="alert">{logoutError}</p>}
       <GameConnection {...gameState} />
       <TradingPanel game={gameState.game} stale={gameState.loading || Boolean(gameState.error)} trading={trading} />
+      <EventNews game={gameState.game} revision={gameState.snapshot} />
       <UserDashboard game={gameState.game} snapshot={snapshot} />
     </PageLayout>
   )

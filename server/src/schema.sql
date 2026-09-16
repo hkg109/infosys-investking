@@ -82,6 +82,18 @@ CREATE TABLE IF NOT EXISTS transactions (
 );
 CREATE INDEX IF NOT EXISTS transactions_user_created_idx ON transactions(game_id, user_id, created_at DESC);
 
+-- A durable order intent is saved before execution so another device can recover it.
+CREATE TABLE IF NOT EXISTS order_intents (
+  order_id UUID PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  company_id VARCHAR(20) NOT NULL REFERENCES companies(id),
+  type TEXT NOT NULL CHECK (type IN ('BUY', 'SELL')),
+  quantity INTEGER NOT NULL CHECK (quantity BETWEEN 1 AND 1000000),
+  status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'FILLED', 'CANCELLED')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS one_pending_order_per_user ON order_intents(user_id) WHERE status = 'PENDING';
+
 CREATE TABLE IF NOT EXISTS events (
   id UUID PRIMARY KEY,
   title VARCHAR(100) NOT NULL CHECK (length(trim(title)) > 0),
