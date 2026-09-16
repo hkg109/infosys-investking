@@ -45,10 +45,14 @@ test('PostgreSQL: join, duplicates, recovery, persistence and session protection
   const makePool = () => new pg.Pool({ connectionString: process.env.TEST_DATABASE_URL, options: `-c search_path=${schema}` })
   database = makePool()
   await database.query(await readFile(new URL('../src/schema.sql', import.meta.url), 'utf8'))
+  let loggedOutUserIds = []
   async function start() {
     const app = express()
     app.use(express.json())
-    app.use('/api/users', createUserRouter(database, { clientUrl }))
+    app.use('/api/users', createUserRouter(database, {
+      clientUrl,
+      onUserLogout: async (userIds) => { loggedOutUserIds = userIds },
+    }))
     app.use((_error, _req, res, _next) => res.status(503).json({ error: 'SERVICE_UNAVAILABLE' }))
     server = app.listen(0, '127.0.0.1')
     await once(server, 'listening')
@@ -100,6 +104,7 @@ test('PostgreSQL: join, duplicates, recovery, persistence and session protection
   assert.notEqual(cookie, newCookie)
   assert.equal((await me(cookie)).status, 401)
   assert.equal((await post('/logout', {}, newCookie)).status, 204)
+  assert.deepEqual(loggedOutUserIds, [user.userId])
   assert.equal((await me(newCookie)).status, 401)
   const again = await post('/recover', entry)
   const expiryCookie = again.headers.get('set-cookie').split(';')[0]

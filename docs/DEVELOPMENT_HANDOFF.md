@@ -77,6 +77,7 @@ Frontend가 화면 뼈대를 병렬로 준비할 수는 있지만, 실제 연동
 | 연결 해제 후 명시적 재접속 | 자동 테스트 완료 | 새 연결에서 새 이벤트 수신 |
 | Health Check 및 CORS 응답 헤더 | 자동 테스트 완료 | HTTP 응답 및 허용 origin 헤더 |
 | 관리자 비밀번호 검증·공통 middleware | Backend 구현·자동 테스트 완료 | 재헌 `/admin` 진입 화면 연동 필요 |
+| 참가자 자산 조회·Socket 온라인 상태·게임 초기화 | Backend 구현·PostgreSQL·Socket 통합 테스트 완료 | 재헌 참가자 표와 초기화·재시작 UI 연동 필요 |
 | 실제 관리자 버튼 → 사용자 화면 | 미연동·미검증 | 재헌 Frontend 연동 후 공동 확인 |
 | 브라우저 콘솔·모바일 UI | 이번 PR에서 미검증 | 브라우저 테스트 필요 |
 | 사용자 HTTP 세션·게임 진행 Backend | 구현·자동 테스트 완료 | Socket 사용자 인증과 Frontend 연동은 후속 작업 |

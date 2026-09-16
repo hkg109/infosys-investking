@@ -89,6 +89,25 @@ test('invalid state transitions are rejected', () => {
   assert.throws(() => engine.resume(), (error) => error instanceof GameStateError && error.status === GAME_STATUS.FINISHED)
 })
 
+test('finished game resets to a clean waiting state', () => {
+  const { engine, setTime } = createTestEngine()
+  const events = []
+  engine.on('game-event', ({ name }) => events.push(name))
+  engine.start()
+  setTime(10_000)
+  engine.end()
+
+  const reset = engine.reset()
+  assert.equal(reset.status, GAME_STATUS.WAITING)
+  assert.equal(reset.phase, GAME_PHASE.WAITING)
+  assert.equal(reset.currentRound, 0)
+  assert.equal(reset.startedAt, null)
+  assert.equal(reset.finishedAt, null)
+  assert.equal(reset.tradingEnabled, false)
+  assert.equal(events.at(-1), 'game:reset')
+  assert.throws(() => engine.reset(), (error) => error instanceof GameStateError && error.action === 'reset')
+})
+
 test('automatic scheduler processes trading and round deadlines', { timeout: 1000 }, async (t) => {
   const engine = new GameEngine({
     totalRounds: 1,

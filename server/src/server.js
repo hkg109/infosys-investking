@@ -3,16 +3,19 @@ import { createServer } from 'node:http'
 import { Server } from 'socket.io'
 import './config.js'
 import { createAdminAuthRouter } from './admin-auth.js'
+import { createAdminRouter } from './admin-routes.js'
 import { pool } from './db.js'
 import { createEventRouter } from './event-routes.js'
 import { createEventCoordinator } from './events.js'
 import { GameEngine } from './game-engine.js'
+import { createGameResetCoordinator } from './game-reset.js'
 import { createGameRouter } from './game-routes.js'
 import { loadGameState, saveGameState } from './game-store.js'
 import { createRankingRouter } from './ranking-routes.js'
 import { createRankingCoordinator } from './rankings.js'
 import { createUserRouter } from './users.js'
 import { createTradingRouter } from './trading.js'
+import { createPresenceTracker, createSocketSessionMiddleware } from './socket-presence.js'
 
 function positiveInteger(value, fallback, name) {
   if (value === undefined || value === '') return fallback
@@ -44,7 +47,12 @@ const reportGamePersistenceError = (error) => {
 }
 let gamePersistence = saveGameState(pool, game.getSnapshot()).catch(reportGamePersistenceError)
 const io = new Server(httpServer, {
-  cors: { origin: process.env.CLIENT_URL || 'http://localhost:5173' },
+  cors: { origin: process.env.CLIENT_URL || 'http://localhost:5173', credentials: true },
+})
+io.use(createSocketSessionMiddleware(pool))
+const presence = createPresenceTracker(io)
+const resetCoordinator = createGameResetCoordinator(pool, game, {
+  onReset: () => presence.disconnectAll(),
 })
 const eventCoordinator = createEventCoordinator(pool, io)
 const initialCash = positiveInteger(process.env.INITIAL_CASH, 1_000_000, 'INITIAL_CASH')
@@ -58,6 +66,7 @@ try {
 
 io.on('connection', (socket) => {
   console.log(`Socket connected: ${socket.id}`)
+  presence.connect(socket)
   socket.emit('game:state', game.getSnapshot())
 
   socket.on('disconnect', (reason) => {
@@ -82,9 +91,16 @@ game.on('game-event', (event) => {
 })
 
 app.use(express.json({ limit: '8kb' }))
+app.use(resetCoordinator.blockMutations)
 app.use('/api/admin/auth', createAdminAuthRouter({
   adminPassword: process.env.ADMIN_PASSWORD,
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
+}))
+app.use('/api/admin', createAdminRouter(pool, {
+  adminPassword: process.env.ADMIN_PASSWORD,
+  clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
+  presence,
+  initialCash,
 }))
 app.use('/api/users', createUserRouter(pool, {
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
@@ -93,11 +109,16 @@ app.use('/api/users', createUserRouter(pool, {
     await eventProcessing
     return rankingCoordinator.refreshAndEmit({ final: game.getSnapshot().status === 'FINISHED' })
   },
+  onUserLogout: (userIds) => presence.disconnectUsers(userIds),
 }))
 app.use('/api/game', createGameRouter(game, {
   adminPassword: process.env.ADMIN_PASSWORD,
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
   beforeStart: (snapshot) => eventCoordinator.prepareGameStart(snapshot),
+  resetGame: async () => {
+    await eventProcessing
+    return resetCoordinator.reset()
+  },
 }))
 app.use('/api/events', createEventRouter(pool, game, {
   adminPassword: process.env.ADMIN_PASSWORD,
