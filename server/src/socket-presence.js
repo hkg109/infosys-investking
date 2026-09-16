@@ -1,4 +1,5 @@
 import { findSessionUser, publicUser, readSessionTokens } from './session-auth.js'
+import { AUTHENTICATED_RANKING_ROOM, rankingUserRoom } from './ranking-rooms.js'
 
 export function createSocketSessionMiddleware(database) {
   return async (socket, next) => {
@@ -28,6 +29,8 @@ export function createPresenceTracker(io) {
     sockets.add(socket.id)
     connections.set(user.userId, sockets)
     socket.join(`user:${user.userId}`)
+    socket.join(AUTHENTICATED_RANKING_ROOM)
+    socket.join(rankingUserRoom(user.userId))
     socket.emit('session:ready', { user })
     if (wasOffline) emitPresence()
 
@@ -55,5 +58,6 @@ export function createPresenceTracker(io) {
     disconnectUsers,
     isOnline: (userId) => connections.has(userId),
     onlineCount: () => connections.size,
+    userIds: () => [...connections.keys()],
   }
 }

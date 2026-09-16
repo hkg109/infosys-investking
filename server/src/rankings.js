@@ -1,4 +1,5 @@
 import { ACTIVE_GAME_ID } from './game-store.js'
+import { AUTHENTICATED_RANKING_ROOM, rankingUserRoom } from './ranking-rooms.js'
 
 function number(value) {
   return value === null || value === undefined ? null : Number(value)
@@ -49,9 +50,9 @@ async function readSnapshot(database, gameId = ACTIVE_GAME_ID) {
 
 function publicEntry(entry) {
   return {
-    nickname: entry.nickname,
     rank: entry.rank,
     totalAssets: entry.totalAssets,
+    isMe: false,
   }
 }
 
@@ -72,15 +73,29 @@ export function publicRankingPayload(snapshot) {
 }
 
 export function viewerRankingPayload(snapshot, userId) {
-  const payload = publicRankingPayload(snapshot)
+  const rankings = snapshot.rankings.map((entry) => ({
+    ...publicEntry(entry),
+    isMe: entry.userId === userId,
+  }))
   const mine = snapshot.rankings.find((entry) => entry.userId === userId)
-  return { ...payload, me: mine ? accountEntry(mine) : null }
+  return {
+    final: snapshot.final,
+    calculatedAt: snapshot.calculatedAt,
+    totalParticipants: rankings.length,
+    top3: rankings.filter(({ rank }) => rank <= 3),
+    rankings,
+    me: mine ? { ...accountEntry(mine), isMe: true } : null,
+  }
 }
 
 export function adminRankingPayload(snapshot) {
+  const rankings = snapshot.rankings.map(accountEntry)
   return {
-    ...publicRankingPayload(snapshot),
-    rankings: snapshot.rankings.map(accountEntry),
+    final: snapshot.final,
+    calculatedAt: snapshot.calculatedAt,
+    totalParticipants: rankings.length,
+    top3: rankings.filter(({ rank }) => rank <= 3),
+    rankings,
   }
 }
 
@@ -128,11 +143,22 @@ export async function refreshRankings(database, {
   })
 }
 
-export function createRankingCoordinator(database, io, { initialCash = 1_000_000 } = {}) {
+export function createRankingCoordinator(database, io, { initialCash = 1_000_000, viewerIds = null } = {}) {
+  function emitRankingUpdate(snapshot) {
+    if (!viewerIds || typeof io.except !== 'function' || typeof io.to !== 'function') {
+      io.emit('ranking:update', publicRankingPayload(snapshot))
+      return
+    }
+    io.except(AUTHENTICATED_RANKING_ROOM).emit('ranking:update', publicRankingPayload(snapshot))
+    for (const userId of new Set(viewerIds())) {
+      io.to(rankingUserRoom(userId)).emit('ranking:update', viewerRankingPayload(snapshot, userId))
+    }
+  }
+
   async function refreshAndEmit({ final = false } = {}) {
     if (!database) return null
     const snapshot = await refreshRankings(database, { initialCash, final })
-    io.emit('ranking:update', publicRankingPayload(snapshot))
+    emitRankingUpdate(snapshot)
     return snapshot
   }
 

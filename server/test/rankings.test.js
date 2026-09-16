@@ -85,17 +85,34 @@ test('PostgreSQL rankings: asset totals, ties, API, socket updates and final fre
     { nickname: '찰리', rank: 3, totalAssets: 100 },
   ])
   assert.equal(first.rankings.some(({ nickname }) => nickname === '관리자'), false)
-  assert.equal('userId' in publicRankingPayload(first).rankings[0], false)
-  assert.equal('cash' in publicRankingPayload(first).rankings[0], false)
-  assert.equal(viewerRankingPayload(first, charlieId).me.rank, 3)
+  const publicPayload = publicRankingPayload(first)
+  assert.deepEqual(Object.keys(publicPayload.rankings[0]).sort(), ['isMe', 'rank', 'totalAssets'])
+  assert.equal(publicPayload.rankings.every(({ isMe }) => isMe === false), true)
+  assert.equal(JSON.stringify(publicPayload).includes('앨리스'), false)
+  const charliePayload = viewerRankingPayload(first, charlieId)
+  assert.equal(charliePayload.me.rank, 3)
+  assert.equal(charliePayload.me.isMe, true)
+  assert.equal(charliePayload.rankings.filter(({ isMe }) => isMe).length, 1)
+  assert.equal(charliePayload.rankings.find(({ isMe }) => isMe).rank, 3)
+  assert.equal(charliePayload.rankings.some((entry) => 'nickname' in entry || 'userId' in entry || 'cash' in entry), false)
 
-  const emitted = []
-  const coordinator = createRankingCoordinator(database, { emit: (name, payload) => emitted.push({ name, payload }) }, {
+  const delivered = []
+  const socketTarget = (target) => ({ emit: (name, payload) => delivered.push({ target, name, payload }) })
+  const coordinator = createRankingCoordinator(database, {
+    emit: (name, payload) => delivered.push({ target: 'all', name, payload }),
+    except: (room) => socketTarget(`except:${room}`),
+    to: (room) => socketTarget(`to:${room}`),
+  }, {
     initialCash: 100,
+    viewerIds: () => [charlieId, bobId, charlieId],
   })
   await coordinator.handleGameEvent({ name: 'trading:close' })
-  assert.equal(emitted.at(-1).name, 'ranking:update')
-  assert.equal(emitted.at(-1).payload.totalParticipants, 3)
+  assert.equal(delivered.length, 3)
+  assert.equal(delivered[0].name, 'ranking:update')
+  assert.equal(delivered[0].payload.totalParticipants, 3)
+  assert.equal(delivered[0].payload.rankings.every(({ isMe }) => !isMe), true)
+  assert.equal(delivered[1].payload.rankings.filter(({ isMe }) => isMe).length, 1)
+  assert.equal(delivered[2].payload.rankings.filter(({ isMe }) => isMe).length, 1)
 
   const sessionToken = randomBytes(32).toString('hex')
   await database.query(`INSERT INTO user_sessions (token_hash, user_id, expires_at)
@@ -112,13 +129,18 @@ test('PostgreSQL rankings: asset totals, ties, API, socket updates and final fre
   assert.equal((await fetch(base)).status, 401)
   const mine = await fetch(base, { headers: { Origin: clientUrl, Cookie: `${SESSION_COOKIE_NAME}=${sessionToken}` } })
   assert.equal(mine.status, 200)
-  assert.equal((await mine.json()).ranking.me.nickname, '찰리')
+  const minePayload = (await mine.json()).ranking
+  assert.equal(minePayload.me.nickname, '찰리')
+  assert.equal(minePayload.rankings.filter(({ isMe }) => isMe).length, 1)
+  assert.equal(minePayload.rankings.some((entry) => 'nickname' in entry), false)
   assert.equal((await fetch(`${base}/admin`, { headers: { Origin: clientUrl } })).status, 401)
   const adminResponse = await fetch(`${base}/admin`, {
     headers: { Origin: clientUrl, Authorization: `Bearer ${adminPassword}` },
   })
   assert.equal(adminResponse.status, 200)
-  assert.equal((await adminResponse.json()).ranking.rankings.length, 3)
+  const adminPayload = (await adminResponse.json()).ranking
+  assert.equal(adminPayload.rankings.length, 3)
+  assert.equal(adminPayload.rankings.every(({ nickname }) => typeof nickname === 'string'), true)
 
   await database.query("UPDATE companies SET current_price = 20 WHERE id = 'A'")
   const changed = await refreshRankings(database, { initialCash: 100 })

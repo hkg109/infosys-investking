@@ -57,7 +57,10 @@ const resetCoordinator = createGameResetCoordinator(pool, game, {
   onReset: () => presence.disconnectAll(),
 })
 const initialCash = positiveInteger(process.env.INITIAL_CASH, 1_000_000, 'INITIAL_CASH')
-const rankingCoordinator = createRankingCoordinator(pool, io, { initialCash })
+const rankingCoordinator = createRankingCoordinator(pool, io, {
+  initialCash,
+  viewerIds: () => presence.userIds(),
+})
 const marketGate = createMarketGate()
 const eventHaltDurationMs = positiveInteger(process.env.EVENT_HALT_DURATION_MS, 3_000, 'EVENT_HALT_DURATION_MS')
 const eventCoordinator = createEventCoordinator(pool, io, {

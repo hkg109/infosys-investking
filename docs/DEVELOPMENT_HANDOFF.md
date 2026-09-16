@@ -80,12 +80,13 @@ Frontend가 화면 뼈대를 병렬로 준비할 수는 있지만, 실제 연동
 | 참가자 자산 조회·Socket 온라인 상태·게임 초기화 | Backend 구현·PostgreSQL·Socket 통합 테스트 완료 | 재헌 참가자 표와 초기화·재시작 UI 연동 필요 |
 | 주식 종목 생성·수정·비활성화 | Backend 구현·PostgreSQL 통합 테스트 완료 | 재헌 종목 관리·참조 경고 UI 연동 필요 |
 | 복수·장중 사건, 수동·랜덤 월별 배정 | Backend 구현·PostgreSQL 통합 테스트 완료 | 재헌 `F-09~10` 사건 배정·발생 시각·충돌 검증 UI 연동 필요 |
+| 익명 실시간 순위·사용자별 `isMe` | Backend 구현·PostgreSQL·Socket 전달 테스트 완료 | 재헌 `F-11` 익명 순위와 본인 강조 UI 연동 필요 |
 | 실제 관리자 버튼 → 사용자 화면 | 미연동·미검증 | 재헌 Frontend 연동 후 공동 확인 |
 | 브라우저 콘솔·모바일 UI | 이번 PR에서 미검증 | 브라우저 테스트 필요 |
 | 사용자 HTTP 세션·게임 진행 Backend | 구현·자동 테스트 완료 | Socket 사용자 인증과 Frontend 연동은 후속 작업 |
 | DB·매수·매도 Backend | 구현·PostgreSQL 통합 테스트 완료 | Frontend 주문 UI와 행사 환경 검증은 후속 작업 |
 | 사건·뉴스·주가 변동 Backend | 구현·PostgreSQL 통합 테스트 완료 | Frontend 사건 관리·결과 UI와 행사 환경 검증은 후속 작업 |
-| 총자산·순위·최종 결과 Backend | 구현·PostgreSQL 통합 테스트 완료 | Frontend 순위·종료 결과 UI와 행사 환경 검증은 후속 작업 |
+| 총자산·익명 순위·최종 결과 Backend | 구현·PostgreSQL 통합 테스트 완료 | Frontend 익명 순위·본인 강조·종료 결과 UI와 행사 환경 검증은 후속 작업 |
 
 ## Frontend 연동 후 공동 확인
 
