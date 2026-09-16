@@ -10,6 +10,8 @@ PostgreSQL에 `Game`, `Company`, `Wallet`, `Portfolio`, `Transaction` 역할의 
 |---|---|---|
 | `GET /api/trading/market` | 없음 | 기업·현재가 목록 |
 | `GET /api/trading/portfolio` | 세션 쿠키 | 현금과 기업별 보유 수량·평가액 |
+| `GET /api/trading/history?round=1` | 세션 쿠키 | 본인의 월별 거래와 FIFO 실현손익 |
+| `GET /api/trading/companies/:companyId/history` | 세션 쿠키 | 종목별 시가·장중 사건·종가 이력 |
 | `POST /api/trading/orders` | 세션 쿠키 | 매수 또는 매도 |
 
 Frontend 요청에는 사용자 API에서 발급받은 HttpOnly 쿠키가 포함되도록 `credentials: 'include'`를 사용합니다.
@@ -51,3 +53,5 @@ Frontend 요청에는 사용자 API에서 발급받은 HttpOnly 쿠키가 포함
 `POST /api/trading/orders/cancel`은 같은 주문 body를 받는다. 미체결이면 `{cancelled:true}`, 이미 체결이면 `{cancelled:false,transaction}`. 취소한 번호는 다시 실행할 수 없다(`ORDER_CANCELLED`). 다른 사용자 번호는 충돌 오류로 처리하며 데이터를 공개하지 않는다.
 
 시장 응답에 `initialPrice`, `changeRate`(초기 대비 %, 소수 둘째 자리)가 추가된다. 계좌 응답에 `stockValue`, `totalAssets`가 추가된다. 기존 응답 필드는 유지한다.
+
+월별 거래·주가 분석의 전체 응답 계약과 관리자 조회는 [월별 거래·주가 분석 API](MARKET_HISTORY_API.md)를 참고한다. 신규 체결 응답과 복구 내역에는 서버가 확정한 `round`가 포함된다.

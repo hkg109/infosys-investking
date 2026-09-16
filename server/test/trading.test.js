@@ -96,6 +96,7 @@ test('PostgreSQL trading: validation, buy/sell, idempotency and row locking', {
   const bought = await order(user.cookie, { orderId: buyId, companyId: 'A', type: 'BUY', quantity: 10 })
   assert.equal(bought.status, 201)
   const boughtBody = await bought.json()
+  assert.equal(boughtBody.transaction.round, 1)
   assert.equal(boughtBody.account.cash, 900_000)
   assert.equal(boughtBody.account.holdings.find((item) => item.companyId === 'A').quantity, 10)
 

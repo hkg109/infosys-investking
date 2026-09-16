@@ -13,6 +13,7 @@ import { createGameResetCoordinator } from './game-reset.js'
 import { createGameRouter } from './game-routes.js'
 import { loadGameState, saveGameState } from './game-store.js'
 import { createMarketGate } from './market-gate.js'
+import { createMarketHistoryCoordinator } from './market-history.js'
 import { createRankingRouter } from './ranking-routes.js'
 import { createRankingCoordinator } from './rankings.js'
 import { createUserRouter } from './users.js'
@@ -62,6 +63,7 @@ const rankingCoordinator = createRankingCoordinator(pool, io, {
   viewerIds: () => presence.userIds(),
 })
 const marketGate = createMarketGate()
+const marketHistoryCoordinator = createMarketHistoryCoordinator(pool)
 const eventHaltDurationMs = positiveInteger(process.env.EVENT_HALT_DURATION_MS, 3_000, 'EVENT_HALT_DURATION_MS')
 const eventCoordinator = createEventCoordinator(pool, io, {
   marketGate,
@@ -70,7 +72,10 @@ const eventCoordinator = createEventCoordinator(pool, io, {
   haltDurationMs: eventHaltDurationMs,
 })
 try {
-  await eventCoordinator.reconcile(game.getSnapshot())
+  const restoredGame = game.getSnapshot()
+  await marketHistoryCoordinator.reconcileBeforeEvents(restoredGame)
+  await eventCoordinator.reconcile(restoredGame)
+  await marketHistoryCoordinator.reconcileAfterEvents(restoredGame)
   await rankingCoordinator.reconcile(game.getSnapshot())
 } catch (error) {
   if (error.code !== '42P01') console.error('Failed to reconcile game state')
@@ -95,7 +100,9 @@ game.on('game-event', (event) => {
   const persistenceForEvent = gamePersistence
   eventProcessing = eventProcessing.then(async () => {
     await persistenceForEvent
+    await marketHistoryCoordinator.beforeGameEvent(event)
     await eventCoordinator.handleGameEvent(event)
+    await marketHistoryCoordinator.afterGameEvent(event)
     await rankingCoordinator.handleGameEvent(event)
   }).catch((error) => {
     if (error.code !== '42P01') console.error('Failed to process game event')

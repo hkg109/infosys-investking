@@ -79,6 +79,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   order_id UUID NOT NULL UNIQUE,
   game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  round_number INTEGER NOT NULL DEFAULT 1 CHECK (round_number > 0),
   company_id VARCHAR(20) NOT NULL REFERENCES companies(id),
   type TEXT NOT NULL CHECK (type IN ('BUY', 'SELL')),
   quantity BIGINT NOT NULL CHECK (quantity > 0),
@@ -86,7 +87,18 @@ CREATE TABLE IF NOT EXISTS transactions (
   total_price BIGINT NOT NULL CHECK (total_price > 0),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS round_number INTEGER NOT NULL DEFAULT 1;
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'transactions'::regclass AND conname = 'transactions_round_number_check'
+  ) THEN
+    ALTER TABLE transactions ADD CONSTRAINT transactions_round_number_check CHECK (round_number > 0);
+  END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS transactions_user_created_idx ON transactions(game_id, user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS transactions_user_round_idx
+  ON transactions(game_id, user_id, round_number, created_at, id);
 
 -- A durable order intent is saved before execution so another device can recover it.
 CREATE TABLE IF NOT EXISTS order_intents (
@@ -179,7 +191,15 @@ ALTER TABLE game_events ALTER COLUMN preannounce_ms SET DEFAULT 0;
 ALTER TABLE stock_price_changes DROP CONSTRAINT IF EXISTS stock_price_changes_game_event_id_fkey;
 ALTER TABLE stock_price_changes DROP CONSTRAINT IF EXISTS stock_price_changes_game_event_fkey;
 ALTER TABLE stock_price_changes DROP CONSTRAINT IF EXISTS stock_price_changes_game_id_round_number_fkey;
-ALTER TABLE game_events DROP CONSTRAINT IF EXISTS game_events_pkey;
+DO $$ BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'game_events'::regclass AND contype = 'p'
+      AND pg_get_constraintdef(oid) <> 'PRIMARY KEY (id)'
+  ) THEN
+    ALTER TABLE game_events DROP CONSTRAINT game_events_pkey;
+  END IF;
+END $$;
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'game_events'::regclass AND contype = 'p') THEN
     ALTER TABLE game_events ADD CONSTRAINT game_events_pkey PRIMARY KEY (id);
@@ -231,6 +251,33 @@ DROP TRIGGER IF EXISTS stock_price_changes_fill_game_event_id ON stock_price_cha
 CREATE TRIGGER stock_price_changes_fill_game_event_id
 BEFORE INSERT ON stock_price_changes
 FOR EACH ROW EXECUTE FUNCTION fill_stock_price_change_game_event_id();
+
+CREATE TABLE IF NOT EXISTS stock_price_history (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  round_number INTEGER NOT NULL CHECK (round_number > 0),
+  company_id VARCHAR(20) NOT NULL REFERENCES companies(id),
+  snapshot_type TEXT NOT NULL CHECK (snapshot_type IN ('OPEN', 'INTRADAY_EVENT', 'CLOSE')),
+  price BIGINT NOT NULL CHECK (price > 0),
+  opening_price BIGINT NOT NULL CHECK (opening_price > 0),
+  closing_price BIGINT CHECK (closing_price > 0),
+  change_rate NUMERIC(12, 4) NOT NULL DEFAULT 0,
+  source_event_id UUID REFERENCES events(id),
+  game_event_id UUID REFERENCES game_events(id) ON DELETE CASCADE,
+  recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK (
+    (snapshot_type = 'INTRADAY_EVENT' AND source_event_id IS NOT NULL AND game_event_id IS NOT NULL)
+    OR (snapshot_type IN ('OPEN', 'CLOSE') AND source_event_id IS NULL AND game_event_id IS NULL)
+  )
+);
+CREATE UNIQUE INDEX IF NOT EXISTS stock_price_history_boundary_idx
+  ON stock_price_history(game_id, round_number, company_id, snapshot_type)
+  WHERE snapshot_type IN ('OPEN', 'CLOSE');
+CREATE UNIQUE INDEX IF NOT EXISTS stock_price_history_event_idx
+  ON stock_price_history(game_event_id, company_id)
+  WHERE snapshot_type = 'INTRADAY_EVENT';
+CREATE INDEX IF NOT EXISTS stock_price_history_company_idx
+  ON stock_price_history(game_id, company_id, round_number, recorded_at, id);
 
 CREATE TABLE IF NOT EXISTS ranking_states (
   game_id UUID PRIMARY KEY REFERENCES games(id) ON DELETE CASCADE,

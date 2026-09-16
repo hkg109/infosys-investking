@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { ACTIVE_GAME_ID } from './game-store.js'
+import { recordIntradayEventSnapshot } from './market-history.js'
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const DEFAULT_HALT_MS = 3_000
@@ -267,6 +268,7 @@ export async function applyScheduledEvent(database, gameEventId, gameId = ACTIVE
       }
       event.applied_at = (await client.query('UPDATE game_events SET applied_at = NOW() WHERE id = $1 RETURNING applied_at', [event.game_event_id])).rows[0].applied_at
     }
+    if (event.trigger_phase === 'INTRADAY') await recordIntradayEventSnapshot(client, event, gameId)
     const changes = await client.query(`SELECT spc.*, c.name AS company_name FROM stock_price_changes spc JOIN companies c ON c.id = spc.company_id WHERE spc.game_event_id = $1 ORDER BY spc.company_id`, [event.game_event_id])
     return { ...scheduleJson(event), applied: true, appliedAt: date(event.applied_at), changes: changes.rows.map(changeJson) }
   })

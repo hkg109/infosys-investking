@@ -181,6 +181,9 @@ test('PostgreSQL stage 2: participant assets, multi-tab presence, reconnect, and
   await database.query(`INSERT INTO transactions
     (id, order_id, game_id, user_id, company_id, type, quantity, price, total_price)
     VALUES ($1, $2, $3, $4, 'A', 'BUY', 1, 10000, 10000)`, [randomUUID(), orderId, ACTIVE_GAME_ID, aliceId])
+  await database.query(`INSERT INTO stock_price_history
+    (game_id, round_number, company_id, snapshot_type, price, opening_price)
+    VALUES ($1, 1, 'A', 'OPEN', 10000, 10000)`, [ACTIVE_GAME_ID])
   await database.query('INSERT INTO ranking_states (game_id, is_final) VALUES ($1, TRUE)', [ACTIVE_GAME_ID])
   await database.query(`INSERT INTO ranking_snapshots
     (game_id, user_id, rank, cash, stock_value, total_assets, is_final)
@@ -199,7 +202,7 @@ test('PostgreSQL stage 2: participant assets, multi-tab presence, reconnect, and
     'game reset should disconnect authenticated participant sockets')
 
   for (const table of ['user_sessions', 'wallets', 'portfolios', 'transactions', 'order_intents',
-    'game_events', 'stock_price_changes', 'ranking_states', 'ranking_snapshots']) {
+    'game_events', 'stock_price_changes', 'stock_price_history', 'ranking_states', 'ranking_snapshots']) {
     assert.equal(Number((await database.query(`SELECT COUNT(*) AS count FROM ${table}`)).rows[0].count), 0, table)
   }
   assert.equal(Number((await database.query("SELECT COUNT(*) AS count FROM users WHERE role = 'USER'")).rows[0].count), 0)
