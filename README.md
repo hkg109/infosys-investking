@@ -4,7 +4,7 @@
 
 ## 현재 개발 단계
 
-**4단계 — DB·주식 거래 Backend**. 게임 상태를 PostgreSQL에서 복원하고, 기업·지갑·포트폴리오·거래 원장을 저장합니다. 로그인 사용자는 서버 거래 시간 안에 정수 수량을 매수·매도할 수 있으며 같은 사용자의 동시 거래와 `orderId` 재전송을 DB에서 보호합니다.
+**5단계 — 사건·뉴스·주가 변동 Backend**. 관리자는 게임 시작 전에 사건과 기업별 고정 변동률을 관리합니다. 서버는 사건을 라운드별로 중복 없이 배정하고, 거래 마감 뒤 한 번만 주가에 반영한 다음 뉴스·결과·주가 변경을 Socket으로 전달합니다.
 
 클라이언트가 보낸 Socket 제어 이벤트는 더 이상 처리하지 않습니다. 관리자는 `ADMIN_PASSWORD`로 인증된 HTTP API를 사용하고 서버가 상태 변경 후 Socket 이벤트를 전파합니다. 사용자 HTTP 세션과 Socket 연결 인증은 아직 분리되어 있습니다.
 
@@ -18,7 +18,7 @@
 - Frontend: React + Vite + React Router
 - Backend: Node.js + Express
 - Realtime: Socket.IO (서버 기본 연결)
-- Database: PostgreSQL (사용자·세션·게임·기업·지갑·포트폴리오·거래)
+- Database: PostgreSQL (사용자·세션·게임·기업·지갑·포트폴리오·거래·사건·주가 변경 이력)
 
 ## 디렉터리 구조
 
@@ -83,7 +83,7 @@ npm run db:migrate
 npm test
 ```
 
-`db:migrate`는 사용자·세션·게임·거래 테이블과 기본 기업 7개를 준비합니다. DB 설정이 없으면 사용자·거래 API는 503을 반환하며 Health Check와 Socket 연결은 사용할 수 있습니다. `/api/health`는 프로세스 생존 확인이며 DB readiness 검사가 아닙니다.
+`db:migrate`는 사용자·세션·게임·거래·사건 테이블과 기본 기업 7개를 준비합니다. DB 설정이 없으면 사용자·거래·사건 API는 503을 반환하며 Health Check와 Socket 연결은 사용할 수 있습니다. `/api/health`는 프로세스 생존 확인이며 DB readiness 검사가 아닙니다.
 
 실제 DB 통합 검증에는 루트 `.env`의 `TEST_DATABASE_URL`이 필요합니다. 지정 DB 안에 테스트별 임시 스키마를 생성하고 해당 스키마만 삭제합니다. 설정하지 않으면 PostgreSQL 테스트가 명시적으로 skip됩니다. 개발 DB를 사용하고 행사 운영 DB를 테스트 대상으로 지정하지 않습니다.
 
@@ -120,6 +120,7 @@ INITIAL_CASH=1000000
 - [사용자 세션 API 및 정책](docs/USER_SESSION_API.md)
 - [게임 상태·서버 타이머 API](docs/GAME_STATE_API.md)
 - [DB·주식 거래 API](docs/TRADING_API.md)
+- [사건·뉴스·주가 변동 API](docs/EVENT_API.md)
 
 - [프로젝트 명세](docs/PROJECT_SPEC.md)
 - [협업 가이드](docs/COLLABORATION_GUIDE.md)

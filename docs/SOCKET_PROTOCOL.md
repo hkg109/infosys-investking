@@ -19,7 +19,9 @@
 
 3단계부터 클라이언트가 보낸 제어 이벤트는 처리하지 않습니다. 게임 제어는 인증된 관리자 HTTP API만 사용하며 서버가 실제 상태를 변경한 뒤 Socket 이벤트를 전달합니다. 최신 규약은 [GAME_STATE_API.md](GAME_STATE_API.md)를 참조합니다.
 
-연결이 끊긴 동안 개별 이벤트는 저장·재전송하지 않지만, 재연결 직후 `game:state`로 현재 상태를 받습니다. 3단계 게임 상태는 아직 메모리 기반이며 DB 저장은 후속 단계입니다.
+연결이 끊긴 동안 개별 이벤트는 재전송하지 않지만, 재연결 직후 `game:state`로 현재 상태를 받고 `GET /api/events/current`로 현재 뉴스와 적용 결과를 복구할 수 있습니다. 게임 상태와 사건 적용 결과는 PostgreSQL에 저장됩니다.
+
+5단계 사건 이벤트는 `news:publish`, `event:result`, `stock:update`입니다. Payload와 공개 시점은 [EVENT_API.md](EVENT_API.md)를 참조합니다.
 
 ## 검증
 
