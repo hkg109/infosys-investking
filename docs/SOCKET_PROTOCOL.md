@@ -23,7 +23,7 @@
 
 연결이 끊긴 동안 개별 이벤트는 재전송하지 않지만, 재연결 직후 `game:state`로 현재 상태를 받고 `GET /api/events/current`로 현재 뉴스와 적용 결과를 복구할 수 있습니다. 게임 상태와 사건 적용 결과는 PostgreSQL에 저장됩니다.
 
-5단계 사건 이벤트는 `news:publish`, `event:result`, `stock:update`입니다. Payload와 공개 시점은 [EVENT_API.md](EVENT_API.md)를 참조합니다.
+사건 이벤트는 기존 `news:publish`, `event:result`, `stock:update`에 장중 사건용 `market:event:warning`, `trading:halt`, `market:event:breaking`, `trading:resume`이 추가됩니다. 거래정지 중 HTTP 주문은 `MARKET_HALTED`로 거절되며 Payload와 정확한 순서는 [EVENT_API.md](EVENT_API.md)를 참조합니다.
 
 6단계 순위 이벤트는 `ranking:update`입니다. 거래 커밋, 사건에 따른 주가 변경, 게임 종료 뒤 갱신되며 상세 Payload와 복구 API는 [RANKING_API.md](RANKING_API.md)를 참조합니다.
 

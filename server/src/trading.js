@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { Router } from 'express'
 import { ACTIVE_GAME_ID, saveGameState } from './game-store.js'
+import { MarketHaltedError } from './market-gate.js'
 import { requireSessionUser } from './session-auth.js'
 
 const orderIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -108,6 +109,7 @@ export function createTradingRouter(database, engine, {
   clientUrl,
   initialCash = 1_000_000,
   onTradeCommitted = async () => {},
+  marketGate = null,
 }) {
   const router = Router()
   setCors(router, clientUrl, engine, database)
@@ -130,6 +132,27 @@ export function createTradingRouter(database, engine, {
   })
 
   const requireUser = requireSessionUser(database)
+
+  const admitMarketOrder = (request, response, next) => {
+    try {
+      const release = marketGate?.admit() || (() => {})
+      let released = false
+      request.marketOrderStarted = false
+      request.releaseMarketAdmission = () => {
+        if (released) return
+        released = true
+        release()
+      }
+      response.once('finish', request.releaseMarketAdmission)
+      response.once('close', () => {
+        if (!request.marketOrderStarted) request.releaseMarketAdmission()
+      })
+      next()
+    } catch (error) {
+      if (error instanceof MarketHaltedError) return response.status(409).json({ error: error.code })
+      next(error)
+    }
+  }
 
   router.get('/orders/recovery', requireUser, async (request, response, next) => {
     let client
@@ -226,8 +249,9 @@ export function createTradingRouter(database, engine, {
     }
   })
 
-  router.post('/orders', requireUser, async (request, response, next) => {
+  router.post('/orders', admitMarketOrder, requireUser, async (request, response, next) => {
     let client
+    request.marketOrderStarted = true
     try {
       const order = validateOrder(request.body)
       const game = request.gameAtReceipt
@@ -306,6 +330,7 @@ export function createTradingRouter(database, engine, {
       next(error)
     } finally {
       client?.release()
+      request.releaseMarketAdmission()
     }
   })
 

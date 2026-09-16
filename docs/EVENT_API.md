@@ -1,18 +1,15 @@
-# 5단계 사건·뉴스·주가 변동 Backend
+# 복수·장중 사건 Backend API
 
-사건 원본과 기업별 고정 변동률은 PostgreSQL에 저장합니다. 관리자는 게임이 `WAITING`일 때만 사건을 생성·수정·삭제할 수 있습니다. 게임 시작 요청은 등록 사건 수를 확인한 뒤 사건을 중복 없이 섞어 전체 라운드에 배정합니다.
+한 라운드에는 사건을 0개 이상 배정할 수 있으며 사건은 거래 중(`INTRADAY`) 또는 거래 마감(`CLOSE`)에 발생합니다. 같은 사건은 한 게임에서 한 번만 배정합니다. 모든 관리자 요청은 `Authorization: Bearer <ADMIN_PASSWORD>`를 사용하며 사건·배정 변경은 게임이 `WAITING`일 때만 가능합니다.
 
-## 관리자 API
-
-모든 관리자 요청은 `Authorization: Bearer <ADMIN_PASSWORD>`를 사용합니다.
+## 사건 원본 관리
 
 | 요청 | 설명 |
 |---|---|
-| `GET /api/events/admin` | 사건과 효과 전체 조회 |
+| `GET /api/events/admin` | 사건과 종목별 효과 조회 |
 | `POST /api/events/admin` | 사건 생성 |
 | `PUT /api/events/admin/:eventId` | 사건 수정 |
 | `DELETE /api/events/admin/:eventId` | 사건 삭제 |
-| `GET /api/events/admin/schedule` | 현재 게임의 월별 배정 조회 |
 
 생성·수정 body:
 
@@ -23,58 +20,89 @@
   "result": "행사가 성황리에 마무리됐다.",
   "effects": [
     { "companyId": "A", "changeRate": 20 },
-    { "companyId": "C", "changeRate": 10 },
-    { "companyId": "G", "changeRate": -5 }
+    { "companyId": "C", "changeRate": -5 }
   ]
 }
 ```
 
-`changeRate`는 -99~1000 범위의 정수입니다. 같은 사건에서 같은 기업을 두 번 지정할 수 없습니다. 존재하지 않는 기업은 `COMPANY_NOT_FOUND`, 비활성 기업은 `COMPANY_INACTIVE`, 게임 시작 후 변경 요청은 `EVENT_MANAGEMENT_CLOSED`입니다. 비활성 기업을 참조하는 과거 사건은 보존하지만 새 게임의 무작위 배정 후보에서는 제외합니다.
+`changeRate`는 -99~1000의 정수입니다. 비활성 종목을 참조하는 기존 사건은 보존하지만 새 배정에는 사용할 수 없습니다.
 
-등록 사건 수가 전체 라운드보다 적으면 `POST /api/game/admin/start`는 게임 상태를 바꾸지 않고 409 `EVENT_POOL_TOO_SMALL`을 반환합니다.
+## 배정 관리
 
-## 사용자 복구 API
+| 요청 | 설명 |
+|---|---|
+| `GET /api/events/admin/schedule` | 평면 `schedule`과 라운드별 `rounds` 조회 |
+| `PUT /api/events/admin/schedule` | 전체 수동 배정 교체 |
+| `POST /api/events/admin/schedule/randomize` | 조건에 따라 중복 없이 무작위 재배정 |
 
-`GET /api/events/current`는 현재 게임 상태와 현재 라운드 사건을 반환합니다. 거래 중에는 `title`과 `news`만 공개하며 효과와 결과는 포함하지 않습니다. 결과 구간부터 `result`, `appliedAt`, `changes`가 추가됩니다.
+수동 배정 예시입니다. `rounds`에 없는 라운드와 `events: []`인 라운드는 사건이 없습니다.
 
 ```json
 {
-  "event": {
-    "round": 1,
-    "eventId": "...",
-    "title": "학과 축제 개최",
-    "news": "학과에서 대규모 행사가 예정되어 있다.",
-    "applied": true,
-    "result": "행사가 성황리에 마무리됐다.",
-    "changes": [
-      {
-        "companyId": "A",
-        "name": "A 엔터",
-        "changeRate": 20,
-        "previousPrice": 10000,
-        "newPrice": 12000
-      }
-    ]
-  }
+  "rounds": [
+    {
+      "round": 1,
+      "events": [
+        {
+          "eventId": "11111111-1111-4111-8111-111111111111",
+          "displayOrder": 1,
+          "triggerPhase": "INTRADAY",
+          "triggerOffsetSeconds": 180,
+          "preannounceSeconds": 30
+        },
+        {
+          "eventId": "22222222-2222-4222-8222-222222222222",
+          "displayOrder": 2,
+          "triggerPhase": "CLOSE"
+        }
+      ]
+    },
+    { "round": 2, "events": [] }
+  ]
 }
 ```
 
-## 처리 순서와 중복 방지
+`triggerOffsetSeconds`와 `preannounceSeconds`는 서버의 라운드 시작 시각을 기준으로 계산합니다. 장중 사건은 거래 종료 및 다른 사건의 예고·거래정지 구간과 겹칠 수 없습니다. `CLOSE` 사건에는 두 시간 필드를 지정하지 않습니다.
 
-1. 게임 시작 전에 전체 라운드의 사건을 무작위 배정합니다.
-2. `round:start` 때 해당 월의 뉴스만 공개합니다.
-3. 서버가 거래를 닫은 뒤 해당 사건의 기업 행을 잠급니다.
-4. `현재가 × (100 + 변동률) / 100`을 반올림하고 최소 1원으로 저장합니다.
-5. 변경 전·후 가격을 `stock_price_changes`에 기록하고 사건을 적용 완료 처리합니다.
+무작위 배정 body:
 
-`game_events` 행 잠금과 가격 변경 기록의 복합 기본키로 같은 월 사건은 한 번만 반영됩니다. 서버 재시작 시 이미 지난 결과 구간을 순서대로 보정하며 저장된 결과를 재사용합니다.
+```json
+{
+  "intradayEventsPerRound": 1,
+  "closingEventsPerRound": 1,
+  "preannounceSeconds": 30
+}
+```
+
+각 개수는 0~3입니다. body를 비우면 기존 운영과 호환되도록 라운드마다 `CLOSE` 사건 1개를 배정합니다.
+
+주요 오류는 `INVALID_EVENT_SCHEDULE`, `EVENT_SCHEDULE_CONFLICT`, `DUPLICATE_EVENT_ASSIGNMENT`, `EVENT_NOT_FOUND`, `EVENT_POOL_TOO_SMALL`, `EVENT_MANAGEMENT_CLOSED`입니다.
+
+## 사용자 복구 API
+
+`GET /api/events/current`는 `{ game, events, event }`를 반환합니다. `events`는 현재 라운드의 모든 사건이며 `event`는 이전 Frontend 호환용 첫 사건입니다. 아직 발생하지 않은 사건에는 결과와 변동 내역이 포함되지 않습니다. 발생한 사건에는 `result`, `appliedAt`, `changes`가 포함됩니다.
+
+## 장중 반영과 동시성
+
+1. 예고 시각에 `market:event:warning`을 전송합니다.
+2. 발생 시 서버가 신규 주문 접수를 즉시 막고, 이미 접수된 주문이 기존 가격으로 끝날 때까지 기다립니다.
+3. `trading:halt`를 전송하고 사건 적용과 모든 종목 가격 변경을 한 DB transaction으로 처리합니다.
+4. `market:event:breaking`, `event:result`, `stock:update`, `ranking:update` 순으로 갱신합니다.
+5. 최소 거래정지 시간이 지나면 주문을 열고 `trading:resume`을 전송합니다.
+
+정지 중 주문은 HTTP 409 `MARKET_HALTED`입니다. `game_events.applied_at` 행 잠금과 `stock_price_changes(game_event_id, company_id)` 기본키로 재시작·중복 타이머·동시 실행에서도 사건을 한 번만 적용합니다. 서버 재시작 시 저장된 `scheduled_at`과 게임 상태를 대조해 누락된 사건을 순서대로 보정합니다.
 
 ## Socket 이벤트
 
-| 이벤트 | 시점 | Payload |
-|---|---|---|
-| `news:publish` | 월 시작 | 결과·변동률을 제외한 현재 사건 |
-| `event:result` | 거래 마감 후 DB 반영 완료 | 사건 결과와 기업별 변경 전·후 가격 |
-| `stock:update` | `event:result` 직후 | `round`, `changes` |
+| 이벤트 | 시점 |
+|---|---|
+| `news:publish` | 라운드 시작, 해당 라운드 사건 뉴스 공개 |
+| `market:event:warning` | 장중 사건 사전 예고 |
+| `trading:halt` | 신규 주문 접수 중단 및 기존 주문 drain 완료 |
+| `market:event:breaking` | 장중 사건 DB 반영 완료 |
+| `event:result` | 사건 결과 공개(기존 Frontend 호환 포함) |
+| `stock:update` | 종목별 변경 전·후 가격 전달 |
+| `ranking:update` | 변경 가격 기준 순위 재계산 |
+| `trading:resume` | 장중 거래 재개 |
 
-Socket은 알림 수단이며 복구 기준은 `GET /api/events/current`와 PostgreSQL입니다.
+Socket은 실시간 알림이며 재접속 복구 기준은 PostgreSQL과 `GET /api/events/current`입니다.

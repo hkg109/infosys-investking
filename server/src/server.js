@@ -12,6 +12,7 @@ import { GameEngine } from './game-engine.js'
 import { createGameResetCoordinator } from './game-reset.js'
 import { createGameRouter } from './game-routes.js'
 import { loadGameState, saveGameState } from './game-store.js'
+import { createMarketGate } from './market-gate.js'
 import { createRankingRouter } from './ranking-routes.js'
 import { createRankingCoordinator } from './rankings.js'
 import { createUserRouter } from './users.js'
@@ -55,9 +56,16 @@ const presence = createPresenceTracker(io)
 const resetCoordinator = createGameResetCoordinator(pool, game, {
   onReset: () => presence.disconnectAll(),
 })
-const eventCoordinator = createEventCoordinator(pool, io)
 const initialCash = positiveInteger(process.env.INITIAL_CASH, 1_000_000, 'INITIAL_CASH')
 const rankingCoordinator = createRankingCoordinator(pool, io, { initialCash })
+const marketGate = createMarketGate()
+const eventHaltDurationMs = positiveInteger(process.env.EVENT_HALT_DURATION_MS, 3_000, 'EVENT_HALT_DURATION_MS')
+const eventCoordinator = createEventCoordinator(pool, io, {
+  marketGate,
+  getGameSnapshot: () => game.getSnapshot(),
+  onPricesChanged: () => rankingCoordinator.refreshAndEmit(),
+  haltDurationMs: eventHaltDurationMs,
+})
 try {
   await eventCoordinator.reconcile(game.getSnapshot())
   await rankingCoordinator.reconcile(game.getSnapshot())
@@ -128,11 +136,13 @@ app.use('/api/game', createGameRouter(game, {
 app.use('/api/events', createEventRouter(pool, game, {
   adminPassword: process.env.ADMIN_PASSWORD,
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
+  haltDurationMs: eventHaltDurationMs,
 }))
 app.use('/api/trading', createTradingRouter(pool, game, {
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
   initialCash,
   onTradeCommitted: () => rankingCoordinator.refreshAndEmit(),
+  marketGate,
 }))
 app.use('/api/rankings', createRankingRouter(pool, game, {
   beforeRefresh: () => eventProcessing,

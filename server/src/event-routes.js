@@ -5,12 +5,14 @@ import {
   deleteEvent,
   EventError,
   getGameSchedule,
-  getRoundEvent,
+  getRoundEvents,
   listEvents,
+  randomizeEvents,
+  saveGameSchedule,
   updateEvent,
 } from './events.js'
 
-export function createEventRouter(database, engine, { adminPassword, clientUrl }) {
+export function createEventRouter(database, engine, { adminPassword, clientUrl, haltDurationMs = 3_000 }) {
   const router = Router()
 
   router.use((request, response, next) => {
@@ -35,7 +37,8 @@ export function createEventRouter(database, engine, { adminPassword, clientUrl }
   router.get('/current', async (_request, response, next) => {
     try {
       const game = engine.getSnapshot()
-      response.json({ game, event: await getRoundEvent(database, game.currentRound) })
+      const events = await getRoundEvents(database, game.currentRound)
+      response.json({ game, events, event: events[0] || null })
     } catch (error) {
       next(error)
     }
@@ -53,7 +56,12 @@ export function createEventRouter(database, engine, { adminPassword, clientUrl }
 
   router.get('/admin/schedule', async (_request, response, next) => {
     try {
-      response.json({ schedule: await getGameSchedule(database) })
+      const schedule = await getGameSchedule(database)
+      const rounds = Array.from({ length: engine.getSnapshot().totalRounds }, (_, index) => ({
+        round: index + 1,
+        events: schedule.filter((event) => event.round === index + 1),
+      }))
+      response.json({ schedule, rounds })
     } catch (error) {
       next(error)
     }
@@ -64,6 +72,34 @@ export function createEventRouter(database, engine, { adminPassword, clientUrl }
     if (game.status !== 'WAITING') return response.status(409).json({ error: 'EVENT_MANAGEMENT_CLOSED', status: game.status })
     next()
   }
+
+  const scheduleOptions = () => {
+    const game = engine.getSnapshot()
+    return {
+      totalRounds: game.totalRounds,
+      tradingDurationMs: game.tradingDurationSeconds * 1000,
+      haltDurationMs,
+    }
+  }
+
+  router.put('/admin/schedule', requireWaiting, async (request, response, next) => {
+    try {
+      response.json({ schedule: await saveGameSchedule(database, request.body, scheduleOptions()) })
+    } catch (error) {
+      if (error instanceof EventError) return response.status(error.status).json({ error: error.code, ...error.details })
+      next(error)
+    }
+  })
+
+  router.post('/admin/schedule/randomize', requireWaiting, async (request, response, next) => {
+    try {
+      const options = { ...request.body, ...scheduleOptions() }
+      response.json({ schedule: await randomizeEvents(database, options.totalRounds, options) })
+    } catch (error) {
+      if (error instanceof EventError) return response.status(error.status).json({ error: error.code, ...error.details })
+      next(error)
+    }
+  })
 
   router.post('/admin', requireWaiting, async (request, response, next) => {
     try {
