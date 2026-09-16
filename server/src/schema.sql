@@ -119,3 +119,23 @@ CREATE TABLE IF NOT EXISTS stock_price_changes (
   PRIMARY KEY (game_id, round_number, company_id),
   FOREIGN KEY (game_id, round_number) REFERENCES game_events(game_id, round_number) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS ranking_states (
+  game_id UUID PRIMARY KEY REFERENCES games(id) ON DELETE CASCADE,
+  is_final BOOLEAN NOT NULL DEFAULT FALSE,
+  calculated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS ranking_snapshots (
+  game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  rank INTEGER NOT NULL CHECK (rank > 0),
+  cash NUMERIC(30, 0) NOT NULL CHECK (cash >= 0),
+  stock_value NUMERIC(30, 0) NOT NULL CHECK (stock_value >= 0),
+  total_assets NUMERIC(30, 0) NOT NULL CHECK (total_assets >= 0),
+  is_final BOOLEAN NOT NULL DEFAULT FALSE,
+  calculated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (game_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS ranking_snapshots_order_idx
+  ON ranking_snapshots(game_id, is_final, rank, user_id);
