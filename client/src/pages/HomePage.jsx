@@ -76,6 +76,18 @@ function HomePage() {
           뉴스와 사건을 읽고 가상 기업에 투자하며 최고의 투자왕에 도전하는 실시간 모의투자 게임입니다.
         </p>
 
+        <section className="game-rules" aria-label="게임 규칙">
+          <h2>게임 방법</h2>
+          <ol>
+            <li>닉네임과 숫자 4자리 PIN으로 참가하세요. 다시 접속할 때 같은 정보로 계정을 복구할 수 있습니다.</li>
+            <li>뉴스와 사건을 읽고, 거래 가능한 시간에 주식을 매수하거나 매도하세요.</li>
+            <li>보유 현금 범위에서 매수하고, 보유한 수량만 매도할 수 있습니다.</li>
+            <li>사건에 따라 주가가 변합니다. 일시정지·거래 마감·게임 종료 중에는 주문할 수 없습니다.</li>
+            <li>게임 종료 시 현금과 주식 평가액을 합한 총자산으로 최종 순위를 정합니다.</li>
+          </ol>
+          <p>실제 돈을 사용하지 않는 모의투자 게임입니다. 진행 시간과 참가 조건은 운영자의 안내를 확인하세요.</p>
+        </section>
+
         <div className="entry-tabs" role="tablist" aria-label="참가 방법">
           <button className={mode === 'join' ? 'entry-tab entry-tab--active' : 'entry-tab'} type="button" role="tab" aria-selected={mode === 'join'} onClick={() => changeMode('join')}>처음 참가</button>
           <button className={mode === 'recover' ? 'entry-tab entry-tab--active' : 'entry-tab'} type="button" role="tab" aria-selected={mode === 'recover'} onClick={() => changeMode('recover')}>계정 복구</button>

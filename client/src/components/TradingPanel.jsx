@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Panel from './Panel'
 import { money } from '../game/model'
 import { newOrderId, orderError, quantityValue, tradingBlock } from '../trading/model'
@@ -8,6 +8,16 @@ export default function TradingPanel({ game, stale, trading }) {
   const [type, setType] = useState('BUY')
   const [quantityText, setQuantityText] = useState('1')
   const [validation, setValidation] = useState('')
+  const handledResult = useRef(null)
+  const resetForm = () => { setCompanyId(''); setType('BUY'); setQuantityText('1'); setValidation('') }
+  // Reset only once per confirmed order; later polling must not erase a new draft.
+  useEffect(() => {
+    const id = trading.result?.orderId
+    if (id && id !== handledResult.current && !trading.unresolved && !trading.pending) {
+      handledResult.current = id
+      resetForm()
+    }
+  }, [trading.result, trading.unresolved, trading.pending])
   const company = trading.companies?.find((item) => item.companyId === companyId)
   const quantity = quantityValue(quantityText)
   const held = trading.account?.holdings?.find((item) => item.companyId === companyId)?.quantity ?? 0
@@ -47,6 +57,7 @@ export default function TradingPanel({ game, stale, trading }) {
         <p id="order-estimate" className="trading-help">예상 금액이며 실제 체결 가격과 거래 가능 여부는 서버가 최종 확인합니다.</p>
         {validation && <p className="form-error" role="alert">{validation}</p>}
         <button className="primary-button" type="submit">{trading.pending ? '주문 처리 중...' : type === 'BUY' ? '매수 주문' : '매도 주문'}</button>
+        <button className="secondary-button" type="button" onClick={resetForm}>입력 초기화</button>
       </fieldset>
     </form>
     {trading.unresolved && <div className="order-unresolved" role="status">

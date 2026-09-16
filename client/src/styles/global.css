@@ -156,3 +156,14 @@ summary { cursor: pointer; min-height: 44px; padding: 12px 0; }
 .ranking-mine dl > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
 .ranking-mine dd { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
 @media (min-width: 760px) { .ranking-list li { grid-template-columns: 3em minmax(0, 1fr) auto; } .ranking-list li > strong:last-child { grid-column: 3; } }
+
+.admin-login { max-width: 520px; margin: 0 auto; }
+.connection-status { margin-bottom: 16px; color: #32654a; font-size: 0.85rem; }
+.connection-status span::before { content: '●'; margin-right: 6px; }
+.game-rules { margin-top: 24px; padding: 16px; border-radius: 12px; background: #f4f7fb; line-height: 1.65; }
+.game-rules h2 { font-size: 1.1rem; margin: 0 0 8px; }
+.game-rules ol { padding-left: 22px; margin: 0; }
+.game-rules li + li { margin-top: 6px; }
+.game-rules p { color: #60708a; font-size: 0.85rem; margin-bottom: 0; }
+.my-info { margin-bottom: 20px; line-height: 1.65; }
+.order-form fieldset > .secondary-button { margin-top: 10px; }

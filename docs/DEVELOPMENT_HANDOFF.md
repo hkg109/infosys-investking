@@ -56,6 +56,10 @@
 
 Frontend가 화면 뼈대를 병렬로 준비할 수는 있지만, 실제 연동·완료 판정은 선행 Backend PR의 API 계약이 확정된 뒤 진행한다. 선행 PR이 병합되지 않았다면 Frontend PR 설명에 의존 PR을 명시한다.
 
+## QA 1단계 Frontend 인계
+
+2026-09-16 제공된 인계서의 **F-01~05**를 `codex/basic-qa-ui`에서 구현했다. 앞으로의 단계 번호는 위 QA 개선 표를 따른다. 관리자 인증 화면, 연결 상태 정리, 주문 입력 초기화, 메인 규칙, 내 정보·로그아웃 범위이며 상세 검증과 남은 실기기 확인은 [QA 1단계 Frontend](QA_STAGE1_FRONTEND.md)에 기록한다. 아래 기존 구현/공동 검증 표는 각 작업 시점의 기록이며 이번 PR이 모든 통합 QA를 완료했다는 의미는 아니다.
+
 ## 기존 구현 단계 현황
 
 | 단계 | 지석 서버 상태 | 남은 일 |
@@ -76,7 +80,7 @@ Frontend가 화면 뼈대를 병렬로 준비할 수는 있지만, 실제 연동
 | 서버 연결 및 전체 이벤트 전달 | 구현·자동 테스트 완료 | server/test/socket.test.js |
 | 연결 해제 후 명시적 재접속 | 자동 테스트 완료 | 새 연결에서 새 이벤트 수신 |
 | Health Check 및 CORS 응답 헤더 | 자동 테스트 완료 | HTTP 응답 및 허용 origin 헤더 |
-| 관리자 비밀번호 검증·공통 middleware | Backend 구현·자동 테스트 완료 | 재헌 `/admin` 진입 화면 연동 필요 |
+| 관리자 비밀번호 검증·공통 middleware | Backend·Frontend 구현 및 검증 완료 | 관리자 진입 인증·잠금·새로고침 재인증, `docs/QA_STAGE1_FRONTEND.md` 참조 |
 | 참가자 자산 조회·Socket 온라인 상태·게임 초기화 | Backend 구현·PostgreSQL·Socket 통합 테스트 완료 | 재헌 참가자 표와 초기화·재시작 UI 연동 필요 |
 | 주식 종목 생성·수정·비활성화 | Backend 구현·PostgreSQL 통합 테스트 완료 | 재헌 종목 관리·참조 경고 UI 연동 필요 |
 | 복수·장중 사건, 수동·랜덤 월별 배정 | Backend 구현·PostgreSQL 통합 테스트 완료 | 재헌 `F-09~10` 사건 배정·발생 시각·충돌 검증 UI 연동 필요 |
