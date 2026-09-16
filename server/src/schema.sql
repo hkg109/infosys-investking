@@ -117,15 +117,33 @@ CREATE TABLE IF NOT EXISTS event_effects (
 );
 
 CREATE TABLE IF NOT EXISTS game_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
   event_id UUID NOT NULL REFERENCES events(id),
   round_number INTEGER NOT NULL CHECK (round_number > 0),
+  display_order INTEGER NOT NULL DEFAULT 1 CHECK (display_order > 0),
+  trigger_phase TEXT NOT NULL DEFAULT 'CLOSE' CHECK (trigger_phase IN ('INTRADAY', 'CLOSE')),
+  trigger_offset_ms INTEGER,
+  preannounce_ms INTEGER NOT NULL DEFAULT 0 CHECK (preannounce_ms >= 0),
+  scheduled_at TIMESTAMPTZ,
+  warning_sent_at TIMESTAMPTZ,
   applied_at TIMESTAMPTZ,
-  PRIMARY KEY (game_id, round_number),
-  UNIQUE (game_id, event_id)
+  UNIQUE (game_id, event_id),
+  UNIQUE (game_id, round_number, display_order),
+  CHECK (
+    (trigger_phase = 'INTRADAY' AND trigger_offset_ms > 0 AND preannounce_ms < trigger_offset_ms)
+    OR (trigger_phase = 'CLOSE' AND trigger_offset_ms IS NULL AND preannounce_ms = 0)
+  )
+);
+
+CREATE TABLE IF NOT EXISTS event_schedule_states (
+  game_id UUID PRIMARY KEY REFERENCES games(id) ON DELETE CASCADE,
+  mode TEXT NOT NULL CHECK (mode IN ('MANUAL', 'RANDOM')),
+  configured_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS stock_price_changes (
+  game_event_id UUID NOT NULL REFERENCES game_events(id) ON DELETE CASCADE,
   game_id UUID NOT NULL,
   round_number INTEGER NOT NULL,
   event_id UUID NOT NULL REFERENCES events(id),
@@ -134,9 +152,85 @@ CREATE TABLE IF NOT EXISTS stock_price_changes (
   new_price BIGINT NOT NULL CHECK (new_price > 0),
   change_rate INTEGER NOT NULL,
   applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  PRIMARY KEY (game_id, round_number, company_id),
-  FOREIGN KEY (game_id, round_number) REFERENCES game_events(game_id, round_number) ON DELETE CASCADE
+  PRIMARY KEY (game_event_id, company_id)
 );
+
+-- Upgrade the original one-event-per-round schema without deleting assignments or price history.
+ALTER TABLE game_events ADD COLUMN IF NOT EXISTS id UUID;
+ALTER TABLE game_events ADD COLUMN IF NOT EXISTS display_order INTEGER;
+ALTER TABLE game_events ADD COLUMN IF NOT EXISTS trigger_phase TEXT;
+ALTER TABLE game_events ADD COLUMN IF NOT EXISTS trigger_offset_ms INTEGER;
+ALTER TABLE game_events ADD COLUMN IF NOT EXISTS preannounce_ms INTEGER;
+ALTER TABLE game_events ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMPTZ;
+ALTER TABLE game_events ADD COLUMN IF NOT EXISTS warning_sent_at TIMESTAMPTZ;
+UPDATE game_events SET
+  id = COALESCE(id, md5(game_id::text || ':' || round_number::text || ':' || event_id::text)::uuid),
+  display_order = COALESCE(display_order, 1),
+  trigger_phase = COALESCE(trigger_phase, 'CLOSE'),
+  preannounce_ms = COALESCE(preannounce_ms, 0);
+ALTER TABLE game_events ALTER COLUMN id SET NOT NULL;
+ALTER TABLE game_events ALTER COLUMN display_order SET NOT NULL;
+ALTER TABLE game_events ALTER COLUMN trigger_phase SET NOT NULL;
+ALTER TABLE game_events ALTER COLUMN preannounce_ms SET NOT NULL;
+ALTER TABLE game_events ALTER COLUMN id SET DEFAULT gen_random_uuid();
+ALTER TABLE game_events ALTER COLUMN display_order SET DEFAULT 1;
+ALTER TABLE game_events ALTER COLUMN trigger_phase SET DEFAULT 'CLOSE';
+ALTER TABLE game_events ALTER COLUMN preannounce_ms SET DEFAULT 0;
+ALTER TABLE stock_price_changes DROP CONSTRAINT IF EXISTS stock_price_changes_game_event_id_fkey;
+ALTER TABLE stock_price_changes DROP CONSTRAINT IF EXISTS stock_price_changes_game_event_fkey;
+ALTER TABLE stock_price_changes DROP CONSTRAINT IF EXISTS stock_price_changes_game_id_round_number_fkey;
+ALTER TABLE game_events DROP CONSTRAINT IF EXISTS game_events_pkey;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'game_events'::regclass AND contype = 'p') THEN
+    ALTER TABLE game_events ADD CONSTRAINT game_events_pkey PRIMARY KEY (id);
+  END IF;
+END $$;
+CREATE UNIQUE INDEX IF NOT EXISTS game_events_round_order_idx
+  ON game_events(game_id, round_number, display_order);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'game_events'::regclass AND conname = 'game_events_trigger_policy_check') THEN
+    ALTER TABLE game_events ADD CONSTRAINT game_events_trigger_policy_check CHECK (
+      (trigger_phase = 'INTRADAY' AND trigger_offset_ms > 0 AND preannounce_ms < trigger_offset_ms)
+      OR (trigger_phase = 'CLOSE' AND trigger_offset_ms IS NULL AND preannounce_ms = 0)
+    );
+  END IF;
+END $$;
+
+ALTER TABLE stock_price_changes ADD COLUMN IF NOT EXISTS game_event_id UUID;
+UPDATE stock_price_changes spc SET game_event_id = ge.id
+FROM game_events ge
+WHERE spc.game_event_id IS NULL AND ge.game_id = spc.game_id
+  AND ge.round_number = spc.round_number AND ge.event_id = spc.event_id;
+ALTER TABLE stock_price_changes ALTER COLUMN game_event_id SET NOT NULL;
+ALTER TABLE stock_price_changes DROP CONSTRAINT IF EXISTS stock_price_changes_pkey;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'stock_price_changes'::regclass AND contype = 'p') THEN
+    ALTER TABLE stock_price_changes ADD CONSTRAINT stock_price_changes_pkey PRIMARY KEY (game_event_id, company_id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'stock_price_changes'::regclass AND conname = 'stock_price_changes_game_event_fkey') THEN
+    ALTER TABLE stock_price_changes ADD CONSTRAINT stock_price_changes_game_event_fkey
+      FOREIGN KEY (game_event_id) REFERENCES game_events(id) ON DELETE CASCADE;
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS game_events_due_idx
+  ON game_events(game_id, round_number, trigger_phase, applied_at, scheduled_at);
+
+CREATE OR REPLACE FUNCTION fill_stock_price_change_game_event_id()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.game_event_id IS NULL THEN
+    SELECT id INTO NEW.game_event_id FROM game_events
+    WHERE game_id = NEW.game_id AND round_number = NEW.round_number AND event_id = NEW.event_id
+    ORDER BY display_order LIMIT 1;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS stock_price_changes_fill_game_event_id ON stock_price_changes;
+CREATE TRIGGER stock_price_changes_fill_game_event_id
+BEFORE INSERT ON stock_price_changes
+FOR EACH ROW EXECUTE FUNCTION fill_stock_price_change_game_event_id();
 
 CREATE TABLE IF NOT EXISTS ranking_states (
   game_id UUID PRIMARY KEY REFERENCES games(id) ON DELETE CASCADE,

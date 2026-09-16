@@ -23,6 +23,7 @@ async function resetDatabase(database) {
 
     await client.query("DELETE FROM users WHERE role = 'USER'")
     await client.query('DELETE FROM game_events WHERE game_id = $1', [ACTIVE_GAME_ID])
+    await client.query('DELETE FROM event_schedule_states WHERE game_id = $1', [ACTIVE_GAME_ID])
     await client.query('DELETE FROM ranking_states WHERE game_id = $1', [ACTIVE_GAME_ID])
     await client.query('UPDATE companies SET current_price = initial_price')
     await client.query(`UPDATE games SET
