@@ -106,3 +106,20 @@ th { color: #65748a; font-size: 0.78rem; }
   .stat-card { padding: 16px 12px; overflow-wrap: anywhere; }
   .panel { padding: 16px; }
 }
+
+.order-form fieldset { border: 0; padding: 0; margin: 16px 0; display: grid; gap: 10px; min-width: 0; }
+.order-form label, .admin-credentials label { font-weight: 700; }
+.order-form input, .order-form select, .admin-credentials input { font: inherit; width: 100%; min-width: 0; padding: 12px; border: 1px solid #cbd5e1; border-radius: 10px; background: white; color: #172033; }
+.order-form input:focus-visible, .order-form select:focus-visible { outline: 3px solid #dbe8ff; border-color: #316cde; }
+.order-form fieldset:disabled { opacity: 0.65; }
+.order-summary { padding: 16px; margin: 6px 0; background: #f4f7fb; border-radius: 12px; display: grid; gap: 12px; }
+.order-summary div { display: flex; justify-content: space-between; gap: 12px; }
+.order-summary dd { margin: 0; text-align: right; font-weight: 700; overflow-wrap: anywhere; }
+.trading-help { color: #60708a; line-height: 1.6; }
+.order-success, .order-unresolved { padding: 16px; margin-top: 16px; border-radius: 10px; line-height: 1.6; overflow-wrap: anywhere; }
+.order-success { background: #e7f7ee; color: #165c36; }
+.order-unresolved { background: #fff4d7; color: #684d09; }
+.trading-refresh { margin-top: 12px; }
+.page-container > .panel { margin-bottom: 20px; }
+.admin-credentials { margin: 20px 0; max-width: 480px; display: grid; gap: 10px; }
+@media (min-width: 760px) { .order-form fieldset { max-width: 560px; } }

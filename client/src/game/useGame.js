@@ -3,8 +3,8 @@ import { io } from 'socket.io-client'
 import { controlGame, gameError, getGame } from './api'
 import { allowedControl, remainingSeconds } from './model'
 
-const events = ['game:start', 'game:pause', 'game:resume', 'game:end', 'round:start', 'round:end', 'trading:open', 'trading:close', 'stock:update', 'news:publish']
-export function useGame() {
+const events = ['game:state', 'game:start', 'game:pause', 'game:resume', 'game:end', 'round:start', 'round:end', 'trading:open', 'trading:close', 'stock:update', 'news:publish']
+export function useGame(adminPassword = '') {
   const [snapshot, setSnapshot] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
@@ -71,12 +71,12 @@ export function useGame() {
 
   const control = useCallback(async (action) => {
     const current = snapshotRef.current
-    if (locked.current || !fresh.current || current?.permissions?.canControl !== true || !allowedControl(action, current?.game?.status)) return
+    if (locked.current || !fresh.current || !adminPassword || !allowedControl(action, current?.game?.status)) return
     locked.current = true
     setPending(true)
     const id = ++requestId.current
     try {
-      const next = await controlGame(action)
+      const next = await controlGame(action, adminPassword)
       if (id === requestId.current) apply(next)
     } catch (failure) {
       if (id === requestId.current) { fresh.current = false; setError(`${gameError(failure)} 요청 결과를 다시 확인해 주세요.`) }
@@ -84,12 +84,12 @@ export function useGame() {
       locked.current = false
       if (id === requestId.current) setPending(false)
     }
-  }, [apply])
+  }, [apply, adminPassword])
 
   return {
     snapshot,
     game: snapshot?.game ? { ...snapshot.game, remainingSeconds: error ? null : remainingSeconds(snapshot.game, elapsed) } : null,
     loading, error, connected, pending, refresh, control,
-    canControl: !error && !loading && snapshot?.permissions?.canControl === true,
+    canControl: !error && !loading && Boolean(adminPassword),
   }
 }

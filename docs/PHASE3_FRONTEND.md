@@ -1,5 +1,7 @@
 # 3단계 재헌 Frontend: 관리자·사용자 대시보드
 
+> 이 문서는 PR #8 시점의 기록입니다. 이후 실제 Backend 규약에 연결한 변경은 [PHASE4_FRONTEND.md](PHASE4_FRONTEND.md)를 참고하세요. 아래 제안 API 대신 GAME_STATE_API.md의 실제 경로를 사용합니다.
+
 ## 구현 범위와 현재 제한
 
 협업 가이드의 작업 8(Admin Dashboard), 9(User Game Dashboard)에 해당합니다. 실제 GitHub Issue 번호가 아닙니다. 작업 시작 시 열려 있는 Issue는 없었습니다.
