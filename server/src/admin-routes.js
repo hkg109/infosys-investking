@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { createRequireAdmin } from './admin-auth.js'
 import { ACTIVE_GAME_ID } from './game-store.js'
+import { getTradeHistory, MarketHistoryError, parseRound, validateUserId } from './market-history.js'
 
 function number(value) {
   return value === null || value === undefined ? null : Number(value)
@@ -80,6 +81,24 @@ export function createAdminRouter(database, {
       const participants = await listParticipants(database, presence, initialCash)
       response.json({ participants, onlineParticipants: presence.onlineCount() })
     } catch (error) {
+      next(error)
+    }
+  })
+
+  router.get('/participants/:userId/trades', createRequireAdmin(adminPassword), async (request, response, next) => {
+    if (!database) return response.status(503).json({ error: 'DATABASE_UNAVAILABLE' })
+    try {
+      const userId = validateUserId(request.params.userId)
+      const game = (await database.query('SELECT total_rounds FROM games WHERE id = $1', [ACTIVE_GAME_ID])).rows[0]
+      const round = parseRound(request.query.round, game?.total_rounds || 12)
+      const participant = (await database.query("SELECT id, nickname FROM users WHERE id = $1 AND role = 'USER'", [userId])).rows[0]
+      if (!participant) throw new MarketHistoryError(404, 'PARTICIPANT_NOT_FOUND')
+      response.json({
+        participant: { userId: participant.id, nickname: participant.nickname },
+        ...(await getTradeHistory(database, userId, { round })),
+      })
+    } catch (error) {
+      if (error instanceof MarketHistoryError) return response.status(error.status).json({ error: error.code, ...error.details })
       next(error)
     }
   })

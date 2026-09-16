@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { Router } from 'express'
 import { ACTIVE_GAME_ID, saveGameState } from './game-store.js'
 import { MarketHaltedError } from './market-gate.js'
+import { getCompanyPriceHistory, getTradeHistory, MarketHistoryError, parseRound } from './market-history.js'
 import { requireSessionUser } from './session-auth.js'
 
 const orderIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -23,6 +24,7 @@ function transactionJson(row) {
   return {
     transactionId: row.id,
     orderId: row.order_id,
+    round: number(row.round_number),
     companyId: row.company_id,
     type: row.type,
     quantity: number(row.quantity),
@@ -167,6 +169,25 @@ export function createTradingRouter(database, engine, {
       if (client) await client.query('ROLLBACK').catch(() => {})
       next(error)
     } finally { client?.release() }
+  })
+
+  router.get('/history', requireUser, async (request, response, next) => {
+    try {
+      const round = parseRound(request.query.round, request.gameAtReceipt.totalRounds)
+      response.json(await getTradeHistory(database, request.user.id, { round }))
+    } catch (error) {
+      if (error instanceof MarketHistoryError) return response.status(error.status).json({ error: error.code, ...error.details })
+      next(error)
+    }
+  })
+
+  router.get('/companies/:companyId/history', requireUser, async (request, response, next) => {
+    try {
+      response.json(await getCompanyPriceHistory(database, request.params.companyId))
+    } catch (error) {
+      if (error instanceof MarketHistoryError) return response.status(error.status).json({ error: error.code, ...error.details })
+      next(error)
+    }
   })
 
   // Preparing stores an intent only. It never reserves money or guarantees a fill price.
@@ -314,10 +335,10 @@ export function createTradingRouter(database, engine, {
       }
 
       const inserted = await client.query(`INSERT INTO transactions
-        (id, order_id, game_id, user_id, company_id, type, quantity, price, total_price)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`, [
-        randomUUID(), order.orderId, ACTIVE_GAME_ID, request.user.id, order.companyId,
-        order.type, order.quantity, price.toString(), totalPrice.toString(),
+        (id, order_id, game_id, user_id, round_number, company_id, type, quantity, price, total_price)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`, [
+        randomUUID(), order.orderId, ACTIVE_GAME_ID, request.user.id, game.currentRound,
+        order.companyId, order.type, order.quantity, price.toString(), totalPrice.toString(),
       ])
       await client.query("UPDATE order_intents SET status = 'FILLED' WHERE order_id = $1 AND user_id = $2", [order.orderId, request.user.id])
       const account = await accountJson(client, request.user.id)
