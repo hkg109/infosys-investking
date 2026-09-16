@@ -4,6 +4,7 @@ import { Server } from 'socket.io'
 import './config.js'
 import { createAdminAuthRouter } from './admin-auth.js'
 import { createAdminRouter } from './admin-routes.js'
+import { createCompanyRouter } from './company-routes.js'
 import { pool } from './db.js'
 import { createEventRouter } from './event-routes.js'
 import { createEventCoordinator } from './events.js'
@@ -101,6 +102,10 @@ app.use('/api/admin', createAdminRouter(pool, {
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
   presence,
   initialCash,
+}))
+app.use('/api/companies', createCompanyRouter(pool, game, {
+  adminPassword: process.env.ADMIN_PASSWORD,
+  clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
 }))
 app.use('/api/users', createUserRouter(pool, {
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',

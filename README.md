@@ -118,6 +118,7 @@ INITIAL_CASH=1000000
 
 - [관리자 인증 API](docs/ADMIN_AUTH_API.md)
 - [참가자 현황·Socket 접속·게임 초기화 API](docs/PARTICIPANT_RESET_API.md)
+- [주식 종목 관리 API](docs/COMPANY_API.md)
 - [Socket.IO 연결 규약 및 검증](docs/SOCKET_PROTOCOL.md)
 - [사용자 세션 API 및 정책](docs/USER_SESSION_API.md)
 - [게임 상태·서버 타이머 API](docs/GAME_STATE_API.md)

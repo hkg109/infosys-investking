@@ -54,6 +54,7 @@ async function accountJson(client, userId) {
       COALESCE(p.quantity, 0) AS quantity
     FROM companies c
     LEFT JOIN portfolios p ON p.game_id = $1 AND p.user_id = $2 AND p.company_id = c.id
+    WHERE c.is_active OR COALESCE(p.quantity, 0) > 0
     ORDER BY c.id`, [ACTIVE_GAME_ID, userId])
   const cash = number(wallet.rows[0]?.cash)
   const stockValue = holdings.rows.reduce((sum, row) => sum + number(row.current_price) * number(row.quantity), 0)
@@ -114,7 +115,7 @@ export function createTradingRouter(database, engine, {
   router.get('/market', async (_request, response, next) => {
     try {
       const result = await database.query(`SELECT id, name, description, current_price, initial_price
-        FROM companies ORDER BY id`)
+        FROM companies WHERE is_active = TRUE ORDER BY id`)
       response.json({ companies: result.rows.map((row) => ({
         companyId: row.id,
         name: row.name,
@@ -163,8 +164,9 @@ export function createTradingRouter(database, engine, {
         if (pending.rowCount) throw new TradingError(409, 'PENDING_ORDER_EXISTS')
         const filled = (await client.query('SELECT * FROM transactions WHERE order_id = $1', [order.orderId])).rows[0]
         if (filled && !sameIntent(filled, order, request.user.id)) throw new TradingError(409, 'ORDER_ID_CONFLICT')
-        const company = await client.query('SELECT id FROM companies WHERE id = $1', [order.companyId])
+        const company = await client.query('SELECT id, is_active FROM companies WHERE id = $1', [order.companyId])
         if (!company.rowCount) throw new TradingError(404, 'COMPANY_NOT_FOUND')
+        if (!company.rows[0].is_active) throw new TradingError(409, 'COMPANY_INACTIVE')
         await client.query('INSERT INTO order_intents (order_id,user_id,company_id,type,quantity,status) VALUES ($1,$2,$3,$4,$5,$6)',
           [order.orderId, request.user.id, order.companyId, order.type, order.quantity, filled ? 'FILLED' : 'PENDING'])
       }
@@ -259,9 +261,10 @@ export function createTradingRouter(database, engine, {
       await ensureWallet(client, request.user.id, initialCash)
       const walletResult = await client.query(`SELECT cash FROM wallets
         WHERE game_id = $1 AND user_id = $2 FOR UPDATE`, [ACTIVE_GAME_ID, request.user.id])
-      const companyResult = await client.query('SELECT id, current_price FROM companies WHERE id = $1', [order.companyId])
+      const companyResult = await client.query('SELECT id, current_price, is_active FROM companies WHERE id = $1', [order.companyId])
       const company = companyResult.rows[0]
       if (!company) throw new TradingError(404, 'COMPANY_NOT_FOUND')
+      if (!company.is_active) throw new TradingError(409, 'COMPANY_INACTIVE')
 
       const cash = BigInt(walletResult.rows[0].cash)
       const price = BigInt(company.current_price)

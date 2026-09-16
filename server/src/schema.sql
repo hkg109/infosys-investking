@@ -38,8 +38,14 @@ CREATE TABLE IF NOT EXISTS companies (
   description TEXT NOT NULL DEFAULT '',
   initial_price BIGINT NOT NULL CHECK (initial_price > 0),
   current_price BIGINT NOT NULL CHECK (current_price > 0),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+CREATE INDEX IF NOT EXISTS companies_active_idx ON companies(is_active, id);
 
 INSERT INTO companies (id, name, description, initial_price, current_price) VALUES
   ('A', 'A 엔터', '엔터테인먼트 기업', 10000, 10000),
