@@ -4,7 +4,7 @@
 
 ## 현재 개발 단계
 
-**5단계 — 사건·뉴스·주가 변동 Backend**. 관리자는 게임 시작 전에 사건과 기업별 고정 변동률을 관리합니다. 서버는 사건을 라운드별로 중복 없이 배정하고, 거래 마감 뒤 한 번만 주가에 반영한 다음 뉴스·결과·주가 변경을 Socket으로 전달합니다.
+**6단계 — 순위·최종 결과 Backend**. 서버는 현금과 보유 주식 평가액으로 참가자 순위를 계산하고 거래·주가 변경 뒤 `ranking:update`로 갱신합니다. 게임 종료 시 최종 순위를 DB 스냅샷으로 고정하여 재시작 뒤에도 동일한 결과를 제공합니다.
 
 클라이언트가 보낸 Socket 제어 이벤트는 더 이상 처리하지 않습니다. 관리자는 `ADMIN_PASSWORD`로 인증된 HTTP API를 사용하고 서버가 상태 변경 후 Socket 이벤트를 전파합니다. 사용자 HTTP 세션과 Socket 연결 인증은 아직 분리되어 있습니다.
 
@@ -18,7 +18,7 @@
 - Frontend: React + Vite + React Router
 - Backend: Node.js + Express
 - Realtime: Socket.IO (서버 기본 연결)
-- Database: PostgreSQL (사용자·세션·게임·기업·지갑·포트폴리오·거래·사건·주가 변경 이력)
+- Database: PostgreSQL (사용자·세션·게임·기업·지갑·포트폴리오·거래·사건·주가 변경·순위 스냅샷)
 
 ## 디렉터리 구조
 
@@ -121,6 +121,7 @@ INITIAL_CASH=1000000
 - [게임 상태·서버 타이머 API](docs/GAME_STATE_API.md)
 - [DB·주식 거래 API](docs/TRADING_API.md)
 - [사건·뉴스·주가 변동 API](docs/EVENT_API.md)
+- [순위·최종 결과 API](docs/RANKING_API.md)
 
 - [프로젝트 명세](docs/PROJECT_SPEC.md)
 - [협업 가이드](docs/COLLABORATION_GUIDE.md)

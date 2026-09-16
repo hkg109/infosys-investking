@@ -23,6 +23,8 @@
 
 5단계 사건 이벤트는 `news:publish`, `event:result`, `stock:update`입니다. Payload와 공개 시점은 [EVENT_API.md](EVENT_API.md)를 참조합니다.
 
+6단계 순위 이벤트는 `ranking:update`입니다. 거래 커밋, 사건에 따른 주가 변경, 게임 종료 뒤 갱신되며 상세 Payload와 복구 API는 [RANKING_API.md](RANKING_API.md)를 참조합니다.
+
 ## 검증
 
 ```bash

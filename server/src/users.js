@@ -12,7 +12,7 @@ import {
 
 const sessionDurationMs = 7 * 24 * 60 * 60 * 1000
 
-export function createUserRouter(database, { clientUrl, secureCookies = false }) {
+export function createUserRouter(database, { clientUrl, secureCookies = false, onUserCreated = async () => {} }) {
   const router = Router()
   const cookieOptions = { httpOnly: true, sameSite: 'strict', secure: secureCookies, path: SESSION_COOKIE_PATH }
 
@@ -70,6 +70,7 @@ export function createUserRouter(database, { clientUrl, secureCookies = false })
         [randomUUID(), nickname, encoded])
       const token = await insertSession(client, result.rows[0].id, request)
       await client.query('COMMIT')
+      await onUserCreated().catch(() => console.error('Failed to refresh rankings after user join'))
       response.cookie(SESSION_COOKIE_NAME, token, { ...cookieOptions, maxAge: sessionDurationMs })
       response.status(201).json({ user: publicUser(result.rows[0]) })
     } catch (error) {

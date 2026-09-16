@@ -8,6 +8,8 @@ import { createEventCoordinator } from './events.js'
 import { GameEngine } from './game-engine.js'
 import { createGameRouter } from './game-routes.js'
 import { loadGameState, saveGameState } from './game-store.js'
+import { createRankingRouter } from './ranking-routes.js'
+import { createRankingCoordinator } from './rankings.js'
 import { createUserRouter } from './users.js'
 import { createTradingRouter } from './trading.js'
 
@@ -44,10 +46,13 @@ const io = new Server(httpServer, {
   cors: { origin: process.env.CLIENT_URL || 'http://localhost:5173' },
 })
 const eventCoordinator = createEventCoordinator(pool, io)
+const initialCash = positiveInteger(process.env.INITIAL_CASH, 1_000_000, 'INITIAL_CASH')
+const rankingCoordinator = createRankingCoordinator(pool, io, { initialCash })
 try {
   await eventCoordinator.reconcile(game.getSnapshot())
+  await rankingCoordinator.reconcile(game.getSnapshot())
 } catch (error) {
-  if (error.code !== '42P01') console.error('Failed to reconcile game events')
+  if (error.code !== '42P01') console.error('Failed to reconcile game state')
 }
 
 io.on('connection', (socket) => {
@@ -65,7 +70,12 @@ game.on('game-event', (event) => {
   io.emit(name, payload)
   io.emit('game:state', payload)
   gamePersistence = gamePersistence.then(() => saveGameState(pool, payload)).catch(reportGamePersistenceError)
-  eventProcessing = eventProcessing.then(() => eventCoordinator.handleGameEvent(event)).catch((error) => {
+  const persistenceForEvent = gamePersistence
+  eventProcessing = eventProcessing.then(async () => {
+    await persistenceForEvent
+    await eventCoordinator.handleGameEvent(event)
+    await rankingCoordinator.handleGameEvent(event)
+  }).catch((error) => {
     if (error.code !== '42P01') console.error('Failed to process game event')
   })
 })
@@ -74,6 +84,7 @@ app.use(express.json({ limit: '8kb' }))
 app.use('/api/users', createUserRouter(pool, {
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
   secureCookies: process.env.NODE_ENV === 'production',
+  onUserCreated: () => rankingCoordinator.refreshAndEmit({ final: game.getSnapshot().status === 'FINISHED' }),
 }))
 app.use('/api/game', createGameRouter(game, {
   adminPassword: process.env.ADMIN_PASSWORD,
@@ -86,7 +97,13 @@ app.use('/api/events', createEventRouter(pool, game, {
 }))
 app.use('/api/trading', createTradingRouter(pool, game, {
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
-  initialCash: positiveInteger(process.env.INITIAL_CASH, 1_000_000, 'INITIAL_CASH'),
+  initialCash,
+  onTradeCommitted: () => rankingCoordinator.refreshAndEmit(),
+}))
+app.use('/api/rankings', createRankingRouter(pool, game, {
+  clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
+  adminPassword: process.env.ADMIN_PASSWORD,
+  initialCash,
 }))
 
 app.get('/api/health', (_request, response) => {

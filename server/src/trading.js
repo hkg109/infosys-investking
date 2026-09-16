@@ -90,7 +90,11 @@ function setCors(router, clientUrl, engine, database) {
   })
 }
 
-export function createTradingRouter(database, engine, { clientUrl, initialCash = 1_000_000 }) {
+export function createTradingRouter(database, engine, {
+  clientUrl,
+  initialCash = 1_000_000,
+  onTradeCommitted = async () => {},
+}) {
   const router = Router()
   setCors(router, clientUrl, engine, database)
 
@@ -192,6 +196,7 @@ export function createTradingRouter(database, engine, { clientUrl, initialCash =
       ])
       const account = await accountJson(client, request.user.id)
       await client.query('COMMIT')
+      await onTradeCommitted().catch(() => console.error('Failed to refresh rankings after trade'))
       response.status(201).json({ duplicate: false, transaction: transactionJson(inserted.rows[0]), account })
     } catch (error) {
       if (client) await client.query('ROLLBACK').catch(() => {})
