@@ -1,17 +1,11 @@
-import { timingSafeEqual } from 'node:crypto'
 import { Router } from 'express'
+import { createRequireAdmin } from './admin-auth.js'
 import { requireSessionUser } from './session-auth.js'
 import { adminRankingPayload, refreshRankings, viewerRankingPayload } from './rankings.js'
 
-function matchesSecret(actual, expected) {
-  if (typeof actual !== 'string' || typeof expected !== 'string') return false
-  const actualBuffer = Buffer.from(actual)
-  const expectedBuffer = Buffer.from(expected)
-  return actualBuffer.length === expectedBuffer.length && timingSafeEqual(actualBuffer, expectedBuffer)
-}
-
 export function createRankingRouter(database, engine, { clientUrl, adminPassword, initialCash = 1_000_000, beforeRefresh = async () => {} }) {
   const router = Router()
+  const requireAdmin = createRequireAdmin(adminPassword)
 
   router.use((request, response, next) => {
     response.set('Cache-Control', 'no-store')
@@ -43,12 +37,8 @@ export function createRankingRouter(database, engine, { clientUrl, adminPassword
     }
   })
 
-  router.get('/admin', async (request, response, next) => {
+  router.get('/admin', requireAdmin, async (_request, response, next) => {
     try {
-      if (!adminPassword) return response.status(503).json({ error: 'ADMIN_AUTH_UNAVAILABLE' })
-      const authorization = request.get('Authorization') || ''
-      const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : ''
-      if (!matchesSecret(token, adminPassword)) return response.status(401).json({ error: 'ADMIN_AUTH_REQUIRED' })
       await beforeRefresh()
       const game = engine.getSnapshot()
       const snapshot = await refreshRankings(database, { initialCash, final: game.status === 'FINISHED' })

@@ -1,5 +1,5 @@
-import { timingSafeEqual } from 'node:crypto'
 import { Router } from 'express'
+import { createRequireAdmin } from './admin-auth.js'
 import {
   createEvent,
   deleteEvent,
@@ -9,13 +9,6 @@ import {
   listEvents,
   updateEvent,
 } from './events.js'
-
-function matchesSecret(actual, expected) {
-  if (typeof actual !== 'string' || typeof expected !== 'string') return false
-  const actualBuffer = Buffer.from(actual)
-  const expectedBuffer = Buffer.from(expected)
-  return actualBuffer.length === expectedBuffer.length && timingSafeEqual(actualBuffer, expectedBuffer)
-}
 
 export function createEventRouter(database, engine, { adminPassword, clientUrl }) {
   const router = Router()
@@ -48,13 +41,7 @@ export function createEventRouter(database, engine, { adminPassword, clientUrl }
     }
   })
 
-  router.use('/admin', (request, response, next) => {
-    if (!adminPassword) return response.status(503).json({ error: 'ADMIN_AUTH_UNAVAILABLE' })
-    const authorization = request.get('Authorization') || ''
-    const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : ''
-    if (!matchesSecret(token, adminPassword)) return response.status(401).json({ error: 'ADMIN_AUTH_REQUIRED' })
-    next()
-  })
+  router.use('/admin', createRequireAdmin(adminPassword))
 
   router.get('/admin', async (_request, response, next) => {
     try {

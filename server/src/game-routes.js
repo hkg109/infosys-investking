@@ -1,13 +1,6 @@
-import { timingSafeEqual } from 'node:crypto'
 import { Router } from 'express'
+import { createRequireAdmin } from './admin-auth.js'
 import { GameStateError } from './game-engine.js'
-
-function matchesSecret(actual, expected) {
-  if (typeof actual !== 'string' || typeof expected !== 'string') return false
-  const actualBuffer = Buffer.from(actual)
-  const expectedBuffer = Buffer.from(expected)
-  return actualBuffer.length === expectedBuffer.length && timingSafeEqual(actualBuffer, expectedBuffer)
-}
 
 export function createGameRouter(engine, { adminPassword, clientUrl, beforeStart = async () => {} }) {
   const router = Router()
@@ -34,13 +27,7 @@ export function createGameRouter(engine, { adminPassword, clientUrl, beforeStart
     response.json({ game: engine.getSnapshot() })
   })
 
-  router.use('/admin', (request, response, next) => {
-    if (!adminPassword) return response.status(503).json({ error: 'ADMIN_AUTH_UNAVAILABLE' })
-    const authorization = request.get('Authorization') || ''
-    const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : ''
-    if (!matchesSecret(token, adminPassword)) return response.status(401).json({ error: 'ADMIN_AUTH_REQUIRED' })
-    next()
-  })
+  router.use('/admin', createRequireAdmin(adminPassword))
 
   router.post('/admin/start', async (_request, response, next) => {
     try {

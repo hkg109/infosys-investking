@@ -2,6 +2,7 @@ import express from 'express'
 import { createServer } from 'node:http'
 import { Server } from 'socket.io'
 import './config.js'
+import { createAdminAuthRouter } from './admin-auth.js'
 import { pool } from './db.js'
 import { createEventRouter } from './event-routes.js'
 import { createEventCoordinator } from './events.js'
@@ -81,6 +82,10 @@ game.on('game-event', (event) => {
 })
 
 app.use(express.json({ limit: '8kb' }))
+app.use('/api/admin/auth', createAdminAuthRouter({
+  adminPassword: process.env.ADMIN_PASSWORD,
+  clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
+}))
 app.use('/api/users', createUserRouter(pool, {
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
   secureCookies: process.env.NODE_ENV === 'production',
