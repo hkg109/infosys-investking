@@ -5,13 +5,14 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { validateRanking, getRanking } from '../src/ranking/api.js'
 const dir = await mkdtemp(join(process.cwd(), '.ranking-test-'))
 let RankingResults
 try {
   const outfile = join(dir, 'component.mjs')
   await build({ entryPoints: ['src/ranking/RankingPanel.jsx'], outfile, bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic' })
-  ;({ RankingResults } = await import(outfile))
+  ;({ RankingResults } = await import(pathToFileURL(outfile).href))
 } finally { await rm(dir, { recursive: true, force: true }) }
 const people = ['가', '나', '다', '<script>라</script>'].map(nickname => ({ nickname, rank: 1, totalAssets: 1000000 }))
 const ranking = { final: false, calculatedAt: '2026-09-16T00:00:00Z', totalParticipants: 4, top3: people, me: { ...people[0], cash: 900000, stockValue: 100000 } }

@@ -6,6 +6,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { allowedControl, formatTime, remainingSeconds, validateSnapshot } from '../src/game/model.js'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 // Bundle JSX without a browser or a listening development server.
 async function component(path) {
@@ -13,7 +14,7 @@ async function component(path) {
   try {
     const outfile = join(dir, 'component.mjs')
     await build({ entryPoints: [path], outfile, bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic' })
-    return (await import(outfile)).default
+    return (await import(pathToFileURL(outfile).href)).default
   } finally { await rm(dir, { recursive: true, force: true }) }
 }
 const Admin = await component('src/components/AdminDashboard.jsx')

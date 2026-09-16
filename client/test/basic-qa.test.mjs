@@ -6,13 +6,14 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { MemoryRouter } from 'react-router-dom'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { verifyAdmin, adminAuthError } from '../src/admin/api.js'
 async function component(path) {
   const dir = await mkdtemp(join(process.cwd(), '.qa-test-'))
   try {
     const outfile = join(dir, 'component.mjs')
     await build({ entryPoints: [path], outfile, bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic' })
-    return (await import(outfile)).default
+    return (await import(pathToFileURL(outfile).href)).default
   } finally { await rm(dir, { recursive: true, force: true }) }
 }
 const Gate = await component('src/admin/AdminGate.jsx')

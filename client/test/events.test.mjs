@@ -6,12 +6,13 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 const dir = await mkdtemp(join(process.cwd(), '.event-test-'))
 let EventArticle, EventNews
 try {
   const outfile = join(dir, 'component.mjs')
   await build({ entryPoints: ['src/events/EventNews.jsx'], outfile, bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic' })
-  const module = await import(outfile)
+  const module = await import(pathToFileURL(outfile).href)
   EventArticle = module.EventArticle
   EventNews = module.default
 } finally { await rm(dir, { recursive: true, force: true }) }
