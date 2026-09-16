@@ -10,7 +10,7 @@ function matchesSecret(actual, expected) {
   return actualBuffer.length === expectedBuffer.length && timingSafeEqual(actualBuffer, expectedBuffer)
 }
 
-export function createRankingRouter(database, engine, { clientUrl, adminPassword, initialCash = 1_000_000 }) {
+export function createRankingRouter(database, engine, { clientUrl, adminPassword, initialCash = 1_000_000, beforeRefresh = async () => {} }) {
   const router = Router()
 
   router.use((request, response, next) => {
@@ -34,6 +34,7 @@ export function createRankingRouter(database, engine, { clientUrl, adminPassword
 
   router.get('/', requireSessionUser(database), async (request, response, next) => {
     try {
+      await beforeRefresh()
       const game = engine.getSnapshot()
       const snapshot = await refreshRankings(database, { initialCash, final: game.status === 'FINISHED' })
       response.json({ gameStatus: game.status, ranking: viewerRankingPayload(snapshot, request.user.id) })
@@ -48,6 +49,7 @@ export function createRankingRouter(database, engine, { clientUrl, adminPassword
       const authorization = request.get('Authorization') || ''
       const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : ''
       if (!matchesSecret(token, adminPassword)) return response.status(401).json({ error: 'ADMIN_AUTH_REQUIRED' })
+      await beforeRefresh()
       const game = engine.getSnapshot()
       const snapshot = await refreshRankings(database, { initialCash, final: game.status === 'FINISHED' })
       response.json({ gameStatus: game.status, ranking: adminRankingPayload(snapshot) })

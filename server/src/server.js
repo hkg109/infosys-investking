@@ -84,7 +84,10 @@ app.use(express.json({ limit: '8kb' }))
 app.use('/api/users', createUserRouter(pool, {
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
   secureCookies: process.env.NODE_ENV === 'production',
-  onUserCreated: () => rankingCoordinator.refreshAndEmit({ final: game.getSnapshot().status === 'FINISHED' }),
+  onUserCreated: async () => {
+    await eventProcessing
+    return rankingCoordinator.refreshAndEmit({ final: game.getSnapshot().status === 'FINISHED' })
+  },
 }))
 app.use('/api/game', createGameRouter(game, {
   adminPassword: process.env.ADMIN_PASSWORD,
@@ -101,6 +104,7 @@ app.use('/api/trading', createTradingRouter(pool, game, {
   onTradeCommitted: () => rankingCoordinator.refreshAndEmit(),
 }))
 app.use('/api/rankings', createRankingRouter(pool, game, {
+  beforeRefresh: () => eventProcessing,
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
   adminPassword: process.env.ADMIN_PASSWORD,
   initialCash,

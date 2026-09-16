@@ -100,9 +100,11 @@ test('PostgreSQL rankings: asset totals, ties, API, socket updates and final fre
   const sessionToken = randomBytes(32).toString('hex')
   await database.query(`INSERT INTO user_sessions (token_hash, user_id, expires_at)
     VALUES ($1, $2, NOW() + INTERVAL '1 hour')`, [digestSessionToken(sessionToken), charlieId])
-  const game = { getSnapshot: () => ({ status: 'RUNNING' }) }
+  let status = 'RUNNING'
+  let pendingEvents = Promise.resolve()
+  const game = { getSnapshot: () => ({ status }) }
   const app = express()
-  app.use('/api/rankings', createRankingRouter(database, game, { clientUrl, adminPassword, initialCash: 100 }))
+  app.use('/api/rankings', createRankingRouter(database, game, { clientUrl, adminPassword, initialCash: 100, beforeRefresh: () => pendingEvents }))
   app.use((_error, _request, response, _next) => response.status(503).json({ error: 'SERVICE_UNAVAILABLE' }))
   server = app.listen(0, '127.0.0.1')
   await once(server, 'listening')
@@ -123,8 +125,18 @@ test('PostgreSQL rankings: asset totals, ties, API, socket updates and final fre
   assert.equal(changed.rankings[0].nickname, '앨리스')
   assert.equal(changed.rankings[0].totalAssets, 900)
 
-  const final = await refreshRankings(database, { initialCash: 100, final: true })
+  status = 'FINISHED'
+  let releaseEvents, markEntered
+  const entered = new Promise(resolve => { markEntered = resolve })
+  pendingEvents = { then(resolve) { markEntered(); releaseEvents = resolve } }
+  const finalRequest = fetch(`${base}/admin`, { headers: { Authorization: `Bearer ${adminPassword}` } })
+  await entered
+  // The last event has not applied yet; the HTTP request must not freeze old prices.
+  await database.query("UPDATE companies SET current_price = 30 WHERE id = 'A'")
+  releaseEvents()
+  const final = (await (await finalRequest).json()).ranking
   assert.equal(final.final, true)
+  assert.equal(final.rankings.find(({ nickname }) => nickname === '앨리스').totalAssets, 1100)
   await database.query('UPDATE wallets SET cash = 999999 WHERE game_id = $1 AND user_id = $2', [ACTIVE_GAME_ID, charlieId])
   const frozen = await refreshRankings(database, { initialCash: 100 })
   assert.equal(frozen.final, true)
