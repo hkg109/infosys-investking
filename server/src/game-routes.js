@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { createRequireAdmin } from './admin-auth.js'
 import { GameStateError } from './game-engine.js'
 
-export function createGameRouter(engine, { adminPassword, clientUrl, beforeStart = async () => {} }) {
+export function createGameRouter(engine, { adminPassword, clientUrl, beforeStart = async () => {}, resetGame = null }) {
   const router = Router()
 
   router.use((request, response, next) => {
@@ -62,6 +62,18 @@ export function createGameRouter(engine, { adminPassword, clientUrl, beforeStart
       }
     })
   }
+
+  router.post('/admin/reset', async (_request, response, next) => {
+    if (!resetGame) return response.status(503).json({ error: 'DATABASE_UNAVAILABLE' })
+    try {
+      response.json({ game: await resetGame() })
+    } catch (error) {
+      if (Number.isInteger(error.status) && error.code) {
+        return response.status(error.status).json({ error: error.code, ...error.details })
+      }
+      next(error)
+    }
+  })
 
   return router
 }

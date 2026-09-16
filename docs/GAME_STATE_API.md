@@ -50,6 +50,7 @@ Frontend는 `phaseEndsAt`과 `serverTime`의 차이로 화면 타이머를 표�
 | `POST /api/game/admin/pause` | `RUNNING` | 현재 구간 타이머 정지 |
 | `POST /api/game/admin/resume` | `PAUSED` | 남은 시간부터 재개 |
 | `POST /api/game/admin/end` | `RUNNING`, `PAUSED` | 즉시 종료 |
+| `POST /api/game/admin/reset` | `FINISHED` | 참가자·게임 데이터를 정리하고 `WAITING`으로 초기화 |
 
 관리자 요청에는 루트 `.env`의 `ADMIN_PASSWORD`를 Bearer 토큰으로 전달합니다.
 
@@ -59,13 +60,15 @@ Authorization: Bearer 실제-관리자-비밀번호
 
 비밀번호가 설정되지 않으면 503 `ADMIN_AUTH_UNAVAILABLE`, 인증 실패는 401 `ADMIN_AUTH_REQUIRED`입니다. 현재 상태에서 허용되지 않는 전이는 409 `INVALID_GAME_STATE`와 요청 action·현재 status를 반환합니다. 관리자 비밀번호를 저장소나 로그에 남기지 않습니다.
 
+게임 초기화의 삭제·유지 범위와 오류 규약은 [PARTICIPANT_RESET_API.md](PARTICIPANT_RESET_API.md)를 참조합니다. 초기화 성공 시 `game:reset` 이벤트가 발생합니다.
+
 브라우저 요청은 `CLIENT_URL`과 같은 Origin만 허용합니다. 다른 Origin은 403 `ORIGIN_NOT_ALLOWED`이며, 허용된 Origin의 `Authorization` preflight를 지원합니다.
 
 ## Socket 이벤트
 
 연결 직후 서버가 해당 클라이언트에 `game:state`를 한 번 보내므로 새로고침·재접속 시 현재 상태를 복원할 수 있습니다. 상태 전이 때는 아래 이벤트와 최신 `game:state`를 전체 연결에 전달합니다.
 
-- `game:start`, `game:pause`, `game:resume`, `game:end`
+- `game:start`, `game:pause`, `game:resume`, `game:end`, `game:reset`
 - `round:start`, `round:end`
 - `trading:open`, `trading:close`
 

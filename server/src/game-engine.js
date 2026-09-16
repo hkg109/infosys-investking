@@ -117,6 +117,25 @@ export class GameEngine extends EventEmitter {
     return this._snapshot(now)
   }
 
+  reset() {
+    this._sync()
+    if (this.status !== GAME_STATUS.FINISHED) throw new GameStateError('reset', this.status)
+    const now = this.now()
+    this._cancelTimer()
+    this.status = GAME_STATUS.WAITING
+    this.phase = GAME_PHASE.WAITING
+    this.currentRound = 0
+    this.startedAt = null
+    this.roundStartedAt = null
+    this.deadlineAt = null
+    this.finishedAt = null
+    this.pausedAt = null
+    this.pausedPhase = null
+    this.pausedRemainingMs = null
+    this._emit('game:reset', now)
+    return this._snapshot(now)
+  }
+
   getSnapshot() {
     this._sync()
     return this._snapshot(this.now())

@@ -12,7 +12,12 @@ import {
 
 const sessionDurationMs = 7 * 24 * 60 * 60 * 1000
 
-export function createUserRouter(database, { clientUrl, secureCookies = false, onUserCreated = async () => {} }) {
+export function createUserRouter(database, {
+  clientUrl,
+  secureCookies = false,
+  onUserCreated = async () => {},
+  onUserLogout = async () => {},
+}) {
   const router = Router()
   const cookieOptions = { httpOnly: true, sameSite: 'strict', secure: secureCookies, path: SESSION_COOKIE_PATH }
 
@@ -109,7 +114,12 @@ export function createUserRouter(database, { clientUrl, secureCookies = false, o
 
   router.post('/logout', async (request, response) => {
     const hashes = readSessionTokens(request).map(digestSessionToken)
-    if (hashes.length) await database.query('DELETE FROM user_sessions WHERE token_hash = ANY($1::text[])', [hashes])
+    let userIds = []
+    if (hashes.length) {
+      const sessions = await database.query('DELETE FROM user_sessions WHERE token_hash = ANY($1::text[]) RETURNING user_id', [hashes])
+      userIds = [...new Set(sessions.rows.map(({ user_id: userId }) => userId))]
+    }
+    await onUserLogout(userIds)
     response.clearCookie(SESSION_COOKIE_NAME, cookieOptions)
     response.sendStatus(204)
   })
