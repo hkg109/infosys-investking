@@ -3,6 +3,8 @@ import { createServer } from 'node:http'
 import { Server } from 'socket.io'
 import './config.js'
 import { pool } from './db.js'
+import { createEventRouter } from './event-routes.js'
+import { createEventCoordinator } from './events.js'
 import { GameEngine } from './game-engine.js'
 import { createGameRouter } from './game-routes.js'
 import { loadGameState, saveGameState } from './game-store.js'
@@ -41,6 +43,12 @@ let gamePersistence = saveGameState(pool, game.getSnapshot()).catch(reportGamePe
 const io = new Server(httpServer, {
   cors: { origin: process.env.CLIENT_URL || 'http://localhost:5173' },
 })
+const eventCoordinator = createEventCoordinator(pool, io)
+try {
+  await eventCoordinator.reconcile(game.getSnapshot())
+} catch (error) {
+  if (error.code !== '42P01') console.error('Failed to reconcile game events')
+}
 
 io.on('connection', (socket) => {
   console.log(`Socket connected: ${socket.id}`)
@@ -51,10 +59,15 @@ io.on('connection', (socket) => {
   })
 })
 
-game.on('game-event', ({ name, payload }) => {
+let eventProcessing = Promise.resolve()
+game.on('game-event', (event) => {
+  const { name, payload } = event
   io.emit(name, payload)
   io.emit('game:state', payload)
   gamePersistence = gamePersistence.then(() => saveGameState(pool, payload)).catch(reportGamePersistenceError)
+  eventProcessing = eventProcessing.then(() => eventCoordinator.handleGameEvent(event)).catch((error) => {
+    if (error.code !== '42P01') console.error('Failed to process game event')
+  })
 })
 
 app.use(express.json({ limit: '8kb' }))
@@ -63,6 +76,11 @@ app.use('/api/users', createUserRouter(pool, {
   secureCookies: process.env.NODE_ENV === 'production',
 }))
 app.use('/api/game', createGameRouter(game, {
+  adminPassword: process.env.ADMIN_PASSWORD,
+  clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
+  beforeStart: (snapshot) => eventCoordinator.prepareGameStart(snapshot),
+}))
+app.use('/api/events', createEventRouter(pool, game, {
   adminPassword: process.env.ADMIN_PASSWORD,
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
 }))

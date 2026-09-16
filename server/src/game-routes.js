@@ -9,7 +9,7 @@ function matchesSecret(actual, expected) {
   return actualBuffer.length === expectedBuffer.length && timingSafeEqual(actualBuffer, expectedBuffer)
 }
 
-export function createGameRouter(engine, { adminPassword, clientUrl }) {
+export function createGameRouter(engine, { adminPassword, clientUrl, beforeStart = async () => {} }) {
   const router = Router()
 
   router.use((request, response, next) => {
@@ -42,7 +42,24 @@ export function createGameRouter(engine, { adminPassword, clientUrl }) {
     next()
   })
 
-  for (const action of ['start', 'pause', 'resume', 'end']) {
+  router.post('/admin/start', async (_request, response, next) => {
+    try {
+      const snapshot = engine.getSnapshot()
+      if (snapshot.status !== 'WAITING') throw new GameStateError('start', snapshot.status)
+      await beforeStart(snapshot)
+      response.json({ game: engine.start() })
+    } catch (error) {
+      if (error instanceof GameStateError) {
+        return response.status(409).json({ error: error.code, action: error.action, status: error.status })
+      }
+      if (Number.isInteger(error.status) && error.code) {
+        return response.status(error.status).json({ error: error.code, ...error.details })
+      }
+      next(error)
+    }
+  })
+
+  for (const action of ['pause', 'resume', 'end']) {
     router.post(`/admin/${action}`, (_request, response) => {
       try {
         response.json({ game: engine[action]() })

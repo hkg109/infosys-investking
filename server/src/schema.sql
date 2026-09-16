@@ -81,3 +81,41 @@ CREATE TABLE IF NOT EXISTS transactions (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS transactions_user_created_idx ON transactions(game_id, user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS events (
+  id UUID PRIMARY KEY,
+  title VARCHAR(100) NOT NULL CHECK (length(trim(title)) > 0),
+  news TEXT NOT NULL CHECK (length(trim(news)) > 0),
+  result TEXT NOT NULL CHECK (length(trim(result)) > 0),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS event_effects (
+  event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  company_id VARCHAR(20) NOT NULL REFERENCES companies(id),
+  change_rate INTEGER NOT NULL CHECK (change_rate BETWEEN -99 AND 1000),
+  PRIMARY KEY (event_id, company_id)
+);
+
+CREATE TABLE IF NOT EXISTS game_events (
+  game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  event_id UUID NOT NULL REFERENCES events(id),
+  round_number INTEGER NOT NULL CHECK (round_number > 0),
+  applied_at TIMESTAMPTZ,
+  PRIMARY KEY (game_id, round_number),
+  UNIQUE (game_id, event_id)
+);
+
+CREATE TABLE IF NOT EXISTS stock_price_changes (
+  game_id UUID NOT NULL,
+  round_number INTEGER NOT NULL,
+  event_id UUID NOT NULL REFERENCES events(id),
+  company_id VARCHAR(20) NOT NULL REFERENCES companies(id),
+  previous_price BIGINT NOT NULL CHECK (previous_price > 0),
+  new_price BIGINT NOT NULL CHECK (new_price > 0),
+  change_rate INTEGER NOT NULL,
+  applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (game_id, round_number, company_id),
+  FOREIGN KEY (game_id, round_number) REFERENCES game_events(game_id, round_number) ON DELETE CASCADE
+);
