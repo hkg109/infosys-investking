@@ -48,7 +48,7 @@ test('missing account data is distinct from a real zero balance and empty holdin
   assert.match(zero, /아직 보유한 주식이 없습니다/)
 })
 test('server text is escaped and game end does not invent final rankings', () => {
-  const html = renderToStaticMarkup(createElement(User, { game: { status: 'FINISHED' }, snapshot: { news: [{ id: 'n', title: '<script>alert(1)</script>', description: '뉴스' }] } }))
+  const html = renderToStaticMarkup(createElement(User, { game: { status: 'FINISHED' }, snapshot: { stocks: [{ id: 'A', name: '<script>alert(1)</script>', currentPrice: 10000 }] } }))
   assert.match(html, /게임이 종료되었습니다/)
   assert.match(html, /&lt;script&gt;/)
   assert.doesNotMatch(html, /<script>|1위/)

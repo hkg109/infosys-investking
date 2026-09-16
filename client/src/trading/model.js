@@ -21,8 +21,8 @@ export function orderError({ company, quantity, type, account }) {
 }
 export function displayAccount(account) {
   if (!account) return undefined
-  const stockValue = account.holdings.reduce((sum, item) => sum + item.marketValue, 0)
-  return { cash: account.cash, stockValue, totalAssets: account.cash + stockValue }
+  const stockValue = Number.isSafeInteger(account.stockValue) ? account.stockValue : account.holdings.reduce((sum, item) => sum + item.marketValue, 0)
+  return { cash: account.cash, stockValue, totalAssets: Number.isSafeInteger(account.totalAssets) ? account.totalAssets : account.cash + stockValue }
 }
 export function validAccount(account) {
   return Number.isSafeInteger(account?.cash) && account.cash >= 0 && Array.isArray(account.holdings) && account.holdings.every((h) => typeof h.companyId === 'string' && typeof h.name === 'string' && Number.isSafeInteger(h.quantity) && h.quantity >= 0 && Number.isSafeInteger(h.marketValue) && h.marketValue >= 0)

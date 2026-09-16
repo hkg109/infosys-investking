@@ -51,13 +51,16 @@ export default function TradingPanel({ game, stale, trading }) {
     </form>
     {trading.unresolved && <div className="order-unresolved" role="status">
       <p>{trading.unresolved.companyId} · {trading.unresolved.type === 'BUY' ? '매수' : '매도'} {trading.unresolved.quantity}주 주문을 확인 중입니다.</p>
-      <p>새 주문을 만들지 않고 동일 주문 번호로 재확인합니다. 미체결 주문이면 서버가 해당 주문을 처리할 수 있습니다.</p>
+      <p>새 주문을 만들지 않고 동일 주문 번호로 재확인합니다. 미체결 주문이면 현재 가격으로 체결될 수 있습니다.</p>
       <button type="button" className="secondary-button" disabled={trading.pending} onClick={() => trading.submit(trading.unresolved)}>같은 주문 확인</button>
+      <button type="button" className="secondary-button" disabled={trading.pending} onClick={trading.cancel}>미체결 주문 취소</button>
+      <p>다른 기기에서도 같은 닉네임과 PIN으로 복구할 수 있습니다. 이미 체결됐다면 취소 대신 기존 결과를 표시합니다.</p>
     </div>}
     {trading.result && <div className="order-success" role="status">
-      <strong>{trading.result.duplicate ? '이미 처리된 주문을 확인했습니다.' : '거래가 완료되었습니다.'}</strong>
-      <p>{trading.result.companyId} · {trading.result.type === 'BUY' ? '매수' : '매도'} {trading.result.quantity}주 · 체결가 {money(trading.result.price)} · 총 {money(trading.result.totalPrice)}</p>
+      <strong>{trading.result.cancelled ? '미체결 주문을 취소했습니다.' : trading.result.duplicate ? '이미 처리된 주문을 확인했습니다.' : '거래가 완료되었습니다.'}</strong>
+      <p>{!trading.result.cancelled && <>{trading.result.companyId} · {trading.result.type === 'BUY' ? '매수' : '매도'} {trading.result.quantity}주 · 체결가 {money(trading.result.price)} · 총 {money(trading.result.totalPrice)}</>}</p>
     </div>}
+    {trading.recovery?.history?.length > 0 && <details className="order-history"><summary>최근 거래 내역 (최대 20건)</summary><ul>{trading.recovery.history.map(tx => <li key={tx.orderId}>{tx.companyId} · {tx.type === 'BUY' ? '매수' : '매도'} {tx.quantity}주 · {money(tx.totalPrice)}<br /><small>{new Date(tx.createdAt).toLocaleString('ko-KR')}</small></li>)}</ul></details>}
     <button className="secondary-button trading-refresh" type="button" disabled={trading.pending} onClick={trading.refresh}>자산·종목 다시 확인</button>
   </Panel>
 }

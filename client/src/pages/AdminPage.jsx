@@ -1,3 +1,4 @@
+import EventManager from '../events/EventManager'
 import { useState } from 'react'
 import AdminDashboard from '../components/AdminDashboard'
 import GameConnection from '../components/GameConnection'
@@ -5,6 +6,7 @@ import PageLayout from '../layouts/PageLayout'
 import { useGame } from '../game/useGame'
 
 function AdminPage() {
+  const [eventsBusy, setEventsBusy] = useState(false)
   const [adminPassword, setAdminPassword] = useState('')
   const gameState = useGame(adminPassword)
   const [confirmEnd, setConfirmEnd] = useState(false)
@@ -17,10 +19,11 @@ function AdminPage() {
       <GameConnection {...gameState} />
       <section className="admin-credentials" aria-label="관리자 인증">
         <label htmlFor="admin-password">관리자 비밀번호</label>
-        <input id="admin-password" type="password" autoComplete="off" value={adminPassword} disabled={gameState.pending} onChange={(event) => setAdminPassword(event.target.value)} />
+        <input id="admin-password" type="password" autoComplete="off" value={adminPassword} disabled={gameState.pending || eventsBusy} onChange={(event) => setAdminPassword(event.target.value)} />
         <p className="trading-help">제어 요청 시 서버에서 확인합니다. 페이지를 벗어나면 입력한 비밀번호가 지워집니다.</p>
       </section>
-      <AdminDashboard {...gameState} onControl={handleControl} />
+      <AdminDashboard {...gameState} pending={gameState.pending || eventsBusy} onControl={handleControl} />
+      <EventManager password={adminPassword} game={gameState.game} stale={gameState.loading || Boolean(gameState.error) || gameState.pending} onBusy={setEventsBusy} />
       {confirmEnd && <section className="end-confirmation" aria-label="게임 종료 확인">
         <h2>게임을 종료할까요?</h2>
         <p>종료하면 참가자의 거래가 중지됩니다.</p>

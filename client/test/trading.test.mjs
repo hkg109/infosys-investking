@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { quantityValue, tradingBlock, orderError, displayAccount, newOrderId } from '../src/trading/model.js'
-import { getTrading, sendOrder } from '../src/trading/api.js'
+import { getTrading, sendOrder, prepareOrder, cancelOrder } from '../src/trading/api.js'
 
 const order = { orderId: 'f782d648-98fb-4da0-86ba-e2e575ee7d56', companyId: 'A', type: 'BUY', quantity: 2 }
 const account = { cash: 80000, holdings: [{ companyId: 'A', name: 'A', quantity: 2, marketValue: 20000 }] }
@@ -29,7 +29,7 @@ test('order estimates reject overspending and overselling, allow exact balances'
 test('market/portfolio consume the actual Backend response shape', async (t) => {
   t.mock.method(globalThis, 'fetch', async (url, options) => {
     assert.equal(options.credentials, 'include')
-    return Response.json(url.endsWith('/market') ? { companies: [{ ...company, name: 'A' }] } : { account })
+    return Response.json(url.endsWith('/market') ? { companies: [{ ...company, name: 'A' }] } : url.endsWith('/recovery') ? { pending: null, history: [] } : { account })
   })
   assert.equal((await getTrading()).companies[0].companyId, 'A')
 })
@@ -67,4 +67,15 @@ test('session expiry, origin rejection and throttling cannot discard an earlier 
     mock.mock.mockImplementation(async () => Response.json({ error: 'AUTH_REQUIRED' }, { status }))
     await assert.rejects(sendOrder(order), error => error.uncertain === true)
   }
+})
+
+
+test('prepare and cancel require an authoritative acknowledgement before clearing an order', async (t) => {
+  const mock = t.mock.method(globalThis, 'fetch', async () => Response.json({}))
+  await assert.rejects(prepareOrder(order), error => error.uncertain)
+  await assert.rejects(cancelOrder(order), error => error.uncertain)
+  mock.mock.mockImplementation(async () => Response.json({ order }))
+  assert.deepEqual((await prepareOrder(order)).order, order)
+  mock.mock.mockImplementation(async () => Response.json({ cancelled: true }))
+  assert.equal((await cancelOrder(order)).cancelled, true)
 })
