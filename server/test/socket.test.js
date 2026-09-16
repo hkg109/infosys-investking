@@ -43,6 +43,13 @@ test('health check, authenticated game controls, concurrent delivery and reconne
   assert.equal(health.status, 200)
   assert.deepEqual(await health.json(), { status: 'ok' })
 
+  const adminAuth = await fetch(`${url}/api/admin/auth/verify`, {
+    method: 'POST',
+    headers: { Authorization: 'Bearer test-admin-password' },
+  })
+  assert.equal(adminAuth.status, 200)
+  assert.deepEqual(await adminAuth.json(), { authenticated: true })
+
   const handshake = await fetch(`${url}/socket.io/?EIO=4&transport=polling`, {
     headers: { Origin: 'http://localhost:5173' },
   })
