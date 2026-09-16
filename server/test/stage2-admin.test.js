@@ -169,6 +169,7 @@ test('PostgreSQL stage 2: participant assets, multi-tab presence, reconnect, and
 
   const eventId = randomUUID()
   const orderId = randomUUID()
+  const missionId = randomUUID()
   await database.query("UPDATE companies SET current_price = 12000 WHERE id = 'A'")
   await database.query(`INSERT INTO events (id, title, news, result) VALUES ($1, '사건', '뉴스', '결과')`, [eventId])
   await database.query(`INSERT INTO game_events (game_id, event_id, round_number, applied_at)
@@ -188,6 +189,13 @@ test('PostgreSQL stage 2: participant assets, multi-tab presence, reconnect, and
   await database.query(`INSERT INTO ranking_snapshots
     (game_id, user_id, rank, cash, stock_value, total_assets, is_final)
     VALUES ($1, $2, 1, 700000, 60000, 760000, TRUE)`, [ACTIVE_GAME_ID, aliceId])
+  await database.query(`INSERT INTO missions
+    (id, title, description, mission_type, target_value, reward_points)
+    VALUES ($1, '테스트 미션', '초기화 검증', 'TRADE_BOTH_SIDES', 2, 20)`, [missionId])
+  await database.query(`INSERT INTO game_missions (game_id, user_id, mission_id)
+    VALUES ($1,$2,$3)`, [ACTIVE_GAME_ID, aliceId, missionId])
+  await database.query(`INSERT INTO user_reward_wallets (game_id, user_id, points)
+    VALUES ($1,$2,20)`, [ACTIVE_GAME_ID, aliceId])
 
   const resetRequest = fetch(`${baseUrl}/api/game/admin/reset`, { method: 'POST', headers: adminHeaders })
   await lockReached
@@ -202,11 +210,13 @@ test('PostgreSQL stage 2: participant assets, multi-tab presence, reconnect, and
     'game reset should disconnect authenticated participant sockets')
 
   for (const table of ['user_sessions', 'wallets', 'portfolios', 'transactions', 'order_intents',
-    'game_events', 'stock_price_changes', 'stock_price_history', 'ranking_states', 'ranking_snapshots']) {
+    'game_events', 'stock_price_changes', 'stock_price_history', 'ranking_states', 'ranking_snapshots',
+    'game_missions', 'user_reward_wallets']) {
     assert.equal(Number((await database.query(`SELECT COUNT(*) AS count FROM ${table}`)).rows[0].count), 0, table)
   }
   assert.equal(Number((await database.query("SELECT COUNT(*) AS count FROM users WHERE role = 'USER'")).rows[0].count), 0)
   assert.equal(Number((await database.query('SELECT COUNT(*) AS count FROM events')).rows[0].count), 1)
+  assert.equal(Number((await database.query('SELECT COUNT(*) AS count FROM missions')).rows[0].count), 1)
   assert.equal(Number((await database.query("SELECT current_price FROM companies WHERE id = 'A'")).rows[0].current_price), 10000)
   assert.equal((await database.query('SELECT status FROM games WHERE id = $1', [ACTIVE_GAME_ID])).rows[0].status, 'WAITING')
   payload = await participants()

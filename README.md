@@ -4,7 +4,7 @@
 
 ## 현재 개발 단계
 
-**QA 7단계 — 월별 거래·주가 분석 Backend**. 서버는 사용자별 월간 거래와 FIFO 실현손익, 종목별 시가·장중 사건 직후 가격·종가를 저장하고 권한별 조회 API를 제공합니다.
+**QA 8단계 — 개인 비밀 미션 Backend**. 서버는 참가자별 비공개 미션을 배정하고 거래·라운드 마감 뒤 진행도를 계산하며, 완료 시 추가 시장정보 구매용 포인트를 한 번만 지급합니다.
 
 클라이언트가 보낸 Socket 제어 이벤트는 더 이상 처리하지 않습니다. 관리자는 `ADMIN_PASSWORD`로 인증된 HTTP API를 사용하고 서버가 상태 변경 후 Socket 이벤트를 전파합니다. 사용자 HTTP 세션과 Socket 연결 인증은 아직 분리되어 있습니다.
 
@@ -126,6 +126,7 @@ INITIAL_CASH=1000000
 - [사건·뉴스·주가 변동 API](docs/EVENT_API.md)
 - [순위·최종 결과 API](docs/RANKING_API.md)
 - [월별 거래·주가 분석 API](docs/MARKET_HISTORY_API.md)
+- [개인 비밀 미션 API](docs/MISSION_API.md)
 
 - [프로젝트 명세](docs/PROJECT_SPEC.md)
 - [협업 가이드](docs/COLLABORATION_GUIDE.md)

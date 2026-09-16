@@ -27,6 +27,8 @@
 
 순위 이벤트는 `ranking:update`입니다. 공개 연결에는 닉네임과 계정 식별자가 없는 익명 순위를 보내고, 인증된 참가자 연결에는 본인 항목 하나만 `isMe: true`로 표시한 사용자별 Payload를 보냅니다. 거래 커밋, 사건에 따른 주가 변경, 게임 종료 뒤 갱신되며 상세 Payload와 복구 API는 [RANKING_API.md](RANKING_API.md)를 참조합니다.
 
+개인 미션 이벤트는 `mission:assigned`, `mission:progress`, `mission:completed`입니다. 해당 참가자의 인증 Socket 방에만 전달하며 공개 연결이나 다른 참가자에게 전송하지 않습니다. 이벤트 유실·재접속 시 `GET /api/missions/me`로 복구하며 상세 규약은 [MISSION_API.md](MISSION_API.md)를 참조합니다.
+
 ## 검증
 
 ```bash
