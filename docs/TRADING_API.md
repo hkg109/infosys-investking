@@ -34,7 +34,9 @@ Frontend 요청에는 사용자 API에서 발급받은 HttpOnly 쿠키가 포함
 - 동일 `orderId` 요청은 PostgreSQL advisory transaction lock과 UNIQUE 제약으로 한 번만 반영합니다.
 - 매수는 현재 현금, 매도는 현재 보유량을 트랜잭션 안에서 다시 확인합니다. 실패 시 전체 변경을 rollback합니다.
 
-주요 오류 코드는 `AUTH_REQUIRED`, `INVALID_INPUT`, `GAME_NOT_RUNNING`, `TRADING_CLOSED`, `COMPANY_NOT_FOUND`, `INSUFFICIENT_CASH`, `INSUFFICIENT_SHARES`, `ORDER_ID_CONFLICT`입니다.
+공개 시장 목록에는 활성 종목만 포함됩니다. 비활성 종목의 과거 보유량과 거래 기록은 보존하지만 신규 주문은 `COMPANY_INACTIVE`로 거절합니다.
+
+주요 오류 코드는 `AUTH_REQUIRED`, `INVALID_INPUT`, `GAME_NOT_RUNNING`, `TRADING_CLOSED`, `COMPANY_NOT_FOUND`, `COMPANY_INACTIVE`, `INSUFFICIENT_CASH`, `INSUFFICIENT_SHARES`, `ORDER_ID_CONFLICT`입니다.
 
 ## 게임 상태 복원
 

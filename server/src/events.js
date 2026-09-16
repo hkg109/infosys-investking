@@ -83,10 +83,12 @@ async function withTransaction(database, work) {
 
 async function ensureCompanies(client, effects) {
   const companyIds = effects.map(({ companyId }) => companyId)
-  const result = await client.query('SELECT id FROM companies WHERE id = ANY($1::varchar[])', [companyIds])
+  const result = await client.query('SELECT id, is_active FROM companies WHERE id = ANY($1::varchar[])', [companyIds])
   const existing = new Set(result.rows.map(({ id }) => id))
   const missing = companyIds.filter((id) => !existing.has(id))
   if (missing.length) throw new EventError(400, 'COMPANY_NOT_FOUND', { companyIds: missing })
+  const inactive = result.rows.filter(({ is_active: isActive }) => !isActive).map(({ id }) => id).sort()
+  if (inactive.length) throw new EventError(409, 'COMPANY_INACTIVE', { companyIds: inactive })
 }
 
 async function replaceEffects(client, eventId, effects) {
@@ -153,7 +155,12 @@ export async function assignEvents(database, totalRounds, gameId = ACTIVE_GAME_I
     }
     if (existing.rowCount) await client.query('DELETE FROM game_events WHERE game_id = $1', [gameId])
 
-    const candidates = await client.query('SELECT id FROM events ORDER BY random() LIMIT $1', [totalRounds])
+    const candidates = await client.query(`SELECT e.id FROM events e
+      WHERE NOT EXISTS (
+        SELECT 1 FROM event_effects ee JOIN companies c ON c.id = ee.company_id
+        WHERE ee.event_id = e.id AND c.is_active = FALSE
+      )
+      ORDER BY random() LIMIT $1`, [totalRounds])
     if (candidates.rowCount < totalRounds) {
       throw new EventError(409, 'EVENT_POOL_TOO_SMALL', { required: totalRounds, available: candidates.rowCount })
     }
@@ -213,7 +220,8 @@ export async function applyRoundEvent(database, round, gameId = ACTIVE_GAME_ID) 
     if (!event.applied_at) {
       const effects = await client.query(`SELECT ee.company_id, ee.change_rate, c.current_price
         FROM event_effects ee JOIN companies c ON c.id = ee.company_id
-        WHERE ee.event_id = $1 ORDER BY ee.company_id FOR UPDATE OF c`, [event.event_id])
+        WHERE ee.event_id = $1 AND c.is_active = TRUE
+        ORDER BY ee.company_id FOR UPDATE OF c`, [event.event_id])
       for (const effect of effects.rows) {
         const changed = await client.query(`UPDATE companies
           SET current_price = GREATEST(1, ROUND(current_price * (100 + $2) / 100.0)::bigint)

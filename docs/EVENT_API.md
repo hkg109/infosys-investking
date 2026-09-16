@@ -29,7 +29,7 @@
 }
 ```
 
-`changeRate`는 -99~1000 범위의 정수입니다. 같은 사건에서 같은 기업을 두 번 지정할 수 없습니다. 존재하지 않는 기업은 `COMPANY_NOT_FOUND`, 게임 시작 후 변경 요청은 `EVENT_MANAGEMENT_CLOSED`입니다.
+`changeRate`는 -99~1000 범위의 정수입니다. 같은 사건에서 같은 기업을 두 번 지정할 수 없습니다. 존재하지 않는 기업은 `COMPANY_NOT_FOUND`, 비활성 기업은 `COMPANY_INACTIVE`, 게임 시작 후 변경 요청은 `EVENT_MANAGEMENT_CLOSED`입니다. 비활성 기업을 참조하는 과거 사건은 보존하지만 새 게임의 무작위 배정 후보에서는 제외합니다.
 
 등록 사건 수가 전체 라운드보다 적으면 `POST /api/game/admin/start`는 게임 상태를 바꾸지 않고 409 `EVENT_POOL_TOO_SMALL`을 반환합니다.
 
