@@ -1,3 +1,4 @@
+import RankingPanel from '../ranking/RankingPanel'
 import EventNews from '../events/EventNews'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -49,6 +50,7 @@ function GamePage() {
     >
       {logoutError && <p className="page-error" role="alert">{logoutError}</p>}
       <GameConnection {...gameState} />
+      <RankingPanel userId={user.userId} game={gameState.game} revision={gameState.snapshot} />
       <TradingPanel game={gameState.game} stale={gameState.loading || Boolean(gameState.error)} trading={trading} />
       <EventNews game={gameState.game} revision={gameState.snapshot} />
       <UserDashboard game={gameState.game} snapshot={snapshot} />

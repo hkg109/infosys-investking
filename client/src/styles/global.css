@@ -145,3 +145,14 @@ summary { cursor: pointer; min-height: 44px; padding: 12px 0; }
 .order-history li { margin-bottom: 12px; overflow-wrap: anywhere; }
 .order-unresolved button { margin: 4px; }
 @media (min-width: 760px) { .event-effect { grid-template-columns: 1fr 1fr auto; align-items: end; } }
+
+.ranking-list { padding: 0; list-style: none; display: grid; gap: 10px; }
+.ranking-list li { display: grid; grid-template-columns: 3em minmax(0, 1fr); gap: 8px; padding: 14px; background: #f4f7fb; border-radius: 12px; }
+.ranking-list li > strong:last-child { grid-column: 2; overflow-wrap: anywhere; }
+.ranking-name { overflow-wrap: anywhere; min-width: 0; }
+.ranking-place { color: #215acb; }
+.ranking-mine { padding: 16px; border: 1px solid #cbd8ef; border-radius: 12px; margin: 20px 0; }
+.ranking-mine dl { display: grid; gap: 12px; margin-bottom: 0; }
+.ranking-mine dl > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+.ranking-mine dd { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
+@media (min-width: 760px) { .ranking-list li { grid-template-columns: 3em minmax(0, 1fr) auto; } .ranking-list li > strong:last-child { grid-column: 3; } }
