@@ -343,8 +343,10 @@ export function createTradingRouter(database, engine, {
       await client.query("UPDATE order_intents SET status = 'FILLED' WHERE order_id = $1 AND user_id = $2", [order.orderId, request.user.id])
       const account = await accountJson(client, request.user.id)
       await client.query('COMMIT')
-      await onTradeCommitted().catch(() => console.error('Failed to refresh rankings after trade'))
-      response.status(201).json({ duplicate: false, transaction: transactionJson(inserted.rows[0]), account })
+      const transaction = transactionJson(inserted.rows[0])
+      await onTradeCommitted({ userId: request.user.id, round: game.currentRound, transaction })
+        .catch(() => console.error('Failed to process trade hooks'))
+      response.status(201).json({ duplicate: false, transaction, account })
     } catch (error) {
       if (client) await client.query('ROLLBACK').catch(() => {})
       if (error instanceof TradingError) return response.status(error.status).json({ error: error.code, ...error.details })

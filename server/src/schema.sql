@@ -298,3 +298,45 @@ CREATE TABLE IF NOT EXISTS ranking_snapshots (
 );
 CREATE INDEX IF NOT EXISTS ranking_snapshots_order_idx
   ON ranking_snapshots(game_id, is_final, rank, user_id);
+
+CREATE TABLE IF NOT EXISTS missions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title VARCHAR(100) NOT NULL CHECK (length(trim(title)) > 0),
+  description TEXT NOT NULL CHECK (length(trim(description)) > 0),
+  mission_type TEXT NOT NULL CHECK (mission_type IN (
+    'DIVERSIFIED_HOLDINGS', 'CASH_RATIO', 'CONSECUTIVE_HOLDING',
+    'CONTRARIAN_PROFIT', 'TRADE_BOTH_SIDES'
+  )),
+  target_value INTEGER NOT NULL CHECK (target_value > 0),
+  reward_points INTEGER NOT NULL CHECK (reward_points BETWEEN 1 AND 1000000),
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS missions_active_idx ON missions(is_active, created_at, id);
+
+CREATE TABLE IF NOT EXISTS game_missions (
+  game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  mission_id UUID NOT NULL REFERENCES missions(id),
+  progress NUMERIC(12, 4) NOT NULL DEFAULT 0 CHECK (progress >= 0),
+  progress_state JSONB NOT NULL DEFAULT '{}'::jsonb,
+  status TEXT NOT NULL DEFAULT 'ASSIGNED' CHECK (status IN ('ASSIGNED', 'COMPLETED')),
+  assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  completed_at TIMESTAMPTZ,
+  rewarded_at TIMESTAMPTZ,
+  PRIMARY KEY (game_id, user_id),
+  CHECK (
+    (status = 'ASSIGNED' AND completed_at IS NULL AND rewarded_at IS NULL)
+    OR (status = 'COMPLETED' AND completed_at IS NOT NULL AND rewarded_at IS NOT NULL)
+  )
+);
+CREATE INDEX IF NOT EXISTS game_missions_mission_idx ON game_missions(mission_id, game_id);
+
+CREATE TABLE IF NOT EXISTS user_reward_wallets (
+  game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  points BIGINT NOT NULL DEFAULT 0 CHECK (points >= 0),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (game_id, user_id)
+);
