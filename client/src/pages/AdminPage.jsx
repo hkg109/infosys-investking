@@ -32,7 +32,7 @@ function AdminWorkspace({ adminPassword, lock }) {
       <ParticipantPanel {...participants} stale={Boolean(gameState.error)} />
       <ResetPanel {...gameState} pending={gameState.pending || eventsBusy || companiesBusy} onBusy={setResetBusy} onReset={() => { participants.refresh(); setCompanyVersion(n => n + 1); setEventVersion(n => n + 1); setConfirmEnd(false) }} />
       <CompanyManager key={`companies-${companyVersion}`} password={adminPassword} game={gameState.game} stale={gameState.loading || Boolean(gameState.error) || gameState.pending || eventsBusy || resetBusy} onBusy={setCompaniesBusy} onChanged={() => setEventVersion(n => n + 1)} />
-      <EventManager key={`events-${eventVersion}`} password={adminPassword} game={gameState.game} stale={gameState.loading || Boolean(gameState.error) || busy} onBusy={setEventsBusy} />
+      <EventManager key={`events-${eventVersion}`} password={adminPassword} game={gameState.game} stale={gameState.loading || Boolean(gameState.error) || gameState.pending || companiesBusy || resetBusy} onBusy={setEventsBusy} />
       {confirmEnd && <section className="end-confirmation" aria-label="게임 종료 확인">
         <h2>게임을 종료할까요?</h2>
         <p>종료하면 참가자의 거래가 중지됩니다.</p>

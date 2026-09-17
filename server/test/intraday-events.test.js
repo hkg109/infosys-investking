@@ -86,7 +86,9 @@ test('PostgreSQL multi-event schedule supports empty rounds, intraday execution 
   assert.equal((await fetch(base)).status, 401)
   const scheduleResponse = await fetch(base, { headers })
   assert.equal(scheduleResponse.status, 200)
-  assert.equal((await scheduleResponse.json()).rounds[1].events.length, 0)
+  const schedulePayload = await scheduleResponse.json()
+  assert.equal(schedulePayload.rounds[1].events.length, 0)
+  assert.deepEqual(schedulePayload.constraints, options)
   assert.equal((await fetch(base, { method: 'PUT', headers, body: JSON.stringify(scheduleInput) })).status, 200)
   await assert.rejects(saveGameSchedule(database, { rounds: [{ round: 1, events: [
     { eventId: first.eventId, triggerPhase: 'INTRADAY', triggerOffsetSeconds: 10 },
