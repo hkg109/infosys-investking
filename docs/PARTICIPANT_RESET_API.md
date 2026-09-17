@@ -44,7 +44,7 @@ Authorization: Bearer <ADMIN_PASSWORD>
 Socket 연결에 유효한 `investking_session` 쿠키가 있으면 HTTP 사용자 세션과 같은 참가자로 식별한다. 개발 서버처럼 Frontend와 Backend origin이 다르면 Socket.IO Client에 `withCredentials: true`를 설정해야 한다.
 
 ```js
-io(apiBaseUrl, { withCredentials: true })
+io(apiBaseUrl, { withCredentials: true, path: '/api/socket.io' })
 ```
 
 인증된 참가자 연결에는 다음 이벤트를 개별 전송한다.
@@ -85,6 +85,8 @@ participants:presence
 ```
 
 세션 쿠키가 없는 공개 Socket 연결은 기존 게임 상태와 공개 이벤트를 계속 받을 수 있지만 온라인 참가자로 계산하지 않는다.
+
+Socket 경로는 `/api/socket.io`이다. 기존 세션 쿠키의 `Path=/api` 범위를 유지하며 브라우저 handshake에 세션이 전달되도록 한다. 프론트엔드·서버를 함께 업데이트하고 reverse proxy에서 해당 경로의 WebSocket upgrade를 허용해야 한다.
 
 ## 종료 게임 초기화
 

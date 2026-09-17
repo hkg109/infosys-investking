@@ -82,7 +82,7 @@ test('PostgreSQL stage 2: participant assets, multi-tab presence, reconnect, and
   app.use(express.json())
   const httpServer = createServer(app)
   server = httpServer
-  io = new Server(httpServer)
+  io = new Server(httpServer, { path: '/api/socket.io' })
   io.use(createSocketSessionMiddleware(database))
   const presence = createPresenceTracker(io)
   io.on('connection', (socket) => presence.connect(socket))
@@ -123,6 +123,7 @@ test('PostgreSQL stage 2: participant assets, multi-tab presence, reconnect, and
 
   async function connect(token) {
     const socket = createClient(baseUrl, {
+      path: '/api/socket.io',
       autoConnect: false,
       forceNew: true,
       reconnection: false,

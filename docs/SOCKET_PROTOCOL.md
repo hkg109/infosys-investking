@@ -44,3 +44,9 @@ npm test
 `CLIENT_URL`은 브라우저 origin 설정이며 네트워크 접근 제한이 아닙니다. 현재 서버를 인터넷에 공개하거나 실제 참가자 운영에 사용하지 않습니다.
 
 실제 브라우저의 관리자 버튼과 사용자 화면은 아직 연결하지 않았습니다. 재헌의 Frontend 작업에서 위 규약에 맞춰 연동합니다. 기존 기획·협업 문서는 원문을 유지합니다.
+
+## QA 2단계 브라우저 연결 경로
+
+Socket.IO 연결은 `io(apiBaseUrl, { path: '/api/socket.io', withCredentials: true })`를 사용한다.
+세션 쿠키가 `Path=/api`이므로 기본 `/socket.io` 경로에는 브라우저가 쿠키를 보내지 않는다.
+서버와 클라이언트를 함께 업데이트하고 `/api/socket.io` 경로를 WebSocket upgrade가 가능한 프록시로 연결한다. Vite 개발 프록시에 반영되어 있다.

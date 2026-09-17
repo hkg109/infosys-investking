@@ -13,9 +13,9 @@ import { useGame } from '../game/useGame'
 import PageLayout from '../layouts/PageLayout'
 
 function GamePage() {
-  const gameState = useGame()
   const navigate = useNavigate()
-  const { logout, user } = useSession()
+  const { logout, user, checkSession } = useSession()
+  const gameState = useGame('', checkSession)
   const trading = useTrading(user.userId)
   useEffect(() => { trading.refresh() }, [gameState.snapshot, trading.refresh])
   const snapshot = {

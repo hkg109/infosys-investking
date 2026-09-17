@@ -52,6 +52,7 @@ const reportGamePersistenceError = (error) => {
 }
 let gamePersistence = saveGameState(pool, game.getSnapshot()).catch(reportGamePersistenceError)
 const io = new Server(httpServer, {
+  path: '/api/socket.io',
   cors: { origin: process.env.CLIENT_URL || 'http://localhost:5173', credentials: true },
 })
 io.use(createSocketSessionMiddleware(pool))

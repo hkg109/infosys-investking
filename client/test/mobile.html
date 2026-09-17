@@ -14,6 +14,11 @@
 <p>실제 휴대폰의 터치·키보드 검증과 별개인 CSS 화면 너비 검사입니다.</p>
 <iframe title="모바일 게임 화면" src="/game" width="390"></iframe>
 <script>
+  const initialRoute = new URLSearchParams(location.search).get('route')
+  if (['/admin', '/game', '/'].includes(initialRoute)) {
+    document.querySelector('#route').value = initialRoute
+    document.querySelector('iframe').src = initialRoute
+  }
   document.querySelector('#width').addEventListener('change', (event) => {
     document.querySelector('iframe').width = event.target.value
   })

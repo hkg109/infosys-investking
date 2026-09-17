@@ -167,3 +167,12 @@ summary { cursor: pointer; min-height: 44px; padding: 12px 0; }
 .game-rules p { color: #60708a; font-size: 0.85rem; margin-bottom: 0; }
 .my-info { margin-bottom: 20px; line-height: 1.65; }
 .order-form fieldset > .secondary-button { margin-top: 10px; }
+
+.participant-name { white-space: normal; overflow-wrap: anywhere; min-width: 100px; max-width: 180px; }
+.participant-holdings { padding-left: 20px; }
+.reset-confirmation { display: grid; gap: 14px; padding: 16px; border: 1px solid #dcaaa1; border-radius: 12px; background: #fff7f5; }
+.reset-confirmation > input { width: 100%; min-width: 0; padding: 12px; font-size: 16px; border: 1px solid #a86759; border-radius: 8px; }
+.reset-ack { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+.reset-ack input { width: 20px; height: 20px; flex-shrink: 0; }
+.danger-button { border: 0; border-radius: 10px; padding: 13px 16px; background: #a32c21; color: white; font-weight: 700; min-height: 44px; cursor: pointer; }
+.table-wrap:focus-visible { outline: 3px solid #316cde; outline-offset: 2px; }
