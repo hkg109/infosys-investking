@@ -176,3 +176,14 @@ summary { cursor: pointer; min-height: 44px; padding: 12px 0; }
 .reset-ack input { width: 20px; height: 20px; flex-shrink: 0; }
 .danger-button { border: 0; border-radius: 10px; padding: 13px 16px; background: #a32c21; color: white; font-weight: 700; min-height: 44px; cursor: pointer; }
 .table-wrap:focus-visible { outline: 3px solid #316cde; outline-offset: 2px; }
+
+.company-list { list-style: none; padding: 0; display: grid; gap: 1rem; }
+.company-list li { min-width: 0; padding: 1rem; border: 1px solid #d8e1ec; border-radius: 12px; overflow-wrap: anywhere; }
+.company-list h3 { margin-top: 0; }
+.company-form { margin-top: 1.5rem; min-width: 0; }
+.company-form fieldset { margin: 0; padding: 0; border: 0; min-width: 0; display: grid; gap: .65rem; }
+.company-form input:not([type="checkbox"]), .company-form textarea { box-sizing: border-box; width: 100%; min-width: 0; padding: .75rem; border: 1px solid #aebed0; border-radius: 8px; font: inherit; font-size: 16px; }
+.company-form textarea { resize: vertical; }
+.company-form .trading-help { margin-top: 0; }
+.company-list button { overflow-wrap: anywhere; }
+.company-form :disabled { cursor: not-allowed; opacity: .65; }
