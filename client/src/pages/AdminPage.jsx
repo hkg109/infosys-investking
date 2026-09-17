@@ -1,3 +1,4 @@
+import CompanyManager from '../companies/CompanyManager'
 import ParticipantPanel from '../admin/ParticipantPanel'
 import ResetPanel from '../admin/ResetPanel'
 import { useParticipants } from '../admin/useParticipants'
@@ -10,12 +11,14 @@ import PageLayout from '../layouts/PageLayout'
 import { useGame } from '../game/useGame'
 
 function AdminWorkspace({ adminPassword, lock }) {
+  const [companiesBusy, setCompaniesBusy] = useState(false)
+  const [companyVersion, setCompanyVersion] = useState(0)
   const [eventsBusy, setEventsBusy] = useState(false)
   const gameState = useGame(adminPassword)
   const participants = useParticipants(adminPassword, gameState.snapshot)
   const [resetBusy, setResetBusy] = useState(false)
   const [eventVersion, setEventVersion] = useState(0)
-  const busy = gameState.pending || eventsBusy || resetBusy
+  const busy = gameState.pending || eventsBusy || resetBusy || companiesBusy
   const [confirmEnd, setConfirmEnd] = useState(false)
   const handleControl = (action) => {
     if (busy) return
@@ -27,8 +30,9 @@ function AdminWorkspace({ adminPassword, lock }) {
       <GameConnection {...gameState} />
       <AdminDashboard {...gameState} game={{ ...gameState.game, connectedParticipants: participants.error || gameState.error ? null : participants.data?.onlineParticipants }} pending={busy} onControl={handleControl} />
       <ParticipantPanel {...participants} stale={Boolean(gameState.error)} />
-      <ResetPanel {...gameState} pending={gameState.pending || eventsBusy} onBusy={setResetBusy} onReset={() => { participants.refresh(); setEventVersion(n => n + 1); setConfirmEnd(false) }} />
-      <EventManager key={eventVersion} password={adminPassword} game={gameState.game} stale={gameState.loading || Boolean(gameState.error) || busy} onBusy={setEventsBusy} />
+      <ResetPanel {...gameState} pending={gameState.pending || eventsBusy || companiesBusy} onBusy={setResetBusy} onReset={() => { participants.refresh(); setCompanyVersion(n => n + 1); setEventVersion(n => n + 1); setConfirmEnd(false) }} />
+      <CompanyManager key={`companies-${companyVersion}`} password={adminPassword} game={gameState.game} stale={gameState.loading || Boolean(gameState.error) || gameState.pending || eventsBusy || resetBusy} onBusy={setCompaniesBusy} onChanged={() => setEventVersion(n => n + 1)} />
+      <EventManager key={`events-${eventVersion}`} password={adminPassword} game={gameState.game} stale={gameState.loading || Boolean(gameState.error) || busy} onBusy={setEventsBusy} />
       {confirmEnd && <section className="end-confirmation" aria-label="게임 종료 확인">
         <h2>게임을 종료할까요?</h2>
         <p>종료하면 참가자의 거래가 중지됩니다.</p>
