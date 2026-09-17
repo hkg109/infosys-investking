@@ -50,14 +50,14 @@ test('health check, authenticated game controls, concurrent delivery and reconne
   assert.equal(adminAuth.status, 200)
   assert.deepEqual(await adminAuth.json(), { authenticated: true })
 
-  const handshake = await fetch(`${url}/socket.io/?EIO=4&transport=polling`, {
+  const handshake = await fetch(`${url}/api/socket.io/?EIO=4&transport=polling`, {
     headers: { Origin: 'http://localhost:5173' },
   })
   assert.equal(handshake.headers.get('access-control-allow-origin'), 'http://localhost:5173')
 
   const initialStates = []
   for (let index = 0; index < 4; index += 1) {
-    const client = io(url, { autoConnect: false, reconnection: false, timeout: 3000 })
+    const client = io(url, { path: '/api/socket.io', autoConnect: false, reconnection: false, timeout: 3000 })
     clients.push(client)
     const initialState = once(client, 'game:state')
     const connected = Promise.race([

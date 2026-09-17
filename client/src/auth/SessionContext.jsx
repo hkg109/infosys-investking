@@ -23,8 +23,8 @@ export function SessionProvider({ children }) {
     saveUserId(nextUser?.userId)
   }, [])
 
-  const refreshSession = useCallback(async () => {
-    setStatus('loading')
+  const refreshSession = useCallback(async (quiet = false) => {
+    if (!quiet) setStatus('loading')
     setSessionError('')
 
     try {
@@ -44,6 +44,8 @@ export function SessionProvider({ children }) {
   useEffect(() => {
     refreshSession()
   }, [refreshSession])
+
+  const checkSession = useCallback(() => refreshSession(true), [refreshSession])
 
   const join = useCallback(async (nickname, pin) => {
     const result = await joinUser(nickname, pin)
@@ -72,7 +74,8 @@ export function SessionProvider({ children }) {
     recover,
     logout,
     refreshSession,
-  }), [join, logout, recover, refreshSession, sessionError, status, user])
+    checkSession,
+  }), [join, logout, recover, refreshSession, checkSession, sessionError, status, user])
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
 }

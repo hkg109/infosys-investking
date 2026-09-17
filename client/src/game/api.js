@@ -15,6 +15,9 @@ async function request(path, options = {}) {
 export const getGame = () => request('')
 export const controlGame = (action, password) => request(`/admin/${action}`, { method: 'POST', headers: { Authorization: `Bearer ${password}` } })
 export const gameError = (error) => ({
+  GAME_RESET_NOT_ALLOWED: '종료된 게임만 초기화할 수 있습니다.',
+  GAME_RESET_IN_PROGRESS: '초기화가 진행 중입니다. 결과를 확인해 주세요.',
+  DATABASE_UNAVAILABLE: '게임 DB를 사용할 수 없습니다.',
   EVENT_POOL_TOO_SMALL: '등록된 사건 수가 부족합니다. 게임 개월 수만큼 사건을 등록해 주세요.',
   ADMIN_AUTH_REQUIRED: '관리자 비밀번호를 확인해 주세요.',
   ADMIN_AUTH_UNAVAILABLE: '관리자 인증이 아직 설정되지 않았습니다.',

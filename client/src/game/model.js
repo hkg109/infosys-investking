@@ -1,5 +1,5 @@
 export const statusLabels = { WAITING: '대기 중', RUNNING: '진행 중', PAUSED: '일시정지', FINISHED: '종료' }
-export const controlStates = { start: ['WAITING'], pause: ['RUNNING'], resume: ['PAUSED'], end: ['RUNNING', 'PAUSED'] }
+export const controlStates = { start: ['WAITING'], pause: ['RUNNING'], resume: ['PAUSED'], end: ['RUNNING', 'PAUSED'], reset: ['FINISHED'] }
 export function allowedControl(action, status) { return controlStates[action]?.includes(status) === true }
 export function formatTime(seconds) {
   if (!Number.isFinite(seconds) || seconds < 0) return '—'
