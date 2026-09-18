@@ -93,7 +93,7 @@ Frontend가 화면 뼈대를 병렬로 준비할 수는 있지만, 실제 연동
 | 익명 실시간 순위·사용자별 `isMe` | Backend 구현·PostgreSQL·Socket 전달 테스트 완료 | 재헌 `F-11` 익명 순위와 본인 강조 UI 연동 필요 |
 | 게임·뉴스·플로팅 타이머 개편 | Frontend 구현·자동 테스트 완료 | 재헌 `F-12~14`; PC 양쪽 배치, 모바일 한 열, 뉴스형 사건 결과, 위치·크기 저장 타이머. `QA_STAGE6_FRONTEND.md` 참조 |
 | 월별 거래·주가 분석 | Backend·Frontend 구현 및 자동 테스트 완료 | 재헌 `F-15~17`; 본인 월별 거래·FIFO 실현손익, 종목별 월간 차트, 투자 앱형 주문·보유 화면. `MARKET_HISTORY_API.md`, `QA_STAGE7_FRONTEND.md` 참조 |
-| 개인 비밀 미션·정보 포인트 | Backend 구현·PostgreSQL 통합 테스트 완료 | 재헌 `F-18~19` 관리자 미션 관리·사용자 비밀 미션 UI 연동 필요; `MISSION_API.md` 참조 |
+| 개인 비밀 미션·정보 포인트 | Backend·Frontend 구현 및 검증 완료 | 재헌 `F-18~19`, `D-02`; 관리자 미션 관리·배정 조회, 본인 미션·진행도·포인트 표시. `MISSION_API.md`, `QA_STAGE8_FRONTEND.md` 참조 |
 | 실제 관리자 버튼 → 사용자 화면 | 미연동·미검증 | 재헌 Frontend 연동 후 공동 확인 |
 | 브라우저 콘솔·모바일 UI | 이번 PR에서 미검증 | 브라우저 테스트 필요 |
 | 사용자 HTTP 세션·게임 진행 Backend | 구현·자동 테스트 완료 | Socket 사용자 인증과 Frontend 연동은 후속 작업 |

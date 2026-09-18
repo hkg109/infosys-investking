@@ -1,3 +1,4 @@
+import MissionPanel from '../missions/MissionPanel'
 import RankingPanel from '../ranking/RankingPanel'
 import EventNews from '../events/EventNews'
 import { useEffect, useRef, useState } from 'react'
@@ -88,6 +89,7 @@ function GamePage() {
           <TradeHistoryPanel totalRounds={gameState.game?.totalRounds} revision={trading.account} />
         </div>
         <div className="game-dashboard-column game-dashboard-column--news">
+          <MissionPanel userId={user.userId} game={gameState.game} revision={gameState.snapshot} />
           <EventNews game={gameState.game} revision={gameState.snapshot} />
           <RankingPanel userId={user.userId} game={gameState.game} revision={gameState.snapshot} />
         </div>
