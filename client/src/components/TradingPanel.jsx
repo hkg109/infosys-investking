@@ -3,8 +3,10 @@ import Panel from './Panel'
 import { money } from '../game/model'
 import { newOrderId, orderError, quantityValue, tradingBlock } from '../trading/model'
 
-export default function TradingPanel({ game, stale, trading }) {
-  const [companyId, setCompanyId] = useState('')
+export default function TradingPanel({ game, stale, trading, selectedCompanyId, onSelectCompany }) {
+  const [localCompanyId, setLocalCompanyId] = useState('')
+  const companyId = selectedCompanyId ?? localCompanyId
+  const setCompanyId = onSelectCompany || setLocalCompanyId
   const [type, setType] = useState('BUY')
   const [quantityText, setQuantityText] = useState('1')
   const [validation, setValidation] = useState('')
@@ -33,7 +35,11 @@ export default function TradingPanel({ game, stale, trading }) {
     try { orderId = newOrderId() } catch { setValidation('이 브라우저에서는 주문 번호를 만들 수 없습니다. 다른 브라우저로 접속해 주세요.'); return }
     trading.submit({ orderId, companyId, type, quantity })
   }
-  return <Panel title="주식 매수 · 매도">
+  return <Panel title="주문하기">
+    <header className="trading-quote">
+      <div><p className="eyebrow">LIVE QUOTE</p><h3>{company?.name || '종목을 선택하세요'}</h3><p>{company?.description || '시장 종목을 선택하면 현재 가격과 주문 정보를 확인할 수 있습니다.'}</p></div>
+      <div><span>현재가</span><strong>{money(company?.currentPrice)}</strong>{Number.isFinite(company?.changeRate) && <span className={company.changeRate > 0 ? 'market-up' : company.changeRate < 0 ? 'market-down' : ''}>초기 대비 {company.changeRate > 0 ? '+' : ''}{company.changeRate}%</span>}</div>
+    </header>
     {blocked && <p className="trading-help" role="status">{blocked}</p>}
     {trading.error && <p className="form-error" role="alert">{trading.error}</p>}
     <form className="order-form" onSubmit={submit} noValidate aria-busy={trading.pending}>
@@ -44,8 +50,11 @@ export default function TradingPanel({ game, stale, trading }) {
           <option value="">종목을 선택하세요</option>
           {(trading.companies || []).map((item) => <option key={item.companyId} value={item.companyId}>{item.name}</option>)}
         </select>
-        <label htmlFor="order-type">거래 종류</label>
-        <select id="order-type" value={type} onChange={(e) => { setType(e.target.value); setValidation('') }}><option value="BUY">매수</option><option value="SELL">매도</option></select>
+        <span className="order-side-label">거래 종류</span>
+        <div className="order-side-tabs" role="group" aria-label="거래 종류">
+          <button type="button" className={type === 'BUY' ? 'is-active order-side--buy' : ''} aria-pressed={type === 'BUY'} onClick={() => { setType('BUY'); setValidation('') }}>매수</button>
+          <button type="button" className={type === 'SELL' ? 'is-active order-side--sell' : ''} aria-pressed={type === 'SELL'} onClick={() => { setType('SELL'); setValidation('') }}>매도</button>
+        </div>
         <label htmlFor="order-quantity">수량 (주)</label>
         <input id="order-quantity" inputMode="numeric" value={quantityText} onChange={(e) => { setQuantityText(e.target.value); setValidation('') }} aria-describedby="order-estimate" />
         <dl className="order-summary">
@@ -56,7 +65,7 @@ export default function TradingPanel({ game, stale, trading }) {
         </dl>
         <p id="order-estimate" className="trading-help">예상 금액이며 실제 체결 가격과 거래 가능 여부는 서버가 최종 확인합니다.</p>
         {validation && <p className="form-error" role="alert">{validation}</p>}
-        <button className="primary-button" type="submit">{trading.pending ? '주문 처리 중...' : type === 'BUY' ? '매수 주문' : '매도 주문'}</button>
+        <button className={`primary-button order-submit order-submit--${type.toLowerCase()}`} type="submit">{trading.pending ? '주문 처리 중...' : type === 'BUY' ? '매수 주문' : '매도 주문'}</button>
         <button className="secondary-button" type="button" onClick={resetForm}>입력 초기화</button>
       </fieldset>
     </form>

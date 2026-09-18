@@ -54,3 +54,19 @@ test('server text is escaped and game end does not invent final rankings', () =>
   assert.match(html, /&lt;script&gt;/)
   assert.doesNotMatch(html, /<script>|1위/)
 })
+
+test('investment watchlist highlights selection and portfolio shows market value', () => {
+  const html = renderToStaticMarkup(createElement(User, {
+    selectedCompanyId: 'A', onSelectCompany() {},
+    snapshot: {
+      account: { cash: 80000, stockValue: 20000, totalAssets: 100000 },
+      stocks: [{ id: 'A', name: 'A 엔터', currentPrice: 10000, changeRate: 20 }],
+      holdings: [{ companyId: 'A', name: 'A 엔터', currentPrice: 10000, quantity: 2, marketValue: 20000 }],
+    },
+  }))
+  assert.match(html, /aria-pressed="true"/)
+  assert.match(html, /stock-row--selected/)
+  assert.match(html, /\+20%/)
+  assert.match(html, /2주 · 현재가 10,000원/)
+  assert.match(html, /20,000원/)
+})

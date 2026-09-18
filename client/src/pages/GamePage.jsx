@@ -1,6 +1,6 @@
 import RankingPanel from '../ranking/RankingPanel'
 import EventNews from '../events/EventNews'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ApiError } from '../api/users'
 import { useSession } from '../auth/SessionContext'
@@ -12,6 +12,8 @@ import UserDashboard from '../components/UserDashboard'
 import { useGame } from '../game/useGame'
 import PageLayout from '../layouts/PageLayout'
 import FloatingGameTimer from '../components/FloatingGameTimer'
+import PriceHistoryPanel from '../trading/PriceHistoryPanel'
+import TradeHistoryPanel from '../trading/TradeHistoryPanel'
 
 function GamePage() {
   const navigate = useNavigate()
@@ -26,8 +28,22 @@ function GamePage() {
     holdings: trading.account?.holdings.filter((item) => item.quantity > 0),
   }
   const [showInfo, setShowInfo] = useState(false)
+  const [selectedCompanyId, setSelectedCompanyId] = useState('')
+  const selectedInitialCompany = useRef(false)
   const [logoutError, setLogoutError] = useState('')
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  useEffect(() => {
+    const companies = trading.companies || []
+    if (!companies.length) { setSelectedCompanyId(''); return }
+    setSelectedCompanyId(current => {
+      if (current && companies.some(company => company.companyId === current)) return current
+      if (current || !selectedInitialCompany.current) {
+        selectedInitialCompany.current = true
+        return companies[0].companyId
+      }
+      return ''
+    })
+  }, [trading.companies])
 
   const handleLogout = async () => {
     if (isLoggingOut || trading.pending) return
@@ -66,8 +82,10 @@ function GamePage() {
       <FloatingGameTimer game={gameState.game} />
       <div className="game-dashboard-grid">
         <div className="game-dashboard-column game-dashboard-column--trade">
-          <UserDashboard game={gameState.game} snapshot={snapshot} />
-          <TradingPanel game={gameState.game} stale={gameState.loading || Boolean(gameState.error)} trading={trading} />
+          <UserDashboard game={gameState.game} snapshot={snapshot} selectedCompanyId={selectedCompanyId} onSelectCompany={setSelectedCompanyId} />
+          <PriceHistoryPanel companyId={selectedCompanyId} revision={gameState.snapshot} />
+          <TradingPanel game={gameState.game} stale={gameState.loading || Boolean(gameState.error)} trading={trading} selectedCompanyId={selectedCompanyId} onSelectCompany={setSelectedCompanyId} />
+          <TradeHistoryPanel totalRounds={gameState.game?.totalRounds} revision={trading.account} />
         </div>
         <div className="game-dashboard-column game-dashboard-column--news">
           <EventNews game={gameState.game} revision={gameState.snapshot} />
