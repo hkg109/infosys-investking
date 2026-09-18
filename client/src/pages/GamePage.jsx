@@ -11,6 +11,7 @@ import { displayAccount } from '../trading/model'
 import UserDashboard from '../components/UserDashboard'
 import { useGame } from '../game/useGame'
 import PageLayout from '../layouts/PageLayout'
+import FloatingGameTimer from '../components/FloatingGameTimer'
 
 function GamePage() {
   const navigate = useNavigate()
@@ -46,6 +47,7 @@ function GamePage() {
 
   return (
     <PageLayout
+      wide
       title="투자 현황"
       subtitle={`${user.nickname}님으로 참가했습니다. 게임 진행과 투자 현황을 확인하세요.`}
       actions={<button className="header-button" type="button" aria-expanded={showInfo} aria-controls="my-info" onClick={() => setShowInfo(value => !value)}>내 정보</button>}
@@ -61,10 +63,17 @@ function GamePage() {
       </section>}
       {logoutError && <p className="page-error" role="alert">{logoutError}</p>}
       <GameConnection {...gameState} />
-      <RankingPanel userId={user.userId} game={gameState.game} revision={gameState.snapshot} />
-      <TradingPanel game={gameState.game} stale={gameState.loading || Boolean(gameState.error)} trading={trading} />
-      <EventNews game={gameState.game} revision={gameState.snapshot} />
-      <UserDashboard game={gameState.game} snapshot={snapshot} />
+      <FloatingGameTimer game={gameState.game} />
+      <div className="game-dashboard-grid">
+        <div className="game-dashboard-column game-dashboard-column--trade">
+          <UserDashboard game={gameState.game} snapshot={snapshot} />
+          <TradingPanel game={gameState.game} stale={gameState.loading || Boolean(gameState.error)} trading={trading} />
+        </div>
+        <div className="game-dashboard-column game-dashboard-column--news">
+          <EventNews game={gameState.game} revision={gameState.snapshot} />
+          <RankingPanel userId={user.userId} game={gameState.game} revision={gameState.snapshot} />
+        </div>
+      </div>
     </PageLayout>
   )
 }

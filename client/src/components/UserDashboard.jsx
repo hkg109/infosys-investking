@@ -1,6 +1,6 @@
 import Panel from './Panel'
 import StatCard from './StatCard'
-import { formatTime, money, statusLabels } from '../game/model'
+import { money, statusLabels } from '../game/model'
 
 const messages = {
   WAITING: '게임 시작을 기다리고 있습니다.', RUNNING: '뉴스를 확인하고 투자 상황을 살펴보세요.',
@@ -18,12 +18,11 @@ export default function UserDashboard({ game, snapshot }) {
     </section>
     <div className="stats-grid">
       <StatCard label="현재 월" value={Number.isInteger(game?.currentRound) && game.currentRound > 0 ? `${game.currentRound}월` : '—'} tone="accent" />
-      <StatCard label="남은 시간" value={formatTime(game?.remainingSeconds)} />
       <StatCard label="보유 현금" value={money(account?.cash)} />
       <StatCard label="주식 평가액" value={money(account?.stockValue)} />
       <StatCard label="총자산" value={money(account?.totalAssets)} tone="accent" />
     </div>
-    <div className="content-grid">
+    <div className="portfolio-grid">
       <Panel title="주식 종목 목록">
         {!Array.isArray(stocks) ? <p className="empty-state">종목 정보를 기다리고 있습니다.</p> : stocks.length === 0 ? <p className="empty-state">등록된 종목이 없습니다.</p> : <div className="table-wrap"><table>
           <caption className="sr-only">종목별 현재 주가</caption>

@@ -5,12 +5,13 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { companyInput, validateCompanies, companyRequest } from '../src/companies/api.js'
 const dir = await mkdtemp(join(process.cwd(), '.companies-test-'))
 let CompanyList, canManageCompanies
 try {
   await build({ entryPoints: ['src/companies/CompanyManager.jsx'], outfile: join(dir, 'view.mjs'), bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic' })
-  ;({ CompanyList, canManageCompanies } = await import(join(dir, 'view.mjs')))
+  ;({ CompanyList, canManageCompanies } = await import(pathToFileURL(join(dir, 'view.mjs')).href))
 } finally { await rm(dir, { recursive: true, force: true }) }
 const form = { companyId: ' test-1 ', name: ' 회사 ', description: '', initialPrice: '10000', isActive: true }
 const company = { ...companyInput(form), currentPrice: 10000, references: { transactions: 2, holdings: 1, eventEffects: 3 } }

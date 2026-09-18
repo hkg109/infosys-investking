@@ -8,7 +8,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 const dir = await mkdtemp(join(process.cwd(), '.event-test-'))
-let EventArticle, EventNews, currentEvents
+let EventArticle, EventNews, currentEvents, publicationTime
 try {
   const outfile = join(dir, 'component.mjs')
   await build({ entryPoints: ['src/events/EventNews.jsx'], outfile, bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic' })
@@ -16,6 +16,7 @@ try {
   EventArticle = module.EventArticle
   EventNews = module.default
   currentEvents = module.currentEvents
+  publicationTime = module.publicationTime
 } finally { await rm(dir, { recursive: true, force: true }) }
 const input = { title: ' 사건 ', news: '뉴스', result: '비공개 결과', effects: [{ companyId: 'A', changeRate: '-99' }] }
 test('event form validates required text, duplicate companies, integer rates and limits', () => {
@@ -48,6 +49,25 @@ test('current news includes every event in the current month and never leaks the
   assert.deepEqual(currentEvents({ events: [], event: events[0] }, 1), [])
   assert.deepEqual(currentEvents({ event: events[0] }, 2), [])
   const html = renderToStaticMarkup(createElement(EventArticle, { event: { ...input, round: 1, triggerPhase: 'INTRADAY', applied: false } }))
-  assert.match(html, /장중 사건/)
+  assert.match(html, /장중 속보/)
   assert.doesNotMatch(html, /거래가 마감|비공개 결과/)
+})
+
+test('newsroom distinguishes publication timing and price direction', () => {
+  const time = publicationTime({ scheduledAt: '2026-09-18T07:40:00.000Z', applied: false })
+  assert.match(time.label, /^예정 /)
+  assert.equal(time.dateTime, '2026-09-18T07:40:00.000Z')
+  const event = {
+    ...input, round: 2, triggerPhase: 'INTRADAY', applied: true, appliedAt: '2026-09-18T07:40:00.000Z',
+    changes: [
+      { companyId: 'A', name: '상승사', previousPrice: 10000, newPrice: 12000, changeRate: 20 },
+      { companyId: 'B', name: '하락사', previousPrice: 10000, newPrice: 9000, changeRate: -10 },
+    ],
+  }
+  const html = renderToStaticMarkup(createElement(EventArticle, { event }))
+  assert.match(html, /MARKET IMPACT/)
+  assert.match(html, /market-impact--up/)
+  assert.match(html, /▲ \+20%/)
+  assert.match(html, /market-impact--down/)
+  assert.match(html, /▼ -10%/)
 })
