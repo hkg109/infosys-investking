@@ -194,3 +194,7 @@ summary { cursor: pointer; min-height: 44px; padding: 12px 0; }
 .schedule-editor input, .schedule-editor select { box-sizing: border-box; width: 100%; min-width: 0; padding: .7rem; border: 1px solid #aebed0; border-radius: 8px; font: inherit; font-size: 16px; }
 .schedule-row { min-width: 0; display: grid; gap: .8rem; padding-bottom: 1rem; border-bottom: 1px solid #c5d1df; }
 .schedule-editor button { white-space: normal; }
+
+.ranking-list li.ranking-self { background: #e9f0ff; outline: 2px solid #215acb; outline-offset: -2px; }
+.ranking-all { margin: 1rem 0; }
+.ranking-all summary { cursor: pointer; padding: .6rem 0; font-weight: 700; }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import Panel from '../components/Panel'
 import { money } from '../game/model'
-import { getRanking } from './api'
+import { getRanking, rankingFailure } from './api'
 
 export default function RankingPanel({ userId, game, revision }) {
   const [state, setState] = useState({ userId, data: null, error: '' })
@@ -13,7 +13,7 @@ export default function RankingPanel({ userId, game, revision }) {
     getRanking(controller.signal).then(data => {
       if (active) setState({ userId, data, error: '' })
     }).catch(error => {
-      if (active) setState(previous => ({ userId, data: previous.userId === userId ? previous.data : null, error: error.message === 'SESSION_REQUIRED' ? '참가 정보를 확인할 수 없습니다. 다시 로그인해 주세요.' : '순위를 갱신하지 못했습니다. 표시된 결과는 마지막으로 확인한 정보입니다.' }))
+      if (active) setState(previous => rankingFailure(previous, userId, error))
     }).finally(() => clearTimeout(timeout))
     return () => { active = false; clearTimeout(timeout); controller.abort() }
   }, [userId, revision, retry])
@@ -34,10 +34,23 @@ export function RankingResults({ data, finished }) {
     <p className="trading-help">참가자 {r.totalParticipants}명 · 계산 시각 <time dateTime={r.calculatedAt}>{new Date(r.calculatedAt).toLocaleString('ko-KR')}</time></p>
     <h3>TOP 3</h3>
     <p className="trading-help">동점자는 같은 순위로 표시합니다. 공동 3위까지 모두 포함합니다.</p>
-    {r.top3.length ? <ol className="ranking-list" aria-label="상위 순위">{r.top3.map((person, index) => <li key={`${person.nickname}-${index}`}><strong className="ranking-place">{person.rank}위</strong><span className="ranking-name">{person.nickname}</span><strong>{money(person.totalAssets)}</strong></li>)}</ol> : <p className="empty-state">아직 순위에 등록된 참가자가 없습니다.</p>}
+    <p className="trading-help">다른 참가자의 이름은 공개하지 않습니다. 본인 행은 ‘나’로 표시합니다.</p>
+    <AnonymousRankingList people={r.top3} label="상위 순위" />
+    <details className="ranking-all"><summary>전체 순위 보기 ({r.totalParticipants}명)</summary><AnonymousRankingList people={r.rankings} label="전체 순위" /></details>
     <section aria-label="내 순위" className="ranking-mine">
       <h3>{r.final ? '나의 최종 결과' : '내 순위'}</h3>
       {r.me ? <><p className="ranking-name"><strong>{r.me.nickname}</strong> · <strong>{r.me.rank}위</strong> / {r.totalParticipants}명</p><dl><div><dt>총자산</dt><dd>{money(r.me.totalAssets)}</dd></div><div><dt>보유 현금</dt><dd>{money(r.me.cash)}</dd></div><div><dt>주식 평가액</dt><dd>{money(r.me.stockValue)}</dd></div></dl></> : <p>이 계정은 {r.final ? '확정된 최종' : '현재'} 순위에 포함되어 있지 않습니다.</p>}
     </section>
   </div>
+}
+
+export function AnonymousRankingList({ people, label }) {
+  if (!people.length) return <p className="empty-state">아직 순위에 등록된 참가자가 없습니다.</p>
+  return <ol className="ranking-list" aria-label={label}>{people.map((person, index) =>
+    <li key={index} className={person.isMe ? 'ranking-self' : undefined}>
+      <strong className="ranking-place">{person.rank}위</strong>
+      <span className="ranking-name">{person.isMe ? <strong>나</strong> : null}</span>
+      <strong>{money(person.totalAssets)}</strong>
+    </li>
+  )}</ol>
 }
