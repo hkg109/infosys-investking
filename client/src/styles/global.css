@@ -357,3 +357,10 @@ summary { cursor: pointer; min-height: 44px; padding: 12px 0; }
   .price-timeline li > div:last-child { grid-column: 2; text-align: left; }
   .trade-ledger__numbers, .trade-ledger__meta { align-items: flex-start; flex-direction: column; }
 }
+
+.mission-list { list-style: none; padding: 0; display: grid; gap: 12px; }
+.mission-list li { padding: 16px; border: 1px solid #cbd8ef; border-radius: 12px; overflow-wrap: anywhere; min-width: 0; }
+.mission-result { overflow-wrap: anywhere; }
+.mission-result progress { display: block; width: 100%; height: 20px; accent-color: #215acb; }
+.mission-points { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; }
+.mission-completed { color: #12643b; font-weight: 700; }
