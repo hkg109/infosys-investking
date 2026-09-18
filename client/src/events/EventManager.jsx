@@ -1,3 +1,6 @@
+import ScheduleEditor from './ScheduleEditor'
+import { validateConstraints } from './schedule'
+import { companyRequest } from '../companies/api'
 import { useEffect, useRef, useState } from 'react'
 import Panel from '../components/Panel'
 import { eventRequest, eventInput, eventError } from './api'
@@ -6,6 +9,7 @@ export default function EventManager({ password, game, stale, onBusy }) {
   const [events, setEvents] = useState(null)
   const [companies, setCompanies] = useState([])
   const [schedule, setSchedule] = useState([])
+  const [constraints, setConstraints] = useState(null)
   const [form, setForm] = useState(blank)
   const [editing, setEditing] = useState(null)
   const [deleting, setDeleting] = useState(null)
@@ -21,18 +25,16 @@ export default function EventManager({ password, game, stale, onBusy }) {
     if (locked.current) return
     locked.current = true; setBusy(true); onBusy(true); setError(''); setMessage('')
     const version = generation.current
-    try { await work(() => version === generation.current) } catch (e) { if (version === generation.current) setError(eventError(e)) }
+    try { return await work(() => version === generation.current) } catch (e) { if (version === generation.current) { setError(eventError(e)); setUncertain(true) } }
     finally { locked.current = false; setBusy(false); onBusy(false) }
   }
   const load = () => run(async current => {
-    const base = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
-    const [list, assigned, marketResponse] = await Promise.all([
-      eventRequest('/admin', { password }), eventRequest('/admin/schedule', { password }),
-      fetch(`${base}/api/trading/market`, { credentials: 'include', signal: AbortSignal.timeout(8000) }),
+    const [list, assigned, allCompanies] = await Promise.all([
+      eventRequest('/admin', { password }), eventRequest('/admin/schedule', { password }), companyRequest('', { password }),
     ])
-    if (!marketResponse.ok) throw new Error('DATABASE_UNAVAILABLE')
-    const market = await marketResponse.json()
-    if (current()) { setEvents(list.events); setSchedule(assigned.schedule); setCompanies(market.companies); setUncertain(false) }
+    const limits = validateConstraints(assigned.constraints)
+    if (current()) { setEvents(list.events); setSchedule(assigned.schedule); setConstraints(limits); setCompanies(allCompanies); setUncertain(false); setDeleting(null) }
+
   })
   const save = (e) => {
     e.preventDefault()
@@ -45,6 +47,7 @@ export default function EventManager({ password, game, stale, onBusy }) {
       const data = await eventRequest(editing ? `/admin/${editing}` : '/admin', { password, method: editing ? 'PUT' : 'POST', body })
       if (current()) {
         setEvents(list => editing ? list.map(item => item.eventId === editing ? data.event : item) : [...list, data.event])
+        setSchedule(list => list.map(item => item.eventId === data.event.eventId ? { ...item, title: data.event.title, news: data.event.news, result: data.event.result } : item))
         setForm(blank()); setEditing(null); setUncertain(false); setMessage('사건을 저장했습니다.')
       }
     })
@@ -59,11 +62,11 @@ export default function EventManager({ password, game, stale, onBusy }) {
   }
   const updateEffect = (index, field, value) => setForm(f => ({ ...f, effects: f.effects.map((item, i) => i === index ? { ...item, [field]: value } : item) }))
   return <Panel title="사건 관리">
-    <p className="trading-help">게임 시작 전 사건을 등록하세요. {game?.totalRounds || '전체'}개월 게임에는 서로 다른 사건이 그 수만큼 필요합니다. 시작하면 무작위로 배정됩니다.</p>
-    <button type="button" className="secondary-button" disabled={!password || busy} onClick={load}>사건 목록 조회</button>
+    <p className="trading-help">대기 중 사건을 등록하고 아래에서 월별로 배정하세요. 한 달에 여러 사건 또는 사건 없는 달을 구성할 수 있습니다. 배정을 저장하지 않으면 시작 시 기존 방식으로 월별 마감 사건 1개를 무작위 배정합니다.</p>
+    <button type="button" className="secondary-button" disabled={!password || busy || stale} onClick={load}>사건 목록 조회</button>
     {error && <p className="form-error" role="alert">{error}</p>}{message && <p role="status">{message}</p>}
-    {uncertain && <p className="trading-help">저장·삭제 결과를 확인하려면 사건 목록을 먼저 조회해 주세요. 목록에 반영됐다면 다시 등록하지 마세요.</p>}
-    {events && <p>등록 {events.length}개 / 필요 {game?.totalRounds ?? '—'}개</p>}
+    {uncertain && <p className="trading-help">사건·배정의 최신 상태를 확인하려면 목록을 먼저 조회해 주세요. 요청을 자동 재전송하지 않으며 입력 초안은 유지됩니다.</p>}
+    {events && <p>등록 사건 {events.length}개</p>}
     {game?.status !== 'WAITING' && <p>게임이 시작되어 사건은 조회만 가능합니다.</p>}
     {events && <ul className="event-list">{events.map(item => <li key={item.eventId}>
       <h3>{item.title}</h3><p>{item.news}</p><details><summary>결과와 변동률</summary><p>{item.result}</p><p>{item.effects.map(effect => `${effect.companyId}: ${effect.changeRate > 0 ? '+' : ''}${effect.changeRate}%`).join(' / ')}</p></details>
@@ -74,18 +77,26 @@ export default function EventManager({ password, game, stale, onBusy }) {
       <h3>{editing ? '사건 수정' : '새 사건 등록'}</h3><fieldset disabled={!canEdit}>
         <label htmlFor="event-title">사건 제목</label><input id="event-title" maxLength={100} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} required />
         <label htmlFor="event-news">사전 뉴스 (참가자에게 공개)</label><textarea id="event-news" maxLength={2000} rows={4} value={form.news} onChange={e => setForm({ ...form, news: e.target.value })} required />
-        <label htmlFor="event-result">사건 결과 (거래 마감 후 공개)</label><textarea id="event-result" maxLength={2000} rows={4} value={form.result} onChange={e => setForm({ ...form, result: e.target.value })} required />
+        <label htmlFor="event-result">사건 결과 (해당 사건 적용 후 공개)</label><textarea id="event-result" maxLength={2000} rows={4} value={form.result} onChange={e => setForm({ ...form, result: e.target.value })} required />
         {form.effects.map((effect, index) => <div className="event-effect" key={index}>
-          <label>영향 기업 {index + 1}<select value={effect.companyId} onChange={e => updateEffect(index, 'companyId', e.target.value)} required><option value="">기업 선택</option>{companies.map(company => <option key={company.companyId} value={company.companyId}>{company.name}</option>)}</select></label>
+          <label>영향 기업 {index + 1}<select value={effect.companyId} onChange={e => updateEffect(index, 'companyId', e.target.value)} required><option value="">기업 선택</option>{companies.map(company => <option key={company.companyId} value={company.companyId} disabled={!company.isActive}>{company.name}{!company.isActive ? ' (비활성)' : ''}</option>)}</select></label>
           <label>변동률 (%) {index + 1}<input type="text" inputMode="text" placeholder="예: -10 또는 20" value={effect.changeRate} onChange={e => updateEffect(index, 'changeRate', e.target.value)} required /></label>
           <button type="button" className="secondary-button" disabled={form.effects.length === 1} onClick={() => setForm({ ...form, effects: form.effects.filter((_, i) => i !== index) })}>영향 기업 {index + 1} 제거</button>
         </div>)}
         <p className="trading-help">기업별 -99~1000 사이의 정수로 입력합니다. 감소는 음수(-)로 입력하세요.</p>
-        <button type="button" className="secondary-button" disabled={form.effects.length >= companies.length} onClick={() => setForm({ ...form, effects: [...form.effects, { companyId: '', changeRate: '0' }] })}>영향 기업 추가</button>
+        <button type="button" className="secondary-button" disabled={form.effects.length >= Math.min(50, companies.filter(c => c.isActive).length)} onClick={() => setForm({ ...form, effects: [...form.effects, { companyId: '', changeRate: '0' }] })}>영향 기업 추가</button>
         <button type="submit" className="primary-button">{editing ? '수정 저장' : '사건 등록'}</button>
         {editing && <button type="button" className="secondary-button" onClick={() => { setEditing(null); setForm(blank()) }}>수정 취소</button>}
       </fieldset>
     </form>}
-    {schedule.length > 0 && <details><summary>관리자 전용 월별 배정표</summary><ol>{schedule.map(item => <li key={item.round}>{item.round}월 · {item.title} · {item.appliedAt ? '적용 완료' : '예정'}</li>)}</ol></details>}
+    {events && constraints && <ScheduleEditor events={events} companies={companies} schedule={schedule} constraints={constraints} canEdit={canEdit} onWrite={(mode, body) => {
+      if (!canEdit) return
+      return run(async current => {
+        setUncertain(true)
+        const data = await eventRequest(mode === 'manual' ? '/admin/schedule' : '/admin/schedule/randomize', { password, method: mode === 'manual' ? 'PUT' : 'POST', body })
+        if (current()) { setSchedule(data.schedule); setUncertain(false); setMessage('월별 배정을 저장했습니다.'); return data.schedule }
+      })
+    }} />}
+
   </Panel>
 }

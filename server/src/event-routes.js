@@ -61,7 +61,7 @@ export function createEventRouter(database, engine, { adminPassword, clientUrl, 
         round: index + 1,
         events: schedule.filter((event) => event.round === index + 1),
       }))
-      response.json({ schedule, rounds })
+      response.json({ schedule, rounds, constraints: scheduleOptions() })
     } catch (error) {
       next(error)
     }
