@@ -91,6 +91,7 @@ Frontend가 화면 뼈대를 병렬로 준비할 수는 있지만, 실제 연동
 | 주식 종목 생성·수정·비활성화 | Backend 구현·PostgreSQL 통합 테스트 완료 | 재헌 종목 관리·참조 경고 UI 연동 필요 |
 | 복수·장중 사건, 수동·랜덤 월별 배정 | Backend 구현·PostgreSQL 통합 테스트 완료 | 재헌 `F-09~10` 사건 배정·발생 시각·충돌 검증 UI 연동 필요 |
 | 익명 실시간 순위·사용자별 `isMe` | Backend 구현·PostgreSQL·Socket 전달 테스트 완료 | 재헌 `F-11` 익명 순위와 본인 강조 UI 연동 필요 |
+| 게임·뉴스·플로팅 타이머 개편 | Frontend 구현·자동 테스트 완료 | 재헌 `F-12~14`; PC 양쪽 배치, 모바일 한 열, 뉴스형 사건 결과, 위치·크기 저장 타이머. `QA_STAGE6_FRONTEND.md` 참조 |
 | 월별 거래·주가 분석 | Backend 구현·PostgreSQL 통합 테스트 완료 | 재헌 `F-15~17` 본인 거래 현황·종목 차트·투자 화면 연동 필요; `MARKET_HISTORY_API.md` 참조 |
 | 개인 비밀 미션·정보 포인트 | Backend 구현·PostgreSQL 통합 테스트 완료 | 재헌 `F-18~19` 관리자 미션 관리·사용자 비밀 미션 UI 연동 필요; `MISSION_API.md` 참조 |
 | 실제 관리자 버튼 → 사용자 화면 | 미연동·미검증 | 재헌 Frontend 연동 후 공동 확인 |

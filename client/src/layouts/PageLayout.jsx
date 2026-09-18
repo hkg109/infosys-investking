@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 
-function PageLayout({ actions, children, title, subtitle }) {
+function PageLayout({ actions, children, title, subtitle, wide = false }) {
   return (
     <div className="app-shell">
       <header className="site-header">
@@ -12,7 +12,7 @@ function PageLayout({ actions, children, title, subtitle }) {
         </nav>
       </header>
 
-      <main className="page-container">
+      <main className={`page-container${wide ? ' page-container--wide' : ''}`}>
         <section className="page-heading">
           <p className="eyebrow">INVESTKING</p>
           <h1>{title}</h1>

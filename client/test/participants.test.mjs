@@ -5,14 +5,15 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { validateParticipants, getParticipants } from '../src/admin/participants.js'
 import { allowedControl } from '../src/game/model.js'
 const dir = await mkdtemp(join(process.cwd(), '.participants-test-'))
 let ParticipantTable, ResetPanel, canConfirmReset
 try {
   for (const name of ['ParticipantPanel', 'ResetPanel']) await build({ entryPoints: [`src/admin/${name}.jsx`], outfile: join(dir, `${name}.mjs`), bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic' })
-  ;({ ParticipantTable } = await import(join(dir, 'ParticipantPanel.mjs')))
-  ;({ default: ResetPanel, canConfirmReset } = await import(join(dir, 'ResetPanel.mjs')))
+  ;({ ParticipantTable } = await import(pathToFileURL(join(dir, 'ParticipantPanel.mjs')).href))
+  ;({ default: ResetPanel, canConfirmReset } = await import(pathToFileURL(join(dir, 'ResetPanel.mjs')).href))
 } finally { await rm(dir, { recursive: true, force: true }) }
 const person = { userId: 'u1', nickname: '<script>이름</script>', online: true, cash: 0, stockValue: 200, totalAssets: 200, holdings: [{ companyId: 'A', name: 'A 기업', quantity: 2, currentPrice: 100, marketValue: 200 }] }
 test('participant validation rejects malformed totals, duplicate IDs and inconsistent presence counts', () => {
