@@ -1,3 +1,4 @@
+import { createIntelligenceRouter } from './intelligence-routes.js'
 import express from 'express'
 import { createServer } from 'node:http'
 import { Server } from 'socket.io'
@@ -115,7 +116,8 @@ game.on('game-event', (event) => {
   })
 })
 
-app.use(express.json({ limit: '8kb' }))
+// Intelligence bodies allow 5,000 Unicode characters plus title/summary.
+app.use(express.json({ limit: '32kb' }))
 app.use(resetCoordinator.blockMutations)
 app.use('/api/admin/auth', createAdminAuthRouter({
   adminPassword: process.env.ADMIN_PASSWORD,
@@ -157,6 +159,10 @@ app.use('/api/events', createEventRouter(pool, game, {
   adminPassword: process.env.ADMIN_PASSWORD,
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
   haltDurationMs: eventHaltDurationMs,
+}))
+app.use('/api/intelligence', createIntelligenceRouter(pool, game, {
+  adminPassword: process.env.ADMIN_PASSWORD,
+  clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
 }))
 app.use('/api/missions', createMissionRouter(pool, game, {
   adminPassword: process.env.ADMIN_PASSWORD,

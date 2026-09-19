@@ -138,4 +138,8 @@ PR의 `Closes #3`은 서버 범위 Issue를 닫는다. 브라우저 통합까지
 
 ## QA 9단계 Frontend 준비 상태
 
-2026-09-18 사용자 결정에 따라 `F-20~21`, `D-03` 프론트엔드만 준비했습니다. 관리자 단서 편집·정보 상점·보관함을 모의 API로 검증했으며, 기본 비활성 상태입니다. `B-15~16` Backend 선행 PR은 아직 없습니다. 실제 연동 완료로 판정하지 않습니다. API 제안은 `INTELLIGENCE_API_DRAFT.md`, 검증·후속 통합 범위는 `QA_STAGE9_FRONTEND.md`를 참고하세요.
+2026-09-18 사용자 결정에 따라 `F-20~21`, `D-03` 프론트엔드만 준비했습니다. 관리자 단서 편집·정보 상점·보관함을 모의 API로 검증했으며, 기본 비활성 상태입니다. `B-15~16` Backend PR #31은 main에 병합됐고 이 브랜치에도 반영했습니다. 실제 연동 완료로 판정하지 않습니다. API 제안은 `INTELLIGENCE_API_DRAFT.md`, 검증·후속 통합 범위는 `QA_STAGE9_FRONTEND.md`를 참고하세요.
+
+## QA 9단계 Backend 인계
+
+2026-09-19 `B-15~16`, `D-03`을 구현했습니다. 단서 CRUD·공개 월 관리, 미션 포인트 구매, 구매자 전용 보관함과 중복·동시 차감 방지를 제공합니다. 계약과 migration·검증 결과는 [INTELLIGENCE_API.md](INTELLIGENCE_API.md)를 참고하세요. 프론트엔드 준비 PR [#30](https://github.com/hkg109/infosys-investking/pull/30)은 별도이며, Backend 병합 후 실제 API 연동 검증과 기능 활성화가 필요합니다.

@@ -340,3 +340,31 @@ CREATE TABLE IF NOT EXISTS user_reward_wallets (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (game_id, user_id)
 );
+
+-- QA stage 9: private intelligence purchases use the mission reward wallet.
+CREATE TABLE IF NOT EXISTS intelligence_clues (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title VARCHAR(100) NOT NULL CHECK (length(trim(title)) > 0),
+  summary TEXT NOT NULL CHECK (length(trim(summary)) BETWEEN 1 AND 500),
+  content TEXT NOT NULL CHECK (length(trim(content)) BETWEEN 1 AND 5000),
+  price INTEGER NOT NULL CHECK (price BETWEEN 1 AND 1000000),
+  available_round INTEGER NOT NULL CHECK (available_round BETWEEN 1 AND 1000),
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS intelligence_clues_catalog_idx
+  ON intelligence_clues(is_active, available_round, created_at, id);
+CREATE TABLE IF NOT EXISTS intelligence_purchases (
+  game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  clue_id UUID NOT NULL REFERENCES intelligence_clues(id),
+  title VARCHAR(100) NOT NULL,
+  summary TEXT NOT NULL,
+  content TEXT NOT NULL,
+  price INTEGER NOT NULL CHECK (price BETWEEN 1 AND 1000000),
+  available_round INTEGER NOT NULL CHECK (available_round BETWEEN 1 AND 1000),
+  paid_points INTEGER NOT NULL CHECK (paid_points BETWEEN 1 AND 1000000),
+  purchased_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (game_id, user_id, clue_id)
+);
