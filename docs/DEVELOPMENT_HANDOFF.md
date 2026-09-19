@@ -135,3 +135,7 @@ PR의 `Closes #3`은 서버 범위 Issue를 닫는다. 브라우저 통합까지
 ## 환경 설정 보완 이력
 
 초기 scaffold에는 루트 `.env` 로딩이 없었다. 현재 PR의 서버는 루트 `.env`를 읽고 셸 환경변수를 우선하며 파일이 없어도 기본값으로 시작한다. 실제 `.env`는 Git에 포함하지 않는다.
+
+## QA 9단계 Backend 인계
+
+2026-09-19 `B-15~16`, `D-03`을 구현했습니다. 단서 CRUD·공개 월 관리, 미션 포인트 구매, 구매자 전용 보관함과 중복·동시 차감 방지를 제공합니다. 계약과 migration·검증 결과는 [INTELLIGENCE_API.md](INTELLIGENCE_API.md)를 참고하세요. 프론트엔드 준비 PR [#30](https://github.com/hkg109/infosys-investking/pull/30)은 별도이며, Backend 병합 후 실제 API 연동 검증과 기능 활성화가 필요합니다.
