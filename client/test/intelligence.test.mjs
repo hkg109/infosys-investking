@@ -18,7 +18,7 @@ try {
  await build({entryPoints:['src/intelligence/IntelligencePanel.jsx'],outfile:join(dir,'panel.mjs'),bundle:true,platform:'node',format:'esm',packages:'external',jsx:'automatic'})
  ;({StoreItems,IntelligenceLibrary}=await import(pathToFileURL(join(dir,'panel.mjs')).href))
 } finally { await rm(dir,{recursive:true,force:true}) }
-test('intelligence is disabled until backend contract integration is explicitly enabled',()=>assert.equal(intelligenceEnabled,false))
+test('intelligence is enabled after backend contract integration',()=>assert.equal(intelligenceEnabled,true))
 test('clue fields enforce boundaries and allow multiline private body',()=>{
  assert.equal(clueInput(form).title,'단서')
  for(const patch of [{title:''},{summary:'x'.repeat(501)},{content:'x'.repeat(5001)},{price:'0'},{price:'1e2'},{price:'1000001'},{availableRound:'0'},{availableRound:'1001'},{content:'a\u0000b'},{isActive:'true'}])assert.throws(()=>clueInput({...form,...patch}))

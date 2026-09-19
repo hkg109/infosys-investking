@@ -6,9 +6,9 @@
 
 ## 활성화와 화면 검토
 
-- 기본값은 비활성입니다. `/game`, `/admin`에는 상점·단서 관리가 나타나지 않고 해당 API를 호출하지 않습니다.
+- 실제 Backend API 어댑터 검증 후 기본 활성화했습니다. `VITE_ENABLE_INTELLIGENCE=false`로 비활성화할 수 있습니다.
 - 개발 UI 검토: `npm --prefix client run dev` 후 `/test/intelligence.html`. 모의 API와 가짜 계정만 사용합니다. 테스트 페이지는 production build 산출물에 포함하지 않습니다.
-- 실제 계약 연동 후: `VITE_ENABLE_INTELLIGENCE=true npm --prefix client run dev` 또는 해당 환경변수로 production build. `VITE_API_BASE_URL`은 기존 설정을 따릅니다. Vite 플래그는 빌드 시 결정됩니다.
+- 실행: `npm --prefix client run dev` 또는 production build. `VITE_API_BASE_URL`은 기존 설정을 따릅니다. Vite 플래그는 빌드 시 결정됩니다.
 
 ## 제안 데이터 모델
 
