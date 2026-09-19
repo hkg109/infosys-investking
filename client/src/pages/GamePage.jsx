@@ -1,3 +1,5 @@
+import IntelligencePanel from '../intelligence/IntelligencePanel'
+import { intelligenceEnabled } from '../intelligence/api'
 import MissionPanel from '../missions/MissionPanel'
 import RankingPanel from '../ranking/RankingPanel'
 import EventNews from '../events/EventNews'
@@ -19,6 +21,7 @@ import TradeHistoryPanel from '../trading/TradeHistoryPanel'
 function GamePage() {
   const navigate = useNavigate()
   const { logout, user, checkSession } = useSession()
+  const [intelligenceRevision, setIntelligenceRevision] = useState(0)
   const gameState = useGame('', checkSession)
   const trading = useTrading(user.userId)
   useEffect(() => { trading.refresh() }, [gameState.snapshot, trading.refresh])
@@ -89,7 +92,8 @@ function GamePage() {
           <TradeHistoryPanel totalRounds={gameState.game?.totalRounds} revision={trading.account} />
         </div>
         <div className="game-dashboard-column game-dashboard-column--news">
-          <MissionPanel userId={user.userId} game={gameState.game} revision={gameState.snapshot} />
+          <MissionPanel key={`mission-${intelligenceRevision}`} userId={user.userId} game={gameState.game} revision={gameState.snapshot} />
+          {intelligenceEnabled && <IntelligencePanel key={user.userId} userId={user.userId} game={gameState.game} revision={gameState.snapshot} stale={gameState.loading || Boolean(gameState.error)} onPurchased={() => setIntelligenceRevision(n => n + 1)} />}
           <EventNews game={gameState.game} revision={gameState.snapshot} />
           <RankingPanel userId={user.userId} game={gameState.game} revision={gameState.snapshot} />
         </div>

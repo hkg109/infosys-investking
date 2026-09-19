@@ -163,3 +163,35 @@ test('intelligence rolls back if game pauses during purchase or starts during cl
   await assert.rejects(saveClue(startDuringEdit,c.engine,clue.clueId,{...input,content:'변경'}),/CLUE_MANAGEMENT_CLOSED/)
   assert.equal((await c.database.query('SELECT content FROM intelligence_clues WHERE id=$1',[clue.clueId])).rows[0].content,input.content)
 })
+
+
+test('real PostgreSQL HTTP responses work with the frontend intelligence adapter',dbOptions,async t=>{
+  const c=await setup(t), who=await c.user(40), other=await c.user(0)
+  const { intelligenceRequest }=await import('../../client/src/intelligence/api.js')
+  const originalFetch=globalThis.fetch
+  let currentUser=who, loseResponse=false, purchaseCalls=0
+  globalThis.fetch=async(url,options={})=>{
+    if (!String(url).startsWith('/api/intelligence')) return originalFetch(url,options)
+    const path=String(url).slice('/api/intelligence'.length)
+    const admin=options.headers?.Authorization==='Bearer test-admin'
+    const response=await c.request(path,{method:options.method,body:options.body?JSON.parse(options.body):undefined,who:admin?undefined:currentUser,admin,origin:clientUrl})
+    if(path==='/purchases'){purchaseCalls++;if(loseResponse){loseResponse=false;throw new Error('lost response after commit')}}
+    return response
+  }
+  try{
+    const created=await intelligenceRequest('/admin',{password:'test-admin',method:'POST',body:input})
+    assert.equal(created.clue.content,input.content)
+    assert.equal((await intelligenceRequest('/admin',{password:'test-admin'})).clues.length,1)
+    await c.state('RUNNING')
+    const before=await intelligenceRequest('/me');assert.equal(before.points,40);assert.equal(before.items[0].content,undefined)
+    loseResponse=true
+    await assert.rejects(intelligenceRequest('/purchases',{method:'POST',body:{clueId:created.clue.clueId,expectedPrice:10}}),/lost response/)
+    assert.equal(purchaseCalls,1)
+    const recovered=await intelligenceRequest('/me');assert.equal(recovered.points,30);assert.equal(recovered.purchases[0].content,input.content)
+    currentUser=other
+    const separate=await intelligenceRequest('/me');assert.equal(separate.points,0);assert.deepEqual(separate.purchases,[])
+    await assert.rejects(intelligenceRequest('/purchases',{method:'POST',body:{clueId:created.clue.clueId,expectedPrice:10}}),/INSUFFICIENT_POINTS/)
+    await c.database.query('DELETE FROM user_sessions WHERE user_id=$1',[other.id])
+    await assert.rejects(intelligenceRequest('/me'),/AUTH_REQUIRED/)
+  }finally{globalThis.fetch=originalFetch}
+})
