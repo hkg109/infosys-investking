@@ -111,6 +111,7 @@ function HomePage() {
         </form>
 
         <Link className="text-link" to="/admin">관리자 페이지로 이동</Link>
+        <Link className="text-link" to="/broadcast">대형 화면 중계 보기</Link>
         <p className="mock-note">PIN은 계정 복구에 필요합니다. 다른 사람에게 알려주지 마세요.</p>
       </section>
     </main>
