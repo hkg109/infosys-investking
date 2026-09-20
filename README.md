@@ -4,7 +4,7 @@
 
 ## 현재 개발 단계
 
-**QA 10단계 — 대형 스크린 중계 Frontend**. 공개 `/broadcast` 화면에서 익명 순위, 종목 가격, 공개 뉴스와 사건 결과를 16:9 화면으로 중계합니다. 11단계 Backend 통합 테스트는 병합됐으며 실제 행사 브라우저 전체 흐름은 후속 QA 범위입니다.
+**QA 11단계 — Frontend 통합 브라우저 QA 준비**. 1~10단계 기능은 병합됐고, 관리자·다중 참가자·공개 `/broadcast`를 실제 QA DB와 동시에 검증하는 F-24 실행 절차를 준비했습니다. 실제 행사 브라우저 판정은 [QA_STAGE11_FRONTEND.md](docs/QA_STAGE11_FRONTEND.md)에 따라 별도 수행합니다.
 
 클라이언트가 보낸 Socket 제어 이벤트는 더 이상 처리하지 않습니다. 관리자는 `ADMIN_PASSWORD`로 인증된 HTTP API를 사용하고 서버가 상태 변경 후 Socket 이벤트를 전파합니다. 사용자 HTTP 세션과 Socket 연결 인증은 아직 분리되어 있습니다.
 
@@ -61,7 +61,7 @@ npm install
 npm run dev
 ```
 
-개발 서버의 기본 주소는 `http://localhost:5173`입니다. 주요 화면은 `/`, `/game`, `/admin`, 공개 중계 `/broadcast`에서 확인할 수 있습니다.
+개발 서버의 기본 주소는 `http://localhost:5173`입니다. 주요 화면은 `/`, `/game`, `/admin`, 공개 중계 `/broadcast`에서 확인할 수 있습니다. 통합 QA 콘솔은 `/test/qa-flow.html`입니다.
 
 프로덕션 빌드는 `npm run build`로 확인합니다.
 
@@ -127,6 +127,8 @@ INITIAL_CASH=1000000
 - [순위·최종 결과 API](docs/RANKING_API.md)
 - [월별 거래·주가 분석 API](docs/MARKET_HISTORY_API.md)
 - [개인 비밀 미션 API](docs/MISSION_API.md)
+- [QA 11단계 Frontend 통합 브라우저 검증](docs/QA_STAGE11_FRONTEND.md)
+- [Frontend 품질 개선 후속 계획](docs/QA_FRONTEND_REWORK_PLAN.md)
 
 - [프로젝트 명세](docs/PROJECT_SPEC.md)
 - [협업 가이드](docs/COLLABORATION_GUIDE.md)
