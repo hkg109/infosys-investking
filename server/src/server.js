@@ -1,3 +1,4 @@
+import { createBroadcastRouter } from './broadcast.js'
 import { createIntelligenceRouter } from './intelligence-routes.js'
 import express from 'express'
 import { createServer } from 'node:http'
@@ -176,6 +177,11 @@ app.use('/api/trading', createTradingRouter(pool, game, {
     return rankingCoordinator.refreshAndEmit()
   },
   marketGate,
+}))
+app.use('/api/broadcast', createBroadcastRouter(pool, {
+  clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
+  beforeRead: () => eventProcessing,
+  isHalted: marketGate.isHalted,
 }))
 app.use('/api/rankings', createRankingRouter(pool, game, {
   beforeRefresh: () => eventProcessing,

@@ -143,3 +143,10 @@ PR의 `Closes #3`은 서버 범위 Issue를 닫는다. 브라우저 통합까지
 ## QA 9단계 Backend 인계
 
 2026-09-19 `B-15~16`, `D-03`을 구현했습니다. 단서 CRUD·공개 월 관리, 미션 포인트 구매, 구매자 전용 보관함과 중복·동시 차감 방지를 제공합니다. 계약과 migration·검증 결과는 [INTELLIGENCE_API.md](INTELLIGENCE_API.md)를 참고하세요. 프론트엔드 준비 PR [#30](https://github.com/hkg109/infosys-investking/pull/30)은 별도이며, Frontend PR #30에서 실제 API 어댑터 연동을 검증하고 기능을 활성화했습니다.
+
+## QA 10단계 Backend 인계
+
+B-17 익명 중계 Feed `GET /api/broadcast`를 구현했습니다. 로그인 없이 게임 타이머,
+익명 순위, 주가, 현재 월 공개 뉴스·발생 사건을 조회합니다. 미공개 사건과 개인 정보는
+제외하며, 재접속 시 전체 상태를 다시 가져옵니다. 상세 계약·갱신 방식·검증 범위는
+[BROADCAST_API.md](BROADCAST_API.md)를 참고하세요. F-22~23 중계 화면은 별도 Frontend 범위입니다.
