@@ -75,6 +75,9 @@ export function createUserRouter(database, {
         [randomUUID(), nickname, encoded])
       const token = await insertSession(client, result.rows[0].id, request)
       await client.query('COMMIT')
+      // Ranking/mission hooks use the pool again, so do not retain this connection.
+      client.release()
+      client = null
       await onUserCreated(publicUser(result.rows[0])).catch(() => console.error('Failed to process user join hooks'))
       response.cookie(SESSION_COOKIE_NAME, token, { ...cookieOptions, maxAge: sessionDurationMs })
       response.status(201).json({ user: publicUser(result.rows[0]) })

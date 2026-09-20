@@ -343,6 +343,9 @@ export function createTradingRouter(database, engine, {
       await client.query("UPDATE order_intents SET status = 'FILLED' WHERE order_id = $1 AND user_id = $2", [order.orderId, request.user.id])
       const account = await accountJson(client, request.user.id)
       await client.query('COMMIT')
+      // Hooks acquire their own connections; release this committed transaction first.
+      client.release()
+      client = null
       const transaction = transactionJson(inserted.rows[0])
       await onTradeCommitted({ userId: request.user.id, round: game.currentRound, transaction })
         .catch(() => console.error('Failed to process trade hooks'))
