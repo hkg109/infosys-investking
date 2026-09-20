@@ -151,6 +151,10 @@ B-17 익명 중계 Feed `GET /api/broadcast`를 구현했습니다. 로그인 �
 제외하며, 재접속 시 전체 상태를 다시 가져옵니다. 상세 계약·갱신 방식·검증 범위는
 [BROADCAST_API.md](BROADCAST_API.md)를 참고하세요. F-22~23 중계 화면은 별도 Frontend 범위입니다.
 
+## QA 10단계 Frontend 인계
+
+`F-22~23` 공개 `/broadcast` 16:9 중계 화면을 `codex/broadcast-ui`에서 구현했습니다. 시장·익명 순위·공개 뉴스·장중 속보·월 결과·최종 순위를 서버 Feed에 연결하고, 첫 접속 중복 연출 방지와 연결 복구를 처리했습니다. 자동 테스트와 빌드 결과, 행사 전 브라우저 확인 범위는 [QA_STAGE10_FRONTEND.md](QA_STAGE10_FRONTEND.md)를 참고하세요. F-24 실제 행사 흐름 검증은 별도입니다.
+
 ## QA 11단계 Backend 인계
 
 B-18/D-04: 실제 server.js + PostgreSQL + HTTP/Socket 통합 테스트와 PostgreSQL CI를
