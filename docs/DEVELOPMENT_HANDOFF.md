@@ -196,3 +196,11 @@ URL·브랜치·PR·검수 기준은 [QA_FRONTEND_REWORK_PLAN.md](QA_FRONTEND_RE
 계약·인증을 검증했다. 서버 구현·DB·API·오류 계약 변경은 없다. 결과와 화면별 연결표는
 [QA_STAGE12_BACKEND.md](QA_STAGE12_BACKEND.md)를 참고한다. F-25~27 화면 구현과 직접 URL
 접근·새로고침·뒤로가기 검증은 Frontend 범위다.
+
+## QA 13단계 Backend 오류 계약 확인
+
+최신 main `1f5a9a9`에서 종목·사건·미션 수정 오류와 주문 거절 응답의 HTTP 상태·JSON 전체를
+검증했습니다. 인증·입력·대상 없음·RUNNING 편집 제한·잔액/보유량 부족·주문 ID 충돌을 확인하고,
+실패 후 데이터 보존도 검사했습니다. 서버 구현과 기존 오류 계약은 유지합니다.
+[QA_STAGE13_BACKEND.md](QA_STAGE13_BACKEND.md)에 응답표와 오버레이 닫기/주문 취소 구분,
+결과 불명 시 재조회·복구 규칙을 정리했습니다. F-28~30의 Modal/Drawer·ESC·포커스 구현은 Frontend 범위입니다.

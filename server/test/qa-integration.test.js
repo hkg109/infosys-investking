@@ -67,6 +67,11 @@ test('stage 11: concurrent HTTP orders, process crash recovery, events and final
       ...(body ? { body: JSON.stringify(body) } : {}) })
     return { status: response.status, body: await response.json(), cookie: response.headers.get('set-cookie')?.split(';')[0] }
   }
+  async function expectError(path, options, status, body) {
+    const result = await request(path, options)
+    assert.equal(result.status, status, path)
+    assert.deepEqual(result.body, body, path)
+  }
   const control = action => request(`/game/admin/${action}`, { method: 'POST', admin: true })
   const feed = async () => (await request('/broadcast')).body
   await start()
@@ -110,6 +115,22 @@ test('stage 11: concurrent HTTP orders, process crash recovery, events and final
     }
   }
   await t.test('stage 12: page API contracts and access control in WAITING', () => checkPageReads(participants[0].cookie))
+  await t.test('stage 13: editor error contracts do not mutate stored data', async () => {
+    const original = (await request('/companies/admin', {admin:true})).body
+    for (const [root, id, invalid, missing] of [
+      ['/companies/admin', 'A', 'INVALID_COMPANY', 'COMPANY_NOT_FOUND'],
+      ['/events/admin', randomUUID(), 'INVALID_EVENT', 'EVENT_NOT_FOUND'],
+      ['/missions/admin', randomUUID(), 'INVALID_MISSION', 'MISSION_NOT_FOUND'],
+    ]) {
+      await expectError(`${root}/${id}`, {method:'PUT',body:{},cookie:participants[0].cookie}, 401, {error:'ADMIN_AUTH_REQUIRED'})
+      await expectError(`${root}/${id}`, {method:'PUT',body:{},admin:true}, 400, {error:invalid})
+      await expectError(`${root}/${root.includes('companies') ? 'MISSING' : randomUUID()}`, {method:'DELETE',admin:true}, 404, {error:missing})
+    }
+    assert.deepEqual((await request('/companies/admin', {admin:true})).body, original)
+    assert.deepEqual((await request('/events/admin', {admin:true})).body.events, [])
+    assert.deepEqual((await request('/missions/admin', {admin:true})).body.missions, [])
+  })
+
 
   const events = []
   for (const rate of [10,-10,5]) {
@@ -123,6 +144,16 @@ test('stage 11: concurrent HTTP orders, process crash recovery, events and final
   ]}]}})).status,200)
   assert.equal((await control('start')).status,200)
   await feed() // Wait for the server's start-event queue.
+  await t.test('stage 13: editing closes when the game starts without changing error details', async () => {
+    for (const [path, code] of [
+      ['/companies/admin/A','COMPANY_MANAGEMENT_CLOSED'],
+      [`/events/admin/${events[0]}`,'EVENT_MANAGEMENT_CLOSED'],
+      [`/missions/admin/${randomUUID()}`,'MISSION_MANAGEMENT_CLOSED'],
+    ]) {
+      await expectError(path,{method:'PUT',body:{},admin:true},409,{error:code,status:'RUNNING'})
+    }
+  })
+
   const orders = participants.map(() => ({orderId:randomUUID(),companyId:'A',type:'BUY',quantity:1}))
   const responses = await Promise.all(participants.flatMap((p,i) => [0,1].map(() => request('/trading/orders',{cookie:p.cookie,body:orders[i]}))))
   assert.equal(responses.filter(r=>r.status===201).length,12)
@@ -132,6 +163,17 @@ test('stage 11: concurrent HTTP orders, process crash recovery, events and final
   assert.equal(overspend.filter(r=>r.body.error==='INSUFFICIENT_CASH').length,2)
   const before = (await request('/trading/portfolio',{cookie:participants[0].cookie})).body
   assert.equal(before.account.cash,390000)
+  await t.test('stage 13: rejected orders preserve account and transaction history', async () => {
+    const cookie = participants[0].cookie
+    const total = (await database.query('SELECT count(*)::int AS n FROM transactions')).rows[0].n
+    await expectError('/trading/orders',{body:{...orders[0],quantity:2},cookie},409,{error:'ORDER_ID_CONFLICT'})
+    await expectError('/trading/orders',{body:{...orders[0],orderId:'invalid'},cookie},400,{error:'INVALID_INPUT'})
+    await expectError('/trading/orders',{body:{...orders[0],orderId:randomUUID(),quantity:1000},cookie},409,{error:'INSUFFICIENT_CASH',availableCash:390000})
+    await expectError('/trading/orders',{body:{...orders[0],orderId:randomUUID(),quantity:1000,type:'SELL'},cookie},409,{error:'INSUFFICIENT_SHARES'})
+    assert.equal((await database.query('SELECT count(*)::int AS n FROM transactions')).rows[0].n,total)
+    assert.deepEqual((await request('/trading/portfolio',{cookie})).body.account,before.account)
+  })
+
   assert.equal((await control('pause')).status,200)
   const paused = await feed()
   await stop(); await start()
