@@ -7,6 +7,14 @@ import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import pg from 'pg'
 import { io } from 'socket.io-client'
+import { validateCompanies } from '../../client/src/companies/api.js'
+import { validateParticipants } from '../../client/src/admin/participants.js'
+import { validateMine, validateAdmin } from '../../client/src/missions/api.js'
+import { validateStore, validateClues } from '../../client/src/intelligence/api.js'
+import { validateRanking } from '../../client/src/ranking/api.js'
+import { validateTradeHistory, validatePriceHistory } from '../../client/src/trading/historyApi.js'
+import { validateBroadcast } from '../../client/src/broadcast/model.js'
+
 
 // Exercise the production entry point, including its real post-commit hooks.
 test('stage 11: concurrent HTTP orders, process crash recovery, events and final reset', {
@@ -65,6 +73,44 @@ test('stage 11: concurrent HTTP orders, process crash recovery, events and final
   const participants = await Promise.all(Array.from({length:12}, (_, index) => request('/users/join', {body:{nickname:`qa-${index}`,pin:'1234'}})))
   assert.ok(participants.every(p => p.status === 201))
   assert.equal((await feed()).ranking.totalParticipants, 12)
+  // Stage 12: page-specific reads use existing routes and real frontend validators.
+  async function checkPageReads(cookie) {
+    const adminReads = [
+      ['/admin/participants', validateParticipants], ['/companies/admin', validateCompanies],
+      ['/events/admin', data => assert.ok(Array.isArray(data.events))],
+      ['/events/admin/schedule', data => assert.ok(Array.isArray(data.rounds))],
+      ['/missions/admin', validateAdmin], ['/intelligence/admin', validateClues],
+      ['/rankings/admin', data => assert.ok(Array.isArray(data.ranking.rankings))],
+    ]
+    const participantReads = [
+      ['/users/me', data => assert.equal(typeof data.user.nickname, 'string')],
+      ['/trading/portfolio', data => assert.ok(Number.isSafeInteger(data.account.cash))],
+      ['/trading/orders/recovery', data => assert.ok(data && typeof data === 'object')],
+      ['/trading/history', validateTradeHistory], ['/trading/companies/A/history', validatePriceHistory],
+      ['/rankings', validateRanking], ['/missions/me', validateMine], ['/intelligence/me', validateStore],
+    ]
+    for (const [path, validate] of adminReads) {
+      const result = await request(path, { admin: true })
+      assert.equal(result.status, 200, path); validate(result.body)
+      assert.equal((await request(path, { cookie })).status, 401, `participant cannot read ${path}`)
+    }
+    for (const [path, validate] of participantReads) {
+      const result = await request(path, { cookie })
+      assert.equal(result.status, 200, path); validate(result.body)
+      assert.equal((await request(path)).status, 401, `anonymous cannot read ${path}`)
+    }
+    for (const [path, validate] of [
+      ['/game', data => assert.ok(data.game.status)],
+      ['/trading/market', data => assert.ok(Array.isArray(data.companies))],
+      ['/events/current', data => assert.ok(Array.isArray(data.events))],
+      ['/broadcast', validateBroadcast],
+    ]) {
+      const result = await request(path)
+      assert.equal(result.status, 200, path); validate(result.body)
+    }
+  }
+  await t.test('stage 12: page API contracts and access control in WAITING', () => checkPageReads(participants[0].cookie))
+
   const events = []
   for (const rate of [10,-10,5]) {
     const response = await request('/events/admin', {admin:true,body:{title:`event ${rate}`,news:'news',result:'result',effects:[{companyId:'A',changeRate:rate}]}})
@@ -92,6 +138,7 @@ test('stage 11: concurrent HTTP orders, process crash recovery, events and final
   const restored = await feed()
   assert.equal(restored.game.status,'PAUSED'); assert.equal(restored.game.remainingSeconds,paused.game.remainingSeconds)
   assert.deepEqual((await request('/trading/portfolio',{cookie:participants[0].cookie})).body.account,before.account)
+  await t.test('stage 12: page API contracts after restart with existing session', () => checkPageReads(participants[0].cookie))
   const socket = io(base,{path:'/api/socket.io',autoConnect:false,reconnection:false,extraHeaders:{Cookie:participants[0].cookie}})
   sockets.push(socket)
   const state = once(socket,'game:state',{signal:AbortSignal.timeout(5000)}); socket.connect()

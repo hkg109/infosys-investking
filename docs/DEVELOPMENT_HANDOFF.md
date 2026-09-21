@@ -13,9 +13,9 @@ QA 2단계 F-06~07 참가자 현황·초기화·재시작 UI는 `codex/admin-par
 | 담당 | 작업 수 | 주요 책임 |
 |---|---:|---|
 | 지석 — Backend | 18 | DB, API, Socket, 인증, 게임 규칙, 동시성, 자동 테스트 |
-| 재헌 — Frontend | 24 | 관리자 UI, 사용자 UI, 중계 화면, 모바일·접근성 검증 |
-| 공동 문서 | 4 | API·프로젝트 명세, 운영·복구·행사 리허설 문서 |
-| **합계** | **46** | **11단계, 권장 PR 20개** |
+| 재헌 — Frontend | 32 | 관리자 UI, 사용자 UI, 중계 화면, 모바일·접근성 검증 |
+| 공동 문서 | 5 | API·프로젝트 명세, 운영·복구·행사 리허설 문서 |
+| **합계** | **55** | **15단계 (후속 Frontend 개선 포함)** |
 
 ## 단계별 담당과 인계 순서
 
@@ -32,8 +32,15 @@ QA 2단계 F-06~07 참가자 현황·초기화·재시작 UI는 `codex/admin-par
 | 9 | 추가 시장정보 구매 | `B-15~16` 단서 관리 API, Transaction 포인트 차감, 구매자 전용 접근 제어 | `F-20~21` 관리자 단서 편집, 사용자 정보 상점·보관함·재접속 복구 | 지석 `codex/intelligence-backend` → 재헌 `codex/intelligence-ui`; 8단계 Backend 필요 |
 | 10 | 대형 스크린 중계 | `B-17` 개인정보를 제외한 익명 순위·시장·뉴스·장중 사건 집계 Feed | `F-22~23` 16:9 `/broadcast`, 속보·가격 급변·결과·최종 순위 장면 전환 | 지석 `codex/broadcast-backend` → 재헌 `codex/broadcast-ui`; 4·5단계 필요 |
 | 11 | 통합 QA·행사 인계 | `B-18` 동시 거래, 복수·장중 사건, 중복 방지, 재시작 복구 자동 테스트 | `F-24` 관리자·참가자 다수·모바일·중계 화면 전체 흐름 테스트 | 공동 `codex/qa-integration`; 1~10단계 병합 후 진행 |
+| 12 | 네비게이션·페이지 분리 | 추가 개발 없음; 기존 API 연결 확인 | `F-25~27` 공통 레이아웃·Navigation Bar, 관리자·게임 하위 페이지 분리 | Frontend `codex/frontend-navigation` |
+| 13 | 수정·상세 액션 개선 | 추가 개발 없음; 기존 오류 응답 유지 | `F-28~30` 공통 Modal/Drawer, 수정·주문·상세 오버레이, 저장·취소·ESC·포커스 | `codex/action-surface-ui` |
+| 14 | 디자인 시스템·Hallmark 검수 | Backend 변경 없음 | `F-31` 색상·간격·버튼·상태·반응형 통일; `D-05` 리뷰 링크·화면 캡처·승인 기록 | `codex/hallmark-design-review` |
+| 15 | 최종 Frontend 회귀 QA | 기존 `B-18` 재실행; 결함은 별도 수정 | `F-32` 관리자·참가자·중계 흐름, 반응형·접근성·콘솔 오류 | `codex/frontend-regression` |
 
-문서 작업은 4단계 `D-01`, 8단계 `D-02`, 9단계 `D-03`, 11단계 `D-04`에서 함께 수행한다. 각 Backend PR은 성공 응답, 오류 코드, 요청 예시, Socket 이벤트와 Frontend 인계 사항을 포함해야 한다.
+후속 12~15단계의 화면 계약은 [QA_FRONTEND_REWORK_PLAN.md](QA_FRONTEND_REWORK_PLAN.md)를 따른다.
+12단계 Backend 연결 검증 PR은 Frontend 브랜치와 구분해 `codex/stage12-backend-api-check`에서 진행한다.
+
+문서 작업은 4단계 `D-01`, 8단계 `D-02`, 9단계 `D-03`, 11단계 `D-04`, 14단계 `D-05`에서 함께 수행한다. 각 Backend PR은 성공 응답, 오류 코드, 요청 예시, Socket 이벤트와 Frontend 인계 사항을 포함해야 한다.
 
 ## 권장 PR 병합 순서
 
@@ -180,3 +187,12 @@ B-18/D-04: 실제 server.js + PostgreSQL + HTTP/Socket 통합 테스트와 Postg
 `F-31/D-05`는 디자인 토큰과 Hallmark 승인, `F-32`는 최종 브라우저 회귀 QA다. 상세
 URL·브랜치·PR·검수 기준은 [QA_FRONTEND_REWORK_PLAN.md](QA_FRONTEND_REWORK_PLAN.md)에
 기록했다.
+
+
+## QA 12단계 Backend 연결 확인
+
+최신 main(6a4679d)을 기준으로 관리자·참가자·공개 조회 API 19개를 실제 서버에서 확인했다.
+기존 Frontend 응답 검증 함수를 사용하고, 대기 상태와 재시작 후 기존 세션으로 재조회해
+계약·인증을 검증했다. 서버 구현·DB·API·오류 계약 변경은 없다. 결과와 화면별 연결표는
+[QA_STAGE12_BACKEND.md](QA_STAGE12_BACKEND.md)를 참고한다. F-25~27 화면 구현과 직접 URL
+접근·새로고침·뒤로가기 검증은 Frontend 범위다.
