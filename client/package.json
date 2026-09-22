@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "qa:session": "node scripts/qa-session.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "test": "node --test test/*.test.mjs"

@@ -26,7 +26,7 @@
 .cast-section-heading h2 { margin: 0; font-size: 1.3em; }
 .cast-empty { color: #a8b8ce; }
 .cast-market ul, .cast-ranking ol, .cast-news ul, .cast-impacts { margin: 1cqw 0 0; padding: 0; list-style: none; }
-.cast-market li { display: grid; grid-template-columns: minmax(0,1fr) auto 6cqw; align-items: center; gap: 1cqw; padding: 1.05cqw .5cqw; border-bottom: 1px solid #ffffff1a; }
+.cast-market li { display: grid; grid-template-columns: minmax(0,1fr) auto 6cqw; align-items: center; gap: 1cqw; padding: .45cqw .5cqw; border-bottom: 1px solid #ffffff1a; }
 .cast-market li > strong { font-size: 1.2em; white-space: nowrap; }
 .cast-market li > span:last-child { font-size: 1.1em; font-weight: 900; text-align: right; }
 .cast-stock-name { display: grid; gap: .2em; min-width: 0; }
@@ -72,3 +72,7 @@
 @keyframes cast-appear { from { opacity: .2; transform: scale(.97); } to { opacity: 1; transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { .cast-feature--alert { animation: none; } .cast-controls { transition: none; } }
 @media (max-width: 700px) { .cast-stage { font-size: clamp(7px, 1.2cqw, 11px); } .cast-header { min-height: 12cqw; } .cast-connection { top: 12cqw; } .cast-main { padding: 1.2cqw 2cqw; } .cast-market li { padding: .7cqw .3cqw; } .cast-card { padding: 1.1cqw; } .cast-feature h1 { font-size: 3em; } }
+
+/* Keep long market/tied ranking/result lists reachable on a fixed 16:9 stage. */
+.cast-market, .cast-ranking, .cast-results { overflow: auto; scrollbar-width: thin; scrollbar-color: #8ca9d6 transparent; }
+.cast-market:focus-visible, .cast-ranking:focus-visible, .cast-results:focus-visible { outline: 3px solid #f7c464; outline-offset: -3px; }

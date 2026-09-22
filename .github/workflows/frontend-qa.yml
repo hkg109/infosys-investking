@@ -1,0 +1,27 @@
+name: Frontend QA
+on:
+  pull_request:
+    paths: ['client/**', '.github/workflows/frontend-qa.yml']
+  push:
+    branches: [main]
+    paths: ['client/**', '.github/workflows/frontend-qa.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - run: npm ci
+        working-directory: client
+      - run: npm test
+        working-directory: client
+      - run: npm run build
+        working-directory: client

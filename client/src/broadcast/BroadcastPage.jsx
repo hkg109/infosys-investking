@@ -7,7 +7,7 @@ import './broadcast.css'
 const signedRate = value => `${value > 0 ? '+' : ''}${value}%`
 
 function StockBoard({ market }) {
-  return <section className="cast-card cast-market" aria-label="실시간 주가">
+  return <section className="cast-card cast-market" tabIndex={0} aria-label="실시간 주가">
     <div className="cast-section-heading"><span>MARKET WATCH</span><h2>실시간 주가</h2></div>
     {market.length ? <ul>{market.map(stock => <li key={stock.companyId}>
       <span className="cast-stock-name"><strong>{stock.name}</strong><small>{stock.companyId}</small></span>
@@ -18,7 +18,7 @@ function StockBoard({ market }) {
 }
 
 function RankingBoard({ ranking, final = false }) {
-  return <section className="cast-card cast-ranking" aria-label={final ? '최종 순위' : '실시간 순위'}>
+  return <section className="cast-card cast-ranking" tabIndex={0} aria-label={final ? '최종 순위' : '실시간 순위'}>
     <div className="cast-section-heading"><span>{final ? 'FINAL LEADERBOARD' : 'LIVE LEADERBOARD'}</span><h2>{final ? '최종 순위' : '실시간 TOP 3'}</h2></div>
     <p className="cast-meta">참가자 {ranking.totalParticipants}명 · 이름 비공개</p>
     {ranking.top3.length ? <ol>{ranking.top3.map((person, index) => <li key={`${person.rank}-${index}`}>
@@ -61,7 +61,7 @@ function MainScene({ data, scene, spotlight }) {
     const result = results.find(item => item.gameEventId === spotlight.eventId)
     return <div className="cast-feature cast-feature--alert"><p className="cast-kicker">BREAKING NEWS</p><h1>{result?.title || '사건 결과 공개'}</h1><p>{result?.result}</p><ImpactList changes={result?.changes || []} market={market} /></div>
   }
-  if (scene === 'result') return <div className="cast-grid cast-grid--result"><section className="cast-card cast-results"><div className="cast-section-heading"><span>MONTHLY CLOSE</span><h2>{game.currentRound}월 사건 결과</h2></div>{results.length ? results.map(item => <article key={item.gameEventId}><h3>{item.title}</h3><p>{item.result}</p><ImpactList changes={item.changes} market={market} /></article>) : <p className="cast-empty">이번 달 결과를 집계하고 있습니다.</p>}</section><div className="cast-side"><StockBoard market={market} /><RankingBoard ranking={ranking} /></div></div>
+  if (scene === 'result') return <div className="cast-grid cast-grid--result"><section className="cast-card cast-results" tabIndex={0} aria-label="월별 사건 결과"><div className="cast-section-heading"><span>MONTHLY CLOSE</span><h2>{game.currentRound}월 사건 결과</h2></div>{results.length ? results.map(item => <article key={item.gameEventId}><h3>{item.title}</h3><p>{item.result}</p><ImpactList changes={item.changes} market={market} /></article>) : <p className="cast-empty">이번 달 결과를 집계하고 있습니다.</p>}</section><div className="cast-side"><StockBoard market={market} /><RankingBoard ranking={ranking} /></div></div>
   return <div className="cast-grid"><StockBoard market={market} /><div className="cast-side"><RankingBoard ranking={ranking} /><NewsBoard news={news} /></div></div>
 }
 
