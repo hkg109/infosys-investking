@@ -172,12 +172,11 @@ B-18/D-04: 실제 server.js + PostgreSQL + HTTP/Socket 통합 테스트와 Postg
 
 ## QA 11단계 Frontend 인계
 
-`F-24` 통합 브라우저 QA 절차와 개발용 `/test/qa-flow.html` 콘솔을 추가했습니다. 관리자·
-참가자 A/B·공개 중계를 실제 QA DB에서 동시에 실행하고, 거래·장중 사건·일시정지·재접속·
-종료·초기화·반응형 화면을 한 번에 확인합니다. iframe 미리보기는 저장소를 공유하므로
-다중 참가자는 별도 시크릿 창 또는 브라우저 프로필에서 열어야 합니다. 실행 절차와 합격
-기준은 [QA_STAGE11_FRONTEND.md](QA_STAGE11_FRONTEND.md)에 있으며, 실제 브라우저 결과가
-기록되기 전에는 F-24를 완료로 판정하지 않습니다.
+`F-24` 실제 API·PostgreSQL을 연결한 관리자·참가자·공개 중계 브라우저 검증 결과와
+재현용 `npm --prefix client run qa:session`을 추가했습니다. 거래·미션·단서 구매·계정 복구·
+일시정지·월 마감·반응형 화면을 확인하고 중계 목록 잘림을 수정했습니다.
+검증 범위와 실행 방법은 [QA_STAGE11_FRONTEND.md](QA_STAGE11_FRONTEND.md)를 참고하세요.
+실물 휴대폰 검증은 제외하며 실제 행사 장비 리허설 및 12~15단계 개선은 별도입니다.
 
 ## Frontend 품질 개선 후속 계획
 
