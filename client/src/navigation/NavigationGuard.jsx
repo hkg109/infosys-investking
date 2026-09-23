@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useId, useState } from 'react'
 import { useBlocker } from 'react-router-dom'
+import ActionDialog from '../components/ActionDialog'
 const DraftContext = createContext(null)
 export function useDraftGuard(dirty, pending = false) {
   const register = useContext(DraftContext)
@@ -29,12 +30,12 @@ export default function NavigationGuard({ children, busy: externalBusy = false }
     return () => window.removeEventListener('beforeunload', prevent)
   }, [busy, dirty])
   return <DraftContext.Provider value={register}>
-    {blocker.state === 'blocked' && <section className="navigation-confirm" role="alert" aria-label="페이지 이동 확인">
-      <h2>{busy ? '처리가 끝날 때까지 기다려 주세요' : '작성 중인 내용이 있습니다'}</h2>
+    <ActionDialog open={blocker.state === 'blocked'} title={busy ? '처리가 끝날 때까지 기다려 주세요' : '작성 중인 내용이 있습니다'} eyebrow="NAVIGATION" onClose={() => blocker.reset()} busy={busy} width="small">
+      <section aria-label="페이지 이동 확인">
       <p>{busy ? '요청 결과를 확인한 뒤 이동할 수 있습니다.' : '계속 작성하여 저장하거나, 작성 내용을 버리고 이동하세요.'}</p>
-      <button type="button" className="secondary-button" autoFocus onClick={() => blocker.reset()}>계속 작성</button>
-      <button type="button" className="primary-button" disabled={busy} onClick={() => blocker.proceed()}>작성 내용 버리고 이동</button>
-    </section>}
+      <div className="dialog-actions"><button type="button" className="secondary-button" data-autofocus onClick={() => blocker.reset()}>계속 작성</button><button type="button" className="primary-button" disabled={busy} onClick={() => blocker.proceed()}>작성 내용 버리고 이동</button></div>
+      </section>
+    </ActionDialog>
     {children}
   </DraftContext.Provider>
 }

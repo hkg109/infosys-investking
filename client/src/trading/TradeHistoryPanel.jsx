@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import Panel from '../components/Panel'
+import ActionDialog from '../components/ActionDialog'
 import { money } from '../game/model'
 import { getTradeHistory, historyError } from './historyApi'
 import { signedMoney } from './marketHistoryModel'
@@ -8,6 +9,7 @@ export default function TradeHistoryPanel({ totalRounds = 12, revision }) {
   const [round, setRound] = useState(null)
   const [state, setState] = useState({ round: undefined, data: null, error: '', loading: true })
   const [retry, setRetry] = useState(0)
+  const [selected, setSelected] = useState(null)
   useEffect(() => {
     let active = true
     const controller = new AbortController()
@@ -44,7 +46,11 @@ export default function TradeHistoryPanel({ totalRounds = 12, revision }) {
         <div className="trade-ledger__headline"><span className={`trade-side trade-side--${trade.type.toLowerCase()}`}>{trade.type === 'BUY' ? '매수' : '매도'}</span><strong>{trade.companyName}</strong><span>{trade.round}월</span></div>
         <div className="trade-ledger__numbers"><span>{trade.quantity.toLocaleString('ko-KR')}주 × {money(trade.price)}</span><strong>{money(trade.totalPrice)}</strong></div>
         <div className="trade-ledger__meta"><time dateTime={trade.createdAt}>{new Date(trade.createdAt).toLocaleString('ko-KR')}</time>{trade.realizedProfit !== null && <span className={trade.realizedProfit > 0 ? 'market-up' : trade.realizedProfit < 0 ? 'market-down' : ''}>실현손익 {signedMoney(trade.realizedProfit)}</span>}</div>
+        <button type="button" className="detail-button" onClick={() => setSelected(trade)} aria-label={`${trade.companyName} ${trade.type === 'BUY' ? '매수' : '매도'} 거래 상세 보기`}>체결 상세</button>
       </li>)}
     </ul>)}
+    <ActionDialog open={Boolean(selected)} title="체결 거래 상세" eyebrow="TRANSACTION" onClose={() => setSelected(null)} width="small">
+      {selected && <><div className="participant-detail-grid"><div><span>종목</span><strong>{selected.companyName}</strong></div><div><span>거래 구분</span><strong>{selected.type === 'BUY' ? '매수' : '매도'}</strong></div><div><span>수량</span><strong>{selected.quantity.toLocaleString('ko-KR')}주</strong></div><div><span>체결 가격</span><strong>{money(selected.price)}</strong></div><div><span>총 거래 금액</span><strong>{money(selected.totalPrice)}</strong></div><div><span>게임 월</span><strong>{selected.round}월</strong></div></div><p><time dateTime={selected.createdAt}>{new Date(selected.createdAt).toLocaleString('ko-KR')}</time></p>{selected.realizedProfit !== null && <p className={selected.realizedProfit > 0 ? 'market-up' : selected.realizedProfit < 0 ? 'market-down' : ''}>실현손익 {signedMoney(selected.realizedProfit)}</p>}<p className="trading-help">거래 번호: {selected.transactionId}</p></>}
+    </ActionDialog>
   </Panel>
 }

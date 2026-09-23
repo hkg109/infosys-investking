@@ -1,6 +1,7 @@
 import { useDraftGuard } from '../navigation/NavigationGuard'
 import { useEffect, useRef, useState } from 'react'
 import Panel from '../components/Panel'
+import ActionDialog, { ConfirmDialog, requestDialogClose } from '../components/ActionDialog'
 import { money } from '../game/model'
 import { companyError, companyInput, companyRequest } from './api'
 const blank = () => ({ companyId: '', name: '', description: '', initialPrice: '10000', isActive: true })
@@ -16,17 +17,19 @@ export default function CompanyManager({ password, game, stale, onBusy, onChange
   const [message, setMessage] = useState('')
   const [form, setForm] = useState(blank)
   const [editing, setEditing] = useState(null)
+  const [editorOpen, setEditorOpen] = useState(false)
   const [deactivating, setDeactivating] = useState(null)
   const [acknowledged, setAcknowledged] = useState(false)
   const [validation, setValidation] = useState('')
-  useDraftGuard(Boolean(editing) || JSON.stringify(form) !== JSON.stringify(blank()))
+  const draftDirty = JSON.stringify(form) !== JSON.stringify(blank())
+  useDraftGuard(editorOpen && draftDirty)
   const locked = useRef(false)
   const generation = useRef(0)
   const canEdit = canManageCompanies({ status: game?.status, stale, busy, fresh, uncertain })
   // Keep drafts during game updates and polling. Only explicit actions replace them.
   useEffect(() => {
     ++generation.current
-    setCompanies(null); setFresh(false); setForm(blank()); setEditing(null); setDeactivating(null); setError(''); setMessage(''); setUncertain(false)
+    setCompanies(null); setFresh(false); setForm(blank()); setEditing(null); setEditorOpen(false); setDeactivating(null); setError(''); setMessage(''); setUncertain(false)
     return () => { ++generation.current }
   }, [password])
   useEffect(() => { if (game?.status !== 'WAITING' || stale) setDeactivating(null) }, [game?.status, stale])
@@ -56,7 +59,7 @@ export default function CompanyManager({ password, game, stale, onBusy, onChange
   })
   const edit = company => {
     if (!canEdit) return
-    setEditing(company.companyId); setForm({ ...company, initialPrice: String(company.initialPrice) }); setValidation(''); setDeactivating(null); setMessage('')
+    setEditing(company.companyId); setForm({ ...company, initialPrice: String(company.initialPrice) }); setEditorOpen(true); setValidation(''); setDeactivating(null); setMessage('')
   }
   const save = event => {
     event.preventDefault()
@@ -67,7 +70,7 @@ export default function CompanyManager({ password, game, stale, onBusy, onChange
       const company = await companyRequest(editing ? `/${encodeURIComponent(editing)}` : '', { password, method: editing ? 'PUT' : 'POST', body })
       if (current()) {
         setCompanies(list => [...list.filter(c => c.companyId !== company.companyId), company].sort((a, b) => a.companyId.localeCompare(b.companyId)))
-        setForm(blank()); setEditing(null); setDeactivating(null); setMessage(`${company.name} 종목을 저장했습니다.`); onChanged()
+        setForm(blank()); setEditing(null); setEditorOpen(false); setDeactivating(null); setMessage(`${company.name} 종목을 저장했습니다.`); onChanged()
       }
     }, true)
   }
@@ -92,7 +95,7 @@ export default function CompanyManager({ password, game, stale, onBusy, onChange
       if (current()) {
         setCompanies(list => list.map(c => c.companyId === company.companyId ? { ...c, isActive: false } : c))
         setDeactivating(null)
-        if (editing === company.companyId) { setEditing(null); setForm(blank()) }
+        if (editing === company.companyId) { setEditing(null); setEditorOpen(false); setForm(blank()) }
         setMessage(`${company.name} 종목을 비활성화했습니다. 과거 기록은 보존됩니다.`); onChanged()
       }
     }, true)
@@ -105,8 +108,9 @@ export default function CompanyManager({ password, game, stale, onBusy, onChange
     {uncertain && <p className="form-error" role="alert">변경 결과가 불확실합니다. 자동 재전송하지 않습니다. 목록을 다시 조회해 반영 여부를 확인한 뒤 다음 작업을 진행하세요.</p>}
     {!fresh && companies && <p className="trading-help">아래는 마지막으로 확인한 목록입니다. 다시 조회하기 전에는 변경할 수 없습니다.</p>}
     {companies === null ? <p className="empty-state">목록을 조회하면 활성·비활성 종목을 확인할 수 있습니다.</p> : <CompanyList companies={companies} canEdit={canEdit} onEdit={edit} onDeactivate={reviewDeactivation} />}
+    {companies && <div className="list-toolbar"><p>등록할 종목이 있으면 전용 편집 창을 여세요.</p><button className="primary-button" type="button" disabled={!canEdit} onClick={() => { setEditing(null); setForm(blank()); setValidation(''); setEditorOpen(true) }}>새 종목 등록</button></div>}
+    <ActionDialog open={editorOpen} title={editing ? `${editing} 종목 수정` : '새 종목 등록'} eyebrow="COMPANY" onClose={() => { setEditorOpen(false); setEditing(null); setForm(blank()); setValidation('') }} busy={busy} dirty={draftDirty}>
     <form className="company-form" onSubmit={save} noValidate aria-busy={busy}>
-      <h3>{editing ? `${editing} 종목 수정` : '새 종목 등록'}</h3>
       <fieldset disabled={!canEdit}>
         <legend className="sr-only">종목 입력</legend>
         <label htmlFor="company-code">종목 코드</label><input id="company-code" value={form.companyId} disabled={Boolean(editing)} maxLength={20} autoCapitalize="characters" autoComplete="off" onChange={e => setForm(f => ({ ...f, companyId: e.target.value }))} aria-describedby="company-code-help" />
@@ -118,10 +122,13 @@ export default function CompanyManager({ password, game, stale, onBusy, onChange
         <label className="reset-ack"><input type="checkbox" checked={form.isActive} disabled={Boolean(editing && companies?.find(c => c.companyId === editing)?.isActive)} onChange={e => setForm(f => ({ ...f, isActive: e.target.checked }))} />활성 종목으로 사용</label>
         {editing && <p className="trading-help">활성 종목의 비활성화는 목록의 ‘비활성화’에서 기록 참조 안내를 확인한 뒤 진행합니다. 비활성 종목은 위 항목을 체크하고 저장하면 다시 활성화됩니다.</p>}
         {validation && <p className="form-error" role="alert">{validation}</p>}
-        <div className="control-grid"><button className="primary-button" type="submit">{editing ? '종목 수정 저장' : '종목 등록'}</button><button className="secondary-button" type="button" onClick={() => { setEditing(null); setForm(blank()); setValidation('') }}>입력 취소</button></div>
+        <div className="dialog-actions"><button className="secondary-button" type="button" onClick={requestDialogClose}>취소</button><button className="primary-button" type="submit">{editing ? '종목 수정 저장' : '종목 등록'}</button></div>
       </fieldset>
     </form>
-    {deactivating && <section className="reset-confirmation" aria-label="종목 비활성화 확인"><h3>{deactivating.name} ({deactivating.companyId}) 비활성화</h3><CompanyReferences references={deactivating.references} /><p>종목과 과거 기록은 삭제되지 않습니다. 비활성화하면 신규 주문·사건 영향 종목·새 게임의 무작위 사건 배정에서 제외됩니다. 필요한 사건 설정을 확인하세요.</p><label className="reset-ack"><input type="checkbox" disabled={busy} checked={acknowledged} onChange={e => setAcknowledged(e.target.checked)} />기록 보존과 신규 사용 제한을 확인했습니다.</label><div className="control-grid"><button className="secondary-button" type="button" disabled={busy} onClick={() => setDeactivating(null)}>비활성화 취소</button><button className="danger-button" type="button" disabled={!canEdit || !acknowledged} onClick={deactivate}>비활성화 확정</button></div></section>}
+    </ActionDialog>
+    <ConfirmDialog open={Boolean(deactivating)} title={`${deactivating?.name || ''} 종목 비활성화`} onCancel={() => setDeactivating(null)} onConfirm={deactivate} busy={busy} confirmDisabled={!acknowledged || !canEdit} confirmLabel="비활성화 확정" danger>
+      {deactivating && <><CompanyReferences references={deactivating.references} /><p>종목과 과거 기록은 삭제되지 않습니다. 비활성화하면 신규 주문·사건 영향 종목·새 게임의 무작위 사건 배정에서 제외됩니다.</p><label className="reset-ack"><input type="checkbox" disabled={busy} checked={acknowledged} onChange={e => setAcknowledged(e.target.checked)} />기록 보존과 신규 사용 제한을 확인했습니다.</label>{!acknowledged && <p className="trading-help">확인 항목을 체크해야 비활성화를 진행할 수 있습니다.</p>}</>}
+    </ConfirmDialog>
   </Panel>
 }
 export function CompanyReferences({ references }) {
