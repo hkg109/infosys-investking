@@ -3,6 +3,7 @@ import { formatTime, money } from '../game/model.js'
 import { sceneFor } from './model.js'
 import { useBroadcast } from './useBroadcast.js'
 import './broadcast.css'
+import './broadcast-hallmark.css'
 
 const signedRate = value => `${value > 0 ? '+' : ''}${value}%`
 
@@ -70,7 +71,7 @@ export function BroadcastScreen({ data, error, spotlight, remainingSeconds }) {
   const round = data?.game.currentRound ? `${data.game.currentRound}월` : '시작 전'
   const stateLabel = ({ waiting: '대기', market: data?.game.tradingHalted ? '거래 일시중단' : '거래 진행', warning: '사건 예고', breaking: '속보', result: '월 결과', paused: '일시정지', finalizing: '최종 집계', final: '게임 종료' })[scene] || '연결 중'
   return <div className={`cast-stage cast-stage--${scene}`}>
-    <header className="cast-header"><div className="cast-brand"><span>INFOSYS</span><strong>INVEST<span>KING</span></strong></div><div className="cast-round"><span>MARKET SESSION</span><strong>{round} · {stateLabel}</strong></div><div className="cast-clock"><span>남은 시간</span><strong>{error ? '—' : formatTime(remainingSeconds)}</strong></div></header>
+    <header className="cast-header"><div className="cast-brand"><span>INFOSYS MARKET NETWORK</span><strong>INVEST<span>KING</span></strong></div><div className="cast-round"><span>MARKET SESSION</span><strong>{round} · {stateLabel}</strong></div><div className="cast-clock"><span>TIME TO CLOSE</span><strong>{error ? '—' : formatTime(remainingSeconds)}</strong></div></header>
     {error && <div className="cast-connection" role="alert">{error} · 마지막 확인된 화면을 표시 중</div>}
     <main className="cast-main" aria-live="polite">{data ? <MainScene data={data} scene={scene} spotlight={spotlight} /> : <div className="cast-feature cast-feature--center"><p className="cast-kicker">INVESTKING LIVE</p><h1>중계 화면 연결 중</h1><p>{error || '실시간 시장 정보를 불러오고 있습니다.'}</p></div>}</main>
     <footer className="cast-footer"><span className="cast-live-dot" /> <strong>LIVE</strong><span>익명 중계 · 개인 정보는 표시하지 않습니다</span><span>{data ? `참가자 ${data.ranking.totalParticipants}명` : '연결 대기'}</span></footer>

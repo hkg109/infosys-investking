@@ -1,0 +1,22 @@
+{
+  "runs": [
+    {
+      "date": "2026-09-23",
+      "genre": "modern-minimal",
+      "theme": "Cobalt",
+      "macrostructures": {
+        "home": "Split Studio",
+        "participant": "Workbench",
+        "operator": "Workbench",
+        "broadcast": "Stat-Led"
+      },
+      "navigation": "N1b-derived task rail",
+      "footer": "Ft2 inline rule",
+      "enrichment": "none",
+      "status": "complete",
+      "critique": "P5 H5 E4 S5 R4 V5",
+      "slopTest": "pass: 58/58 gates",
+      "responsive": [320, 375, 414, 768]
+    }
+  ]
+}

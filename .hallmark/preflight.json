@@ -1,0 +1,16 @@
+{
+  "run": "first",
+  "scope": "multi-page React application",
+  "framework": "React 19 + Vite 7",
+  "styling": "global CSS with a new additive Hallmark layer",
+  "motionLibrary": null,
+  "motionDecision": "motion-cut: CSS-only purposeful state feedback",
+  "tokenSystemBefore": false,
+  "spacingSystemBefore": false,
+  "existingHallmarkMacrostructure": null,
+  "risks": [
+    "legacy stylesheet contains hard-coded values",
+    "route navigation must remain usable at 320px",
+    "broadcast must remain legible at classroom distance"
+  ]
+}
