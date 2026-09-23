@@ -17,7 +17,9 @@ export default function PageShell({ area, menu, gameState, actions, children }) 
     <nav ref={navigation} className="section-navigation" aria-label={area === 'admin' ? '관리자 메뉴' : '게임 메뉴'}>
       {menu.map(([path, label]) => <NavLink key={path} to={`/${area}/${path}`} end>{label}</NavLink>)}
     </nav>
-    <GameConnection {...gameState} />
-    <div className="route-content">{children}</div>
+    <div className="page-workspace">
+      <GameConnection {...gameState} />
+      <div className="route-content">{children}</div>
+    </div>
   </PageLayout>
 }

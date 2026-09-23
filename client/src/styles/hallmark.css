@@ -476,6 +476,13 @@ input[type="radio"]:checked {
   gap: var(--space-md);
 }
 
+.page-workspace {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-md);
+  align-content: start;
+}
+
 .panel,
 .stat-card {
   border: var(--rule-hair) solid var(--color-rule);
@@ -800,13 +807,8 @@ tbody tr:hover {
     border-bottom: 0;
   }
 
-  .app-shell--admin .route-content,
-  .app-shell--game .route-content {
-    grid-column: 2;
-  }
-
-  .app-shell--admin .section-navigation + *,
-  .app-shell--game .section-navigation + * {
+  .app-shell--admin .page-workspace,
+  .app-shell--game .page-workspace {
     grid-column: 2;
   }
 }
