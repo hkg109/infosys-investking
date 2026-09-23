@@ -210,3 +210,12 @@ URL·브랜치·PR·검수 기준은 [QA_FRONTEND_REWORK_PLAN.md](QA_FRONTEND_RE
 부모 영역의 인증·게임 연결을 유지하며 메뉴·뒤로가기 이동 시 미저장 초안과 처리 중 요청을
 보호합니다. 타이머는 기본 본문 배치로 메뉴 겹침을 방지합니다.
 URL 계약과 검증 결과는 [QA_STAGE12_FRONTEND.md](QA_STAGE12_FRONTEND.md)에 기록했습니다.
+
+## QA 13단계 Frontend 인계
+
+`F-28~30`: 공통 `ActionDialog`를 추가하고 관리자 종목·사건·배정·미션·시장정보의 편집 및
+위험 확인, 참가자 자산 상세, 사용자 주문·체결 상세, 게임 초기화·페이지 이동 확인을
+Drawer/Sheet로 통일했습니다. 포커스 고정·복귀, ESC, 배경 스크롤 잠금, 처리 중 닫기 방지,
+미저장 초안 폐기 확인을 공통 처리합니다. select·checkbox·radio·progress·details·스크롤바 등
+브라우저 기본 외형도 접근 가능한 커스텀 스타일로 교체했습니다. 자동 테스트 78개와 production
+build가 통과했으며 실기기 검증 범위는 [QA_STAGE13_FRONTEND.md](QA_STAGE13_FRONTEND.md)를 참고하세요.

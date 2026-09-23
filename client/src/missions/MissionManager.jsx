@@ -1,15 +1,18 @@
 import { useDraftGuard } from '../navigation/NavigationGuard'
 import { useEffect, useRef, useState } from 'react'
 import Panel from '../components/Panel'
+import ActionDialog, { ConfirmDialog, requestDialogClose } from '../components/ActionDialog'
 import { canManageMissions, missionError, missionInput, missionRequest, missionTypes } from './api'
 const blank=()=>({title:'',description:'',missionType:'DIVERSIFIED_HOLDINGS',targetValue:'3',rewardPoints:'30',isActive:true})
 export default function MissionManager({password,game,stale,onBusy}) {
   const [data,setData]=useState(null), [fresh,setFresh]=useState(false), [busy,setBusy]=useState(false)
   const [form,setForm]=useState(blank), [editing,setEditing]=useState(null), [review,setReview]=useState(null)
+  const [editorOpen,setEditorOpen]=useState(false)
   const [error,setError]=useState(''), [message,setMessage]=useState('')
-  useDraftGuard(Boolean(editing) || JSON.stringify(form) !== JSON.stringify(blank()))
+  const draftDirty=JSON.stringify(form) !== JSON.stringify(blank())
+  useDraftGuard(editorOpen && draftDirty)
   const lock=useRef(false), version=useRef(0)
-  useEffect(()=>{++version.current;setData(null);setFresh(false);setForm(blank());setEditing(null);setReview(null);return()=>{++version.current}},[password])
+  useEffect(()=>{++version.current;setData(null);setFresh(false);setForm(blank());setEditing(null);setEditorOpen(false);setReview(null);return()=>{++version.current}},[password])
   const canEdit=canManageMissions({status:game?.status,stale,busy,fresh})
   const run=async(work)=>{
     if(lock.current)return
@@ -28,7 +31,7 @@ export default function MissionManager({password,game,stale,onBusy}) {
       const result=await missionRequest(editing?`/admin/${encodeURIComponent(editing)}`:'/admin',{password,method:editing?'PUT':'POST',body})
       if(!current())return
       setData(previous=>({...previous,missions:editing?previous.missions.map(m=>m.missionId===editing?result.mission:m):[...previous.missions,result.mission]}))
-      setFresh(true);setForm(blank());setEditing(null);setReview(null);setMessage('미션을 저장했습니다.')
+      setFresh(true);setForm(blank());setEditing(null);setEditorOpen(false);setReview(null);setMessage('미션을 저장했습니다.')
     })
   }
   const deactivate=()=>{
@@ -38,7 +41,7 @@ export default function MissionManager({password,game,stale,onBusy}) {
       await missionRequest(`/admin/${encodeURIComponent(review.missionId)}`,{password,method:'DELETE'})
       if(!current())return
       setData(previous=>({...previous,missions:previous.missions.map(m=>m.missionId===review.missionId?{...m,isActive:false}:m)}))
-      if(editing===review.missionId){setEditing(null);setForm(blank())}
+      if(editing===review.missionId){setEditing(null);setEditorOpen(false);setForm(blank())}
       setReview(null);setFresh(true);setMessage('미션을 비활성화했습니다. 기존 기록은 유지됩니다.')
     })
   }
@@ -48,8 +51,10 @@ export default function MissionManager({password,game,stale,onBusy}) {
     {error&&<p className="form-error" role="alert">{error}</p>}{message&&<p role="status">{message}</p>}
     {!fresh&&data&&<p className="trading-help">마지막 확인 정보입니다. 변경 요청을 자동 재전송하지 않습니다. 목록을 재조회하여 반영 여부를 비교한 뒤 진행하세요.</p>}
     {data&&<>
-      {!data.missions.length?<p>등록된 미션이 없습니다.</p>:<ul className="mission-list">{data.missions.map(m=><li key={m.missionId}><h3>{m.title}</h3><p>{m.description}</p><p>{missionTypes[m.missionType][0]} · 목표 {m.targetValue} {missionTypes[m.missionType][2]} · 보상 {m.rewardPoints} P · {m.isActive?'활성':'비활성'} · 배정 기록 {m.assignmentCount}건</p><div className="event-actions"><button type="button" className="secondary-button" disabled={!canEdit} onClick={()=>{setEditing(m.missionId);setForm({...m,targetValue:String(m.targetValue),rewardPoints:String(m.rewardPoints)});setReview(null)}}>{m.title} 수정</button>{m.isActive&&<button type="button" className="secondary-button" disabled={!canEdit} onClick={()=>setReview(m)}>{m.title} 비활성화</button>}</div></li>)}</ul>}
-      <form className="event-form" noValidate onSubmit={save}><h3>{editing?'미션 수정':'새 미션 등록'}</h3><fieldset disabled={!canEdit}>
+      {!data.missions.length?<p>등록된 미션이 없습니다.</p>:<ul className="mission-list">{data.missions.map(m=><li key={m.missionId}><h3>{m.title}</h3><p>{m.description}</p><p>{missionTypes[m.missionType][0]} · 목표 {m.targetValue} {missionTypes[m.missionType][2]} · 보상 {m.rewardPoints} P · {m.isActive?'활성':'비활성'} · 배정 기록 {m.assignmentCount}건</p><div className="event-actions"><button type="button" className="secondary-button" disabled={!canEdit} onClick={()=>{setEditing(m.missionId);setForm({...m,targetValue:String(m.targetValue),rewardPoints:String(m.rewardPoints)});setEditorOpen(true);setReview(null)}}>{m.title} 수정</button>{m.isActive&&<button type="button" className="secondary-button" disabled={!canEdit} onClick={()=>setReview(m)}>{m.title} 비활성화</button>}</div></li>)}</ul>}
+      <div className="list-toolbar"><p>활성 미션은 게임 시작 시 자동 배정됩니다.</p><button type="button" className="primary-button" disabled={!canEdit} onClick={()=>{setEditing(null);setForm(blank());setEditorOpen(true)}}>새 미션 등록</button></div>
+      <ActionDialog open={editorOpen} title={editing?'미션 수정':'새 미션 등록'} eyebrow="SECRET MISSION" onClose={()=>{setEditorOpen(false);setEditing(null);setForm(blank())}} busy={busy} dirty={draftDirty}>
+      <form className="event-form" noValidate onSubmit={save}><fieldset disabled={!canEdit}>
         <label htmlFor="mission-title">미션 제목</label><input id="mission-title" value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/>
         <label htmlFor="mission-description">미션 설명</label><textarea id="mission-description" rows={3} maxLength={2000} value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/><p>제목 최대 100자, 설명 최대 2,000자. 줄바꿈 없이 입력하세요.</p>
         <label htmlFor="mission-type">미션 유형</label><select id="mission-type" value={form.missionType} onChange={e=>setForm({...form,missionType:e.target.value,targetValue:e.target.value==='TRADE_BOTH_SIDES'?'2':'1'})}>{Object.entries(missionTypes).map(([type,labels])=><option key={type} value={type}>{labels[0]}</option>)}</select>
@@ -58,9 +63,10 @@ export default function MissionManager({password,game,stale,onBusy}) {
         <p>현금 비중은 1~100, 매수·매도 경험은 2, 나머지는 1~1,000의 정수입니다.</p>
         <label htmlFor="mission-reward">완료 보상 포인트</label><input id="mission-reward" inputMode="numeric" value={form.rewardPoints} onChange={e=>setForm({...form,rewardPoints:e.target.value})}/>
         <label className="reset-ack"><input type="checkbox" checked={form.isActive} onChange={e=>setForm({...form,isActive:e.target.checked})}/>활성 미션으로 사용</label>
-        <div className="control-grid"><button type="submit" className="primary-button">{editing?'미션 수정 저장':'미션 등록'}</button><button type="button" className="secondary-button" onClick={()=>{setForm(blank());setEditing(null);setError('')}}>미션 입력 취소</button></div>
+        <div className="dialog-actions"><button type="button" className="secondary-button" onClick={requestDialogClose}>취소</button><button type="submit" className="primary-button">{editing?'미션 수정 저장':'미션 등록'}</button></div>
       </fieldset></form>
-      {review&&<section aria-label="미션 비활성화 확인" className="end-confirmation"><p>{review.title} 미션을 비활성화할까요? 기존 기록은 유지하고 신규 배정에서 제외합니다. 수정에서 활성 상태를 다시 체크해 복구할 수 있습니다.</p><button type="button" className="secondary-button" disabled={busy} onClick={()=>setReview(null)}>비활성화 취소</button><button type="button" className="primary-button" disabled={!canEdit} onClick={deactivate}>미션 비활성화 확정</button></section>}
+      </ActionDialog>
+      <ConfirmDialog open={Boolean(review)} title="미션 비활성화" onCancel={()=>setReview(null)} onConfirm={deactivate} busy={busy} confirmDisabled={!canEdit} confirmLabel="비활성화 확정" danger><p>{review?.title} 미션을 비활성화할까요? 기존 기록은 유지하고 신규 배정에서 제외합니다.</p></ConfirmDialog>
       <MissionAssignments assignments={data.assignments}/>
     </>}
   </Panel>
