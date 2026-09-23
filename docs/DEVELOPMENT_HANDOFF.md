@@ -203,3 +203,10 @@ URL·브랜치·PR·검수 기준은 [QA_FRONTEND_REWORK_PLAN.md](QA_FRONTEND_RE
 실패 후 데이터 보존도 검사했습니다. 서버 구현과 기존 오류 계약은 유지합니다.
 [QA_STAGE13_BACKEND.md](QA_STAGE13_BACKEND.md)에 응답표와 오버레이 닫기/주문 취소 구분,
 결과 불명 시 재조회·복구 규칙을 정리했습니다. F-28~30의 Modal/Drawer·ESC·포커스 구현은 Frontend 범위입니다.
+
+## QA 12단계 Frontend 인계
+
+`F-25~27`: 공통 PageShell·내비게이션과 관리자 7개/참가자 6개 하위 화면을 분리했습니다.
+부모 영역의 인증·게임 연결을 유지하며 메뉴·뒤로가기 이동 시 미저장 초안과 처리 중 요청을
+보호합니다. 타이머는 기본 본문 배치로 메뉴 겹침을 방지합니다.
+URL 계약과 검증 결과는 [QA_STAGE12_FRONTEND.md](QA_STAGE12_FRONTEND.md)에 기록했습니다.

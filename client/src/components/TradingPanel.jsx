@@ -1,3 +1,4 @@
+import { useDraftGuard } from '../navigation/NavigationGuard'
 import { useEffect, useRef, useState } from 'react'
 import Panel from './Panel'
 import { money } from '../game/model'
@@ -9,9 +10,11 @@ export default function TradingPanel({ game, stale, trading, selectedCompanyId, 
   const setCompanyId = onSelectCompany || setLocalCompanyId
   const [type, setType] = useState('BUY')
   const [quantityText, setQuantityText] = useState('1')
+  const [touched, setTouched] = useState(false)
+  useDraftGuard(touched || trading.pending || Boolean(trading.unresolved))
   const [validation, setValidation] = useState('')
-  const handledResult = useRef(null)
-  const resetForm = () => { setCompanyId(''); setType('BUY'); setQuantityText('1'); setValidation('') }
+  const handledResult = useRef(trading.result?.orderId ?? null)
+  const resetForm = () => { setTouched(false); setCompanyId(''); setType('BUY'); setQuantityText('1'); setValidation('') }
   // Reset only once per confirmed order; later polling must not erase a new draft.
   useEffect(() => {
     const id = trading.result?.orderId
@@ -42,7 +45,7 @@ export default function TradingPanel({ game, stale, trading, selectedCompanyId, 
     </header>
     {blocked && <p className="trading-help" role="status">{blocked}</p>}
     {trading.error && <p className="form-error" role="alert">{trading.error}</p>}
-    <form className="order-form" onSubmit={submit} noValidate aria-busy={trading.pending}>
+    <form onChange={() => setTouched(true)} className="order-form" onSubmit={submit} noValidate aria-busy={trading.pending}>
       <fieldset disabled={frozen || Boolean(blocked)}>
         <legend className="sr-only">주문 입력</legend>
         <label htmlFor="order-company">종목</label>
@@ -52,8 +55,8 @@ export default function TradingPanel({ game, stale, trading, selectedCompanyId, 
         </select>
         <span className="order-side-label">거래 종류</span>
         <div className="order-side-tabs" role="group" aria-label="거래 종류">
-          <button type="button" className={type === 'BUY' ? 'is-active order-side--buy' : ''} aria-pressed={type === 'BUY'} onClick={() => { setType('BUY'); setValidation('') }}>매수</button>
-          <button type="button" className={type === 'SELL' ? 'is-active order-side--sell' : ''} aria-pressed={type === 'SELL'} onClick={() => { setType('SELL'); setValidation('') }}>매도</button>
+          <button type="button" className={type === 'BUY' ? 'is-active order-side--buy' : ''} aria-pressed={type === 'BUY'} onClick={() => { setTouched(true); setType('BUY'); setValidation('') }}>매수</button>
+          <button type="button" className={type === 'SELL' ? 'is-active order-side--sell' : ''} aria-pressed={type === 'SELL'} onClick={() => { setTouched(true); setType('SELL'); setValidation('') }}>매도</button>
         </div>
         <label htmlFor="order-quantity">수량 (주)</label>
         <input id="order-quantity" inputMode="numeric" value={quantityText} onChange={(e) => { setQuantityText(e.target.value); setValidation('') }} aria-describedby="order-estimate" />

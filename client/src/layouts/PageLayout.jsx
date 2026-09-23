@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 
-function PageLayout({ actions, children, title, subtitle, wide = false }) {
+function PageLayout({ actions, children, title, subtitle, wide = false, headingRef }) {
   return (
     <div className="app-shell">
       <header className="site-header">
@@ -15,7 +15,7 @@ function PageLayout({ actions, children, title, subtitle, wide = false }) {
       <main className={`page-container${wide ? ' page-container--wide' : ''}`}>
         <section className="page-heading">
           <p className="eyebrow">INVESTKING</p>
-          <h1>{title}</h1>
+          <h1 ref={headingRef} tabIndex={headingRef ? -1 : undefined}>{title}</h1>
           {subtitle && <p>{subtitle}</p>}
         </section>
         {children}

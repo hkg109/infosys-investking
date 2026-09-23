@@ -6,7 +6,7 @@ const messages = {
   WAITING: '게임 시작을 기다리고 있습니다.', RUNNING: '뉴스를 확인하고 투자 상황을 살펴보세요.',
   PAUSED: '게임이 일시정지되었습니다. 재개될 때까지 거래할 수 없습니다.', FINISHED: '게임이 종료되었습니다. 자산 현황을 확인하세요.',
 }
-export default function UserDashboard({ game, snapshot, selectedCompanyId, onSelectCompany }) {
+export default function UserDashboard({ game, snapshot, selectedCompanyId, onSelectCompany, showMarket = true, showHoldings = true }) {
   const account = snapshot?.account
   const stocks = snapshot?.stocks
   const holdings = snapshot?.holdings
@@ -23,9 +23,9 @@ export default function UserDashboard({ game, snapshot, selectedCompanyId, onSel
       <StatCard label="총자산" value={money(account?.totalAssets)} tone="accent" />
     </div>
     <div className="portfolio-grid">
-      <Panel title="시장 종목">
+      {showMarket && <Panel title="시장 종목">
         {!Array.isArray(stocks) ? <p className="empty-state">종목 정보를 기다리고 있습니다.</p> : stocks.length === 0 ? <p className="empty-state">등록된 종목이 없습니다.</p> : <div className="table-wrap"><table>
-          <caption>종목별 현재 주가 · 종목을 누르면 월별 차트를 표시합니다.</caption>
+          <caption>종목별 현재 주가 · 종목을 누르면 주문 화면으로 이동합니다.</caption>
           <thead><tr><th scope="col">기업</th><th scope="col">현재가</th><th scope="col">초기 대비</th></tr></thead>
           <tbody>{stocks.map((stock) => <tr key={stock.id} className={selectedCompanyId === stock.id ? 'stock-row--selected' : undefined}>
             <th scope="row"><button type="button" className="stock-select" aria-pressed={selectedCompanyId === stock.id} onClick={() => onSelectCompany?.(stock.id)}>{stock.name}<small>{stock.id}</small></button></th>
@@ -33,13 +33,13 @@ export default function UserDashboard({ game, snapshot, selectedCompanyId, onSel
             <td className={stock.changeRate > 0 ? 'market-up' : stock.changeRate < 0 ? 'market-down' : ''}>{Number.isFinite(stock.changeRate) ? `${stock.changeRate > 0 ? '+' : ''}${stock.changeRate}%` : '—'}</td>
           </tr>)}</tbody>
         </table></div>}
-      </Panel>
-      <Panel title="내 포트폴리오">
+      </Panel>}
+      {showHoldings && <Panel title="내 포트폴리오">
         {!Array.isArray(holdings) ? <p className="empty-state">보유 주식 정보를 기다리고 있습니다.</p> : holdings.length === 0 ? <p className="empty-state">아직 보유한 주식이 없습니다.</p> : <ul className="holdings-list portfolio-holdings">{holdings.map((item) => <li key={item.companyId}>
           <div><strong>{item.name}</strong><span>{Number.isInteger(item.quantity) && item.quantity >= 0 ? `${item.quantity.toLocaleString('ko-KR')}주 · 현재가 ${money(item.currentPrice)}` : '—'}</span></div>
           <strong>{money(item.marketValue)}</strong>
         </li>)}</ul>}
-      </Panel>
+      </Panel>}
     </div>
   </>
 }

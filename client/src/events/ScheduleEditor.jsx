@@ -1,11 +1,14 @@
+import { useDraftGuard } from '../navigation/NavigationGuard'
 import { useState } from 'react'
 import { eligibleEvents, eventTiming, randomInput, scheduleDraft, scheduleInput } from './schedule'
 import { eventError } from './api'
 export default function ScheduleEditor({ events, companies, schedule, constraints, canEdit, onWrite }) {
   const [rows, setRows] = useState(() => scheduleDraft(schedule))
   const [random, setRandom] = useState({ intradayEventsPerRound: '0', closingEventsPerRound: '1', preannounceSeconds: '30' })
+  const [savedRandom, setSavedRandom] = useState(JSON.stringify(random))
   const [error, setError] = useState('')
   const [review, setReview] = useState(null)
+  useDraftGuard(JSON.stringify(rows) !== JSON.stringify(scheduleDraft(schedule)) || Boolean(review) || JSON.stringify(random) !== savedRandom)
   const eligible = eligibleEvents(events, companies)
   const update = (index, key, value) => { setReview(null); setRows(list => list.map((r,i) => i === index ? { ...r, [key]: value } : r)) }
   const prepare = mode => {
@@ -18,7 +21,7 @@ export default function ScheduleEditor({ events, companies, schedule, constraint
     if (!canEdit || !review) return
     const result = await onWrite(review.mode, review.body)
     setReview(null)
-    if (result) setRows(scheduleDraft(result))
+    if (result) { setRows(scheduleDraft(result)); setSavedRandom(JSON.stringify(random)) }
   }
   return <section className="schedule-editor" aria-label="월별 사건 배정">
     <h3>월별 사건 배정</h3>

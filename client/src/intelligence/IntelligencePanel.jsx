@@ -1,3 +1,4 @@
+import { useDraftGuard } from '../navigation/NavigationGuard'
 import { useEffect, useRef, useState } from 'react'
 import Panel from '../components/Panel'
 import { canBuy, intelligenceRequest, privateStoreFailure } from './api'
@@ -7,6 +8,7 @@ export default function IntelligencePanel({ userId, game, revision, stale, onPur
   const [busy, setBusy] = useState(false)
   const [review, setReview] = useState(null)
   const [message, setMessage] = useState('')
+  useDraftGuard(Boolean(review), busy)
   const lock = useRef(false), generation = useRef(0), sequence = useRef(0)
   const [retry, setRetry] = useState(0)
   useEffect(() => {

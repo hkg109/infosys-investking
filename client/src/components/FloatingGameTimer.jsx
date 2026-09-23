@@ -12,7 +12,7 @@ function tradingLabel(game) {
   return game.tradingEnabled === true ? '거래 가능' : game.tradingEnabled === false ? '거래 마감' : '거래 확인 중'
 }
 
-export default function FloatingGameTimer({ game }) {
+export default function FloatingGameTimer({ game, docked = false }) {
   const initial = () => typeof window === 'undefined'
     ? defaultTimerRect()
     : loadTimerRect(browserStorage(), viewportSize(window))
@@ -77,11 +77,11 @@ export default function FloatingGameTimer({ game }) {
   const round = Number.isInteger(game?.currentRound) && game.currentRound > 0 ? `${game.currentRound}월` : '—'
 
   return <aside
-    className="floating-timer"
+    className={`floating-timer${docked ? " floating-timer--docked" : ""}`}
     aria-label="게임 타이머"
-    style={{ left: rect.x, top: rect.y, width: rect.width, height: rect.height }}
+    style={docked ? undefined : { left: rect.x, top: rect.y, width: rect.width, height: rect.height }}
   >
-    <div className="floating-timer__handle">
+    {!docked && <div className="floating-timer__handle">
       <div
         className="floating-timer__drag"
         role="button"
@@ -99,6 +99,7 @@ export default function FloatingGameTimer({ game }) {
       </div>
       <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={reset}>위치 초기화</button>
     </div>
+    }
     <div className="floating-timer__body">
       <div><span>현재 월</span><strong>{round}</strong></div>
       <div><span>남은 시간</span><strong className="floating-timer__clock">{formatTime(game?.remainingSeconds)}</strong></div>
@@ -107,7 +108,7 @@ export default function FloatingGameTimer({ game }) {
       <span>{statusLabels[game?.status] || '상태 확인 중'}</span>
       <span className={game?.status === 'RUNNING' && game.tradingEnabled === true ? 'is-open' : ''}>{tradingLabel(game)}</span>
     </div>
-    <div
+    {!docked && <div
       className="floating-timer__resize"
       role="separator"
       tabIndex="0"
@@ -118,6 +119,6 @@ export default function FloatingGameTimer({ game }) {
       onPointerUp={finish}
       onPointerCancel={finish}
       onKeyDown={(event) => keyboardAdjust('resize', event)}
-    />
+    />}
   </aside>
 }
