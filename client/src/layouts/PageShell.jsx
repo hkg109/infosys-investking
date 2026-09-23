@@ -13,7 +13,7 @@ export default function PageShell({ area, menu, gameState, actions, children }) 
     const active = navigation.current?.querySelector('[aria-current="page"]')
     if (active) navigation.current.scrollLeft = Math.max(0, active.offsetLeft - 8)
   }, [pathname])
-  return <PageLayout wide title={title} headingRef={heading} actions={actions} subtitle={area === 'admin' ? '관리자 작업 공간' : '나의 투자 게임'}>
+  return <PageLayout area={area} wide title={title} headingRef={heading} actions={actions} subtitle={area === 'admin' ? '운영 상태를 확인하고 다음 동작을 선택하세요.' : '시장 신호를 읽고 다음 주문을 결정하세요.'}>
     <nav ref={navigation} className="section-navigation" aria-label={area === 'admin' ? '관리자 메뉴' : '게임 메뉴'}>
       {menu.map(([path, label]) => <NavLink key={path} to={`/${area}/${path}`} end>{label}</NavLink>)}
     </nav>

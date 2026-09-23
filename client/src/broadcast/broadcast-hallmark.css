@@ -1,0 +1,282 @@
+/* Hallmark · genre: editorial + playful · macrostructure: Stat-Led · theme: Cobalt night · enrichment: none · nav: controls · footer: Ft2 · contrast: pass (40–41) · slop: pass (42–45) · honest: pass (46) · chrome: pass (47) · tokens: pass (48) · responsive: pass (49) · mobile: pass (34, 49, 50–57) · icons: pass (30) */
+/* Hallmark · pre-emit critique: P5 H5 E4 S5 R4 V5 */
+
+.broadcast-page {
+  --cast-paper: var(--color-cast-paper);
+  --cast-paper-2: var(--color-cast-paper-2);
+  --cast-paper-3: var(--color-cast-paper-3);
+  --cast-ink: var(--color-cast-ink);
+  --cast-muted: var(--color-cast-muted);
+  --cast-rule: var(--color-cast-rule);
+  --cast-accent: var(--color-cast-accent);
+  --cast-up: var(--color-cast-up);
+  --cast-down: var(--color-cast-down);
+  min-height: 100dvh;
+  display: block;
+  padding: 0;
+  color: var(--cast-ink);
+  background: var(--cast-paper);
+  font-family: var(--font-body);
+}
+
+.cast-controls {
+  border-bottom: var(--rule-hair) solid var(--cast-rule);
+  background: var(--cast-paper);
+}
+
+.cast-controls a,
+.cast-controls button {
+  min-height: 44px;
+  border: var(--rule-hair) solid var(--cast-rule);
+  border-radius: var(--radius-input);
+  color: var(--cast-ink);
+  background: transparent;
+  white-space: nowrap;
+}
+
+.cast-stage {
+  min-height: calc(100dvh - 52px);
+  width: 100%;
+  aspect-ratio: auto;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  overflow: clip;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background:
+    linear-gradient(var(--cast-rule) var(--rule-hair), transparent var(--rule-hair)) 0 0 / 100% 5rem,
+    var(--cast-paper);
+}
+
+.cast-stage::before {
+  display: none;
+}
+
+.cast-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--page-gutter);
+  border-bottom: var(--rule-fine) solid var(--cast-ink);
+  background: color-mix(in oklch, var(--cast-paper) 94%, transparent);
+}
+
+.cast-brand,
+.cast-round,
+.cast-clock {
+  min-width: 0;
+}
+
+.cast-brand > span,
+.cast-round > span,
+.cast-clock > span,
+.cast-kicker,
+.cast-section-heading > span {
+  color: var(--cast-accent);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-label);
+}
+
+.cast-brand strong {
+  display: block;
+  margin-top: var(--space-3xs);
+  font-family: var(--font-display);
+  font-size: clamp(var(--text-xl), 4vw, 2.8rem);
+  letter-spacing: var(--tracking-display);
+  line-height: 0.95;
+}
+
+.cast-brand strong span {
+  color: var(--cast-accent);
+}
+
+.cast-round {
+  display: none;
+}
+
+.cast-clock {
+  text-align: end;
+}
+
+.cast-clock strong {
+  display: block;
+  margin-top: var(--space-3xs);
+  font-family: var(--font-outlier);
+  font-size: clamp(2.25rem, 8vw, 6.5rem);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.07em;
+  line-height: 0.82;
+}
+
+.cast-main {
+  padding: clamp(var(--space-sm), 3vw, var(--space-xl)) var(--page-gutter);
+}
+
+.cast-connection {
+  position: static;
+  margin: var(--space-xs) var(--page-gutter) 0;
+  padding: var(--space-xs) var(--space-sm);
+  border: var(--rule-hair) solid color-mix(in oklch, var(--color-danger) 55%, var(--cast-rule));
+  border-radius: var(--radius-input);
+  color: var(--cast-ink);
+  background: color-mix(in oklch, var(--color-danger) 72%, var(--cast-paper));
+  font-size: var(--text-sm);
+  text-align: start;
+}
+
+.cast-grid,
+.cast-grid--result,
+.cast-two {
+  gap: var(--space-sm);
+}
+
+.cast-card {
+  border: var(--rule-hair) solid var(--cast-rule);
+  border-radius: var(--radius-card);
+  color: var(--cast-ink);
+  background: color-mix(in oklch, var(--cast-paper-2) 92%, transparent);
+  box-shadow: none;
+}
+
+.cast-card:focus-visible {
+  outline-color: var(--cast-accent);
+}
+
+.cast-section-heading {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding-bottom: var(--space-sm);
+  border-bottom: var(--rule-hair) solid var(--cast-rule);
+}
+
+.cast-section-heading h2 {
+  font-family: var(--font-display);
+  letter-spacing: var(--tracking-display);
+}
+
+.cast-market li,
+.cast-ranking li,
+.cast-news li,
+.cast-impacts li {
+  border-color: var(--cast-rule);
+  font-variant-numeric: tabular-nums;
+}
+
+.cast-market li > strong,
+.cast-ranking li > strong,
+.cast-impacts strong {
+  font-family: var(--font-outlier);
+}
+
+.cast-meta,
+.cast-empty,
+.cast-news p,
+.cast-stock-name small,
+.cast-footnote {
+  color: var(--cast-muted);
+}
+
+.cast-news li > span {
+  color: var(--cast-accent);
+  font-family: var(--font-body);
+}
+
+.cast-up {
+  color: var(--cast-up);
+}
+
+.cast-down {
+  color: var(--cast-down);
+}
+
+.cast-feature h1 {
+  max-width: 16ch;
+  color: var(--cast-ink);
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 8vw, 7.5rem);
+  letter-spacing: -0.055em;
+  line-height: 0.92;
+  overflow-wrap: anywhere;
+}
+
+.cast-feature > p:not(.cast-kicker, .cast-footnote, .cast-alert-time) {
+  max-width: 52rem;
+  color: var(--cast-muted);
+  font-size: clamp(var(--text-md), 2vw, var(--text-lg));
+}
+
+.cast-feature--center {
+  align-items: start;
+  text-align: start;
+}
+
+.cast-feature--alert {
+  border: var(--rule-fine) solid var(--cast-accent);
+  background: var(--cast-paper-2);
+}
+
+.cast-alert-time {
+  color: var(--cast-accent);
+  font-family: var(--font-body);
+}
+
+.cast-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-md);
+  padding: var(--space-sm) var(--page-gutter);
+  border-top: var(--rule-hair) solid var(--cast-rule);
+  color: var(--cast-muted);
+  background: var(--cast-paper);
+  font-size: var(--text-xs);
+}
+
+.cast-live-dot {
+  background: var(--cast-up);
+  box-shadow: none;
+}
+
+.cast-footer strong {
+  color: var(--cast-ink);
+  font-family: var(--font-body);
+}
+
+@media (min-width: 48rem) {
+  .cast-header {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: end;
+  }
+
+  .cast-round {
+    display: block;
+    padding-inline: var(--space-lg);
+    border-inline: var(--rule-hair) solid var(--cast-rule);
+  }
+
+  .cast-round strong {
+    display: block;
+    margin-top: var(--space-3xs);
+    font-family: var(--font-body);
+  }
+
+  .cast-grid {
+    grid-template-columns: minmax(0, 1.35fr) minmax(18rem, 0.65fr);
+  }
+
+  .cast-feature--center {
+    padding-inline: clamp(var(--space-lg), 8vw, var(--space-3xl));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cast-stage *,
+  .cast-stage *::before,
+  .cast-stage *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

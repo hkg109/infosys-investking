@@ -1,0 +1,76 @@
+:root {
+  --color-paper: oklch(98% 0.008 250);
+  --color-paper-2: oklch(95.5% 0.014 250);
+  --color-paper-3: oklch(92% 0.022 250);
+  --color-ink: oklch(20% 0.035 255);
+  --color-ink-2: oklch(31% 0.04 255);
+  --color-rule: oklch(86% 0.025 250);
+  --color-rule-2: oklch(71% 0.04 250);
+  --color-muted: oklch(49% 0.035 255);
+  --color-neutral: oklch(38% 0.04 255);
+  --color-accent: oklch(53% 0.22 260);
+  --color-accent-strong: oklch(43% 0.2 260);
+  --color-accent-soft: oklch(93% 0.045 260);
+  --color-accent-ink: oklch(98% 0.008 250);
+  --color-focus: oklch(65% 0.18 75);
+  --color-success: oklch(48% 0.13 153);
+  --color-success-soft: oklch(94% 0.04 153);
+  --color-danger: oklch(49% 0.19 27);
+  --color-danger-soft: oklch(95% 0.035 27);
+  --color-warning: oklch(65% 0.14 75);
+  --color-warning-soft: oklch(96% 0.045 75);
+  --color-market-up: oklch(57% 0.2 27);
+  --color-market-down: oklch(52% 0.16 255);
+  --color-cast-paper: oklch(17% 0.045 255);
+  --color-cast-paper-2: oklch(21% 0.052 255);
+  --color-cast-paper-3: oklch(26% 0.055 255);
+  --color-cast-ink: oklch(96% 0.012 250);
+  --color-cast-muted: oklch(74% 0.035 250);
+  --color-cast-rule: oklch(37% 0.055 255);
+  --color-cast-accent: oklch(73% 0.17 75);
+  --color-cast-up: oklch(72% 0.17 35);
+  --color-cast-down: oklch(74% 0.13 245);
+
+  --font-display: "Space Grotesk", "Pretendard", "Noto Sans KR", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", ui-sans-serif, system-ui, sans-serif;
+  --font-outlier: "JetBrains Mono", "SFMono-Regular", Consolas, ui-monospace, monospace;
+  --display-weight: 700;
+  --tracking-display: -0.035em;
+  --tracking-label: 0.11em;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.563rem;
+  --text-2xl: 1.953rem;
+  --text-display: clamp(2.45rem, 7vw, 5.6rem);
+
+  --space-3xs: 0.25rem;
+  --space-2xs: 0.5rem;
+  --space-xs: 0.75rem;
+  --space-sm: 1rem;
+  --space-md: 1.5rem;
+  --space-lg: 2rem;
+  --space-xl: 3rem;
+  --space-2xl: 4.5rem;
+  --space-3xl: 7rem;
+  --space-4xl: 10rem;
+
+  --page-max: 82.5rem;
+  --page-gutter: clamp(1rem, 3vw, 2.5rem);
+  --rule-hair: 1px;
+  --rule-fine: 2px;
+  --radius-card: 0.75rem;
+  --radius-pill: 999px;
+  --radius-input: 0.5rem;
+  --shadow-card: 0 18px 42px -32px oklch(20% 0.06 255 / 0.55);
+  --shadow-dialog: -20px 0 60px oklch(16% 0.05 255 / 0.24);
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 120ms;
+  --dur-short: 200ms;
+  --dur-long: 420ms;
+}

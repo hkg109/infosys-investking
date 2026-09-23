@@ -219,3 +219,12 @@ Drawer/Sheet로 통일했습니다. 포커스 고정·복귀, ESC, 배경 스크
 미저장 초안 폐기 확인을 공통 처리합니다. select·checkbox·radio·progress·details·스크롤바 등
 브라우저 기본 외형도 접근 가능한 커스텀 스타일로 교체했습니다. 자동 테스트 78개와 production
 build가 통과했으며 실기기 검증 범위는 [QA_STAGE13_FRONTEND.md](QA_STAGE13_FRONTEND.md)를 참고하세요.
+
+## QA 14단계 Frontend 인계
+
+F-31/D-05: Hallmark 기준으로 홈은 Split Studio, 참가자·관리자는 Workbench, 공개 중계는
+Stat-Led 구조를 적용했습니다. Cobalt 토큰·간격·서체·상태 색을 client/tokens.css에
+고정하고 기존 기능 CSS 뒤에 독립 스타일 레이어를 추가했습니다. 320·375·414·768px에서
+가로 넘침과 클릭 요소 줄바꿈이 없음을 브라우저로 확인했고, 테스트 78개와 production build가
+통과했습니다. 선택 근거, 검증 범위, QA 15단계 행사 장비 확인 항목은
+[QA_STAGE14_FRONTEND.md](QA_STAGE14_FRONTEND.md)를 참고하세요.
