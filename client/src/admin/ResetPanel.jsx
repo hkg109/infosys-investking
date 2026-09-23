@@ -1,3 +1,4 @@
+import { useDraftGuard } from '../navigation/NavigationGuard'
 import { useEffect, useRef, useState } from 'react'
 import Panel from '../components/Panel'
 export function canConfirmReset({ status, canControl, pending, acknowledged, confirmation }) {
@@ -8,6 +9,7 @@ export default function ResetPanel({ game, canControl, pending, control, refresh
   const [acknowledged, setAcknowledged] = useState(false)
   const [confirmation, setConfirmation] = useState('')
   const [message, setMessage] = useState('')
+  useDraftGuard(stage === 'confirm')
   const locked = useRef(false)
   useEffect(() => {
     if (stage === 'done' && game?.status !== 'WAITING') { setStage('idle'); setMessage('') }

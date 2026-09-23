@@ -1,3 +1,4 @@
+import { useDraftGuard } from '../navigation/NavigationGuard'
 import { useEffect, useRef, useState } from 'react'
 import Panel from '../components/Panel'
 import { money } from '../game/model'
@@ -18,6 +19,7 @@ export default function CompanyManager({ password, game, stale, onBusy, onChange
   const [deactivating, setDeactivating] = useState(null)
   const [acknowledged, setAcknowledged] = useState(false)
   const [validation, setValidation] = useState('')
+  useDraftGuard(Boolean(editing) || JSON.stringify(form) !== JSON.stringify(blank()))
   const locked = useRef(false)
   const generation = useRef(0)
   const canEdit = canManageCompanies({ status: game?.status, stale, busy, fresh, uncertain })

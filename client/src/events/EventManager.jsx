@@ -1,3 +1,4 @@
+import { useDraftGuard } from '../navigation/NavigationGuard'
 import ScheduleEditor from './ScheduleEditor'
 import { validateConstraints } from './schedule'
 import { companyRequest } from '../companies/api'
@@ -17,6 +18,7 @@ export default function EventManager({ password, game, stale, onBusy }) {
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
   const [uncertain, setUncertain] = useState(false)
+  useDraftGuard(Boolean(editing) || JSON.stringify(form) !== JSON.stringify(blank()))
   const locked = useRef(false)
   const generation = useRef(0)
   useEffect(() => { ++generation.current; setEvents(null); setSchedule([]); setForm(blank()); setEditing(null); setDeleting(null); setMessage(''); setError(''); return () => { ++generation.current } }, [password])

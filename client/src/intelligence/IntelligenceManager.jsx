@@ -1,3 +1,4 @@
+import { useDraftGuard } from '../navigation/NavigationGuard'
 import { useEffect, useRef, useState } from 'react'
 import Panel from '../components/Panel'
 import { clueInput, intelligenceError, intelligenceRequest } from './api'
@@ -7,6 +8,7 @@ export default function IntelligenceManager({ password, game, stale, onBusy }) {
   const [form, setForm] = useState(blank), [editing, setEditing] = useState(null)
   const [busy, setBusy] = useState(false), [review, setReview] = useState(null)
   const [error, setError] = useState(''), [message, setMessage] = useState('')
+  useDraftGuard(Boolean(editing) || JSON.stringify(form) !== JSON.stringify(blank()))
   const lock = useRef(false), generation = useRef(0)
   useEffect(() => {
     ++generation.current; setClues(null); setFresh(false); setForm(blank()); setEditing(null); setReview(null)

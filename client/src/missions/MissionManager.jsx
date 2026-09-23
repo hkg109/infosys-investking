@@ -1,3 +1,4 @@
+import { useDraftGuard } from '../navigation/NavigationGuard'
 import { useEffect, useRef, useState } from 'react'
 import Panel from '../components/Panel'
 import { canManageMissions, missionError, missionInput, missionRequest, missionTypes } from './api'
@@ -6,6 +7,7 @@ export default function MissionManager({password,game,stale,onBusy}) {
   const [data,setData]=useState(null), [fresh,setFresh]=useState(false), [busy,setBusy]=useState(false)
   const [form,setForm]=useState(blank), [editing,setEditing]=useState(null), [review,setReview]=useState(null)
   const [error,setError]=useState(''), [message,setMessage]=useState('')
+  useDraftGuard(Boolean(editing) || JSON.stringify(form) !== JSON.stringify(blank()))
   const lock=useRef(false), version=useRef(0)
   useEffect(()=>{++version.current;setData(null);setFresh(false);setForm(blank());setEditing(null);setReview(null);return()=>{++version.current}},[password])
   const canEdit=canManageMissions({status:game?.status,stale,busy,fresh})

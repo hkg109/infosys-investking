@@ -1,7 +1,9 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { adminMenu, gameMenu } from './navigation/menus'
+import { Navigate, Route, Routes, useOutletContext } from 'react-router-dom'
 import { useSession } from './auth/SessionContext'
-import AdminPage from './pages/AdminPage'
-import GamePage from './pages/GamePage'
+import { lazy, Suspense } from 'react'
+const AdminPage = lazy(() => import('./pages/AdminPage'))
+const GamePage = lazy(() => import('./pages/GamePage'))
 import HomePage from './pages/HomePage'
 import BroadcastPage from './broadcast/BroadcastPage'
 
@@ -15,15 +17,25 @@ function ProtectedGameRoute() {
   return user ? <GamePage /> : <Navigate to="/" replace />
 }
 
+function Section({ name }) { return useOutletContext()[name] }
+
 function App() {
   return (
-    <Routes>
+    <Suspense fallback={<main className="route-status">화면을 불러오고 있습니다.</main>}><Routes>
       <Route path="/" element={<HomePage />} />
-      <Route path="/game" element={<ProtectedGameRoute />} />
-      <Route path="/admin" element={<AdminPage />} />
+      <Route path="/game" element={<ProtectedGameRoute />}>
+        <Route index element={<Navigate to="market" replace />} />
+        {gameMenu.map(([name]) => <Route key={name} path={name} element={<Section name={name} />} />)}
+        <Route path="*" element={<Navigate to="/game/market" replace />} />
+      </Route>
+      <Route path="/admin" element={<AdminPage />}>
+        <Route index element={<Navigate to="overview" replace />} />
+        {adminMenu.map(([name]) => <Route key={name} path={name} element={<Section name={name} />} />)}
+        <Route path="*" element={<Navigate to="/admin/overview" replace />} />
+      </Route>
       <Route path="/broadcast" element={<BroadcastPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    </Routes></Suspense>
   )
 }
 
