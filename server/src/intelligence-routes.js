@@ -3,7 +3,12 @@ import { createRequireAdmin } from './admin-auth.js'
 import { requireSessionUser } from './session-auth.js'
 import { IntelligenceError, listClues, saveClue, deactivateClue, getIntelligence, purchaseClue } from './intelligence.js'
 
-export function createIntelligenceRouter(database, engine, { adminPassword, clientUrl }) {
+export function createIntelligenceRouter(database, engine, {
+  adminPassword,
+  clientUrl,
+  initialCash = 1_000_000,
+  onPurchaseCommitted = async () => {},
+}) {
   const router = Router()
   router.use((request, response, next) => {
     response.set('Cache-Control', 'no-store')
@@ -28,8 +33,12 @@ export function createIntelligenceRouter(database, engine, { adminPassword, clie
       next(error)
     }
   }
-  router.get('/me', requireSessionUser(database), route(async (req, res) => res.json(await getIntelligence(database, engine, req.user.id))))
-  router.post('/purchases', requireSessionUser(database), route(async (req, res) => res.json(await purchaseClue(database, engine, req.user.id, req.body))))
+  router.get('/me', requireSessionUser(database), route(async (req, res) => res.json(await getIntelligence(database, engine, req.user.id, initialCash))))
+  router.post('/purchases', requireSessionUser(database), route(async (req, res) => {
+    const result = await purchaseClue(database, engine, req.user.id, req.body, initialCash)
+    await onPurchaseCommitted({ userId: req.user.id })
+    res.json(result)
+  }))
   router.use('/admin', createRequireAdmin(adminPassword))
   router.get('/admin', route(async (_req, res) => res.json(await listClues(database))))
   router.post('/admin', route(async (req, res) => res.status(201).json(await saveClue(database, engine, null, req.body))))

@@ -228,3 +228,13 @@ Stat-Led 구조를 적용했습니다. Cobalt 토큰·간격·서체·상태 색
 가로 넘침과 클릭 요소 줄바꿈이 없음을 브라우저로 확인했고, 테스트 78개와 production build가
 통과했습니다. 선택 근거, 검증 범위, QA 15단계 행사 장비 확인 항목은
 [QA_STAGE14_FRONTEND.md](QA_STAGE14_FRONTEND.md)를 참고하세요.
+
+## QA 16단계 Backend 인계
+
+`B-19~21`: 정보 상점 결제를 미션 포인트에서 투자 현금으로 전환했습니다. 구매는 주식 주문과
+같은 사용자 잠금 및 `wallets` 행 잠금을 사용하여 동시 초과 지출을 막고, 중복 구매는 추가
+차감 없이 기존 보관함을 반환합니다. `intelligence_purchases.paid_cash`에 구매 당시 가격을
+보존하며 기존 `paid_points` 기록은 마이그레이션 시 현금 기록으로 이관합니다. 구매 완료 후
+실시간 순위를 다시 계산합니다. 응답 계약과 마이그레이션은
+[INTELLIGENCE_API.md](INTELLIGENCE_API.md)를 참고하세요. 후속 Frontend 단계에서 `points`와
+`paidPoints` 사용을 각각 `cash`와 `paidCash`로 전환해야 합니다.

@@ -341,7 +341,7 @@ CREATE TABLE IF NOT EXISTS user_reward_wallets (
   PRIMARY KEY (game_id, user_id)
 );
 
--- QA stage 9: private intelligence purchases use the mission reward wallet.
+-- Private intelligence purchases are paid from the participant investment wallet.
 CREATE TABLE IF NOT EXISTS intelligence_clues (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title VARCHAR(100) NOT NULL CHECK (length(trim(title)) > 0),
@@ -364,7 +364,29 @@ CREATE TABLE IF NOT EXISTS intelligence_purchases (
   content TEXT NOT NULL,
   price INTEGER NOT NULL CHECK (price BETWEEN 1 AND 1000000),
   available_round INTEGER NOT NULL CHECK (available_round BETWEEN 1 AND 1000),
-  paid_points INTEGER NOT NULL CHECK (paid_points BETWEEN 1 AND 1000000),
+  paid_points INTEGER CHECK (paid_points BETWEEN 1 AND 1000000),
+  paid_cash BIGINT NOT NULL CHECK (paid_cash BETWEEN 1 AND 1000000),
   purchased_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (game_id, user_id, clue_id)
 );
+
+-- Preserve purchases created by the former mission-point shop while moving new
+-- purchases to cash. These statements are intentionally idempotent because the
+-- migration runner executes this complete schema for existing installations.
+ALTER TABLE intelligence_purchases ADD COLUMN IF NOT EXISTS paid_cash BIGINT;
+ALTER TABLE intelligence_purchases ALTER COLUMN paid_points DROP NOT NULL;
+UPDATE intelligence_purchases
+SET paid_cash = COALESCE(paid_cash, paid_points::BIGINT, price::BIGINT)
+WHERE paid_cash IS NULL;
+ALTER TABLE intelligence_purchases ALTER COLUMN paid_cash SET NOT NULL;
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'intelligence_purchases'::regclass
+      AND conname = 'intelligence_purchases_paid_cash_check'
+  ) THEN
+    ALTER TABLE intelligence_purchases
+      ADD CONSTRAINT intelligence_purchases_paid_cash_check
+      CHECK (paid_cash BETWEEN 1 AND 1000000);
+  END IF;
+END $$;
