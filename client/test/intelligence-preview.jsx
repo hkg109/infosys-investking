@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client'
 import IntelligencePanel from '../src/intelligence/IntelligencePanel'
 import IntelligenceManager from '../src/intelligence/IntelligenceManager'
 import '../src/styles/global.css'
-const seed = { clues: [{ clueId: 'clue-1', title: '반도체 수요 단서', summary: '다음 달 산업 흐름에 관한 정보', content: '비공개 본문: 반도체 수요 증가 가능성\n확정 수익을 의미하지 않습니다.', price: 10, availableRound: 1, isActive: true }], accounts: { one: { points: 40, purchases: [] }, two: { points: 0, purchases: [] } } }
+const seed = { clues: [{ clueId: 'clue-1', title: '반도체 수요 단서', summary: '다음 달 산업 흐름에 관한 정보', content: '비공개 본문: 반도체 수요 증가 가능성\n확정 수익을 의미하지 않습니다.', price: 10, availableRound: 1, isActive: true }], accounts: { one: { cash: 40, purchases: [] }, two: { cash: 0, purchases: [] } } }
 let database = JSON.parse(sessionStorage.getItem('stage9-fixture') || 'null') || structuredClone(seed)
 let userId = 'one', status = 'RUNNING', loseResponse = false, expired = false
 const persist = () => sessionStorage.setItem('stage9-fixture', JSON.stringify(database))
@@ -19,8 +19,8 @@ window.fetch = async (url, options = {}) => {
     const body = JSON.parse(options.body), account = database.accounts[userId], clue = database.clues.find(c => c.clueId === body.clueId)
     if (!account.purchases.some(p => p.clueId === body.clueId)) {
       if (status !== 'RUNNING') return response({ error: 'PURCHASE_CLOSED' }, 409)
-      if (account.points < clue.price) return response({ error: 'INSUFFICIENT_POINTS' }, 409)
-      account.points -= clue.price; account.purchases.push({ ...clue, paidPoints: clue.price, purchasedAt: new Date().toISOString() }); persist()
+      if (account.cash < clue.price) return response({ error: 'INSUFFICIENT_CASH' }, 409)
+      account.cash -= clue.price; account.purchases.push({ ...clue, paidCash: clue.price, purchasedAt: new Date().toISOString() }); persist()
     }
     if (loseResponse) { loseResponse = false; throw new Error('Simulated response loss after commit') }
     return response(store())

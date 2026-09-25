@@ -8,8 +8,8 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { clueInput, validateStore, validateClues, canBuy, privateStoreFailure, intelligenceRequest, intelligenceEnabled } from '../src/intelligence/api.js'
 const item = { clueId: 'clue-1', title: '단서', summary: '공개 요약', price: 10, availableRound: 1, canPurchase: true }
-const purchase = { ...item, content: '<script>비밀</script>', paidPoints: 10, purchasedAt: '2026-09-18T00:00:00Z' }
-const data = { points: 40, items: [item], purchases: [] }
+const purchase = { ...item, content: '<script>비밀</script>', paidCash: 10, purchasedAt: '2026-09-18T00:00:00Z' }
+const data = { cash: 40, items: [item], purchases: [] }
 const options = { status: 'RUNNING', stale: false, busy: false }
 const form = { title: ' 단서 ', summary: '요약', content: '본문\n두번째 줄', price: '10', availableRound: '1', isActive: true }
 const dir = await mkdtemp(join(process.cwd(), '.intelligence-test-'))
@@ -27,14 +27,14 @@ test('clue fields enforce boundaries and allow multiline private body',()=>{
 test('unowned secrets are discarded; purchased snapshots survive removed catalog items',()=>{
  const safe=validateStore({...data,items:[{...item,content:'LEAK',userId:'OTHER'}]})
  assert.equal(safe.items[0].content,undefined);assert.equal(safe.items[0].userId,undefined)
- assert.equal(validateStore({points:30,items:[],purchases:[purchase]}).purchases[0].content,purchase.content)
- for(const invalid of [{...data,points:-1},{...data,items:[item,item]},{...data,purchases:[{...purchase,purchasedAt:'bad'}]},{...data,purchases:[{...purchase,paidPoints:0}]},{...data,items:[{...item,canPurchase:1}]}])assert.throws(()=>validateStore(invalid))
+ assert.equal(validateStore({cash:30,items:[],purchases:[purchase]}).purchases[0].content,purchase.content)
+ for(const invalid of [{...data,cash:-1},{...data,items:[item,item]},{...data,purchases:[{...purchase,purchasedAt:'bad'}]},{...data,purchases:[{...purchase,paidCash:0}]},{...data,items:[{...item,canPurchase:1}]}])assert.throws(()=>validateStore(invalid))
  assert.doesNotThrow(()=>validateClues({clues:[{...clueInput(form),clueId:'1'}]}))
 })
-test('buy gate requires current state, sufficient points, eligibility and no ownership',()=>{
+test('buy gate requires current state, sufficient cash, eligibility and no ownership',()=>{
  assert.equal(canBuy(data,item,options),true)
  for(const patch of [{status:'WAITING'},{status:'PAUSED'},{status:'FINISHED'},{stale:true},{busy:true}])assert.equal(canBuy(data,item,{...options,...patch}),false)
- assert.equal(canBuy({...data,points:9},item,options),false)
+ assert.equal(canBuy({...data,cash:9},item,options),false)
  assert.equal(canBuy({...data,purchases:[purchase]},item,options),false)
  assert.equal(canBuy(data,{...item,canPurchase:false},options),false)
 })
@@ -50,7 +50,7 @@ test('catalog never renders secret content and library escapes HTML',()=>{
  assert.doesNotMatch(html,/HIDDEN/)
  const library=renderToStaticMarkup(createElement(IntelligenceLibrary,{purchases:[purchase]}))
  assert.match(library,/&lt;script&gt;/);assert.doesNotMatch(library,/<script>/)
- assert.match(renderToStaticMarkup(createElement(StoreItems,{data:{...data,points:0},options})),/포인트 부족/)
+ assert.match(renderToStaticMarkup(createElement(StoreItems,{data:{...data,cash:0},options})),/현금 부족/)
  assert.match(renderToStaticMarkup(createElement(StoreItems,{data:{...data,purchases:[purchase]},options})),/보관함에 있음/)
 })
 test('purchase sends cookie and expected price only, returns authoritative balance and never retries',async()=>{
@@ -59,9 +59,9 @@ test('purchase sends cookie and expected price only, returns authoritative balan
   globalThis.fetch=async(url,request)=>{
    assert.equal(url,'/api/intelligence/purchases');assert.equal(request.credentials,'include');assert.equal(request.cache,'no-store');assert.equal(request.headers.Authorization,undefined)
    assert.deepEqual(JSON.parse(request.body),{clueId:item.clueId,expectedPrice:10})
-   return{ok:true,status:200,json:async()=>({points:30,items:[item],purchases:[purchase]})}
+   return{ok:true,status:200,json:async()=>({cash:30,items:[item],purchases:[purchase]})}
   }
-  assert.equal((await intelligenceRequest('/purchases',{method:'POST',body:{clueId:item.clueId,expectedPrice:10}})).points,30)
+  assert.equal((await intelligenceRequest('/purchases',{method:'POST',body:{clueId:item.clueId,expectedPrice:10}})).cash,30)
   let calls=0;globalThis.fetch=async()=>{calls++;throw new Error('lost response')}
   await assert.rejects(intelligenceRequest('/purchases',{method:'POST',body:{clueId:item.clueId,expectedPrice:10}}));assert.equal(calls,1)
   globalThis.fetch=async()=>({ok:false,status:401,json:async()=>({})})

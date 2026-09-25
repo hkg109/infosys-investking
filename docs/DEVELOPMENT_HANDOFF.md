@@ -236,5 +236,6 @@ Stat-Led 구조를 적용했습니다. Cobalt 토큰·간격·서체·상태 색
 차감 없이 기존 보관함을 반환합니다. `intelligence_purchases.paid_cash`에 구매 당시 가격을
 보존하며 기존 `paid_points` 기록은 마이그레이션 시 현금 기록으로 이관합니다. 구매 완료 후
 실시간 순위를 다시 계산합니다. 응답 계약과 마이그레이션은
-[INTELLIGENCE_API.md](INTELLIGENCE_API.md)를 참고하세요. 후속 Frontend 단계에서 `points`와
-`paidPoints` 사용을 각각 `cash`와 `paidCash`로 전환해야 합니다.
+[INTELLIGENCE_API.md](INTELLIGENCE_API.md)를 참고하세요. Backend 통합 QA가 동일 계약을
+검증하도록 Frontend 어댑터와 정보상점 표시도 `cash`·`paidCash` 및 원 단위로 전환했습니다.
+비밀 미션 메뉴·배정·포인트 기능 제거는 후속 단계 범위입니다.
