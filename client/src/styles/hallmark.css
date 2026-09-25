@@ -834,3 +834,16 @@ tbody tr:hover {
     transition-duration: 0.01ms !important;
   }
 }
+
+.asset-fields {
+  display: grid;
+  gap: 16px;
+  border: 0;
+  padding: 0;
+  margin: 16px 0;
+  min-width: 0;
+}
+.asset-fields label { display: grid; gap: 8px; }
+.asset-fields :is(input, select) { width: 100%; min-width: 0; }
+.asset-history { padding-left: 20px; overflow-wrap: anywhere; }
+.asset-history li { margin-bottom: 16px; }

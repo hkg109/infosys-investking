@@ -1,3 +1,4 @@
+import { adjustAssets, AssetAdjustmentError } from './asset-adjustments.js'
 import { Router } from 'express'
 import { createRequireAdmin } from './admin-auth.js'
 import { ACTIVE_GAME_ID } from './game-store.js'
@@ -54,6 +55,8 @@ export function createAdminRouter(database, {
   clientUrl,
   presence,
   initialCash = 1_000_000,
+  engine,
+  onAssetsAdjusted = async () => {},
 }) {
   const router = Router()
 
@@ -68,7 +71,7 @@ export function createAdminRouter(database, {
       response.vary('Origin')
     }
     if (request.method === 'OPTIONS') {
-      response.set('Access-Control-Allow-Methods', 'GET, OPTIONS')
+      response.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
       response.set('Access-Control-Allow-Headers', 'Authorization, Content-Type')
       return response.sendStatus(204)
     }
@@ -99,6 +102,30 @@ export function createAdminRouter(database, {
       })
     } catch (error) {
       if (error instanceof MarketHistoryError) return response.status(error.status).json({ error: error.code, ...error.details })
+      next(error)
+    }
+  })
+
+  router.post('/participants/:userId/assets', createRequireAdmin(adminPassword), async (request, response, next) => {
+    if (!database) return response.status(503).json({ error: 'DATABASE_UNAVAILABLE' })
+    try {
+      const result = await adjustAssets(database, engine, request.params.userId, request.body, initialCash)
+      // Release the transaction connection before ranking refresh acquires its own connection.
+      await onAssetsAdjusted()
+      response.json(result)
+    } catch (error) {
+      if (error instanceof AssetAdjustmentError) return response.status(error.status).json({ error: error.code })
+      next(error)
+    }
+  })
+  router.get('/participants/:userId/adjustments', createRequireAdmin(adminPassword), async (request, response, next) => {
+    if (!database) return response.status(503).json({ error: 'DATABASE_UNAVAILABLE' })
+    try {
+      const userId = validateUserId(request.params.userId)
+      const rows = await database.query('SELECT result,created_at FROM asset_adjustments WHERE game_id=$1 AND user_id=$2 ORDER BY created_at DESC,request_id DESC LIMIT 50', [ACTIVE_GAME_ID,userId])
+      response.json({ adjustments: rows.rows.map(row => ({ ...row.result, createdAt: row.created_at })) })
+    } catch (error) {
+      if (error instanceof MarketHistoryError) return response.status(error.status).json({ error: error.code })
       next(error)
     }
   })
