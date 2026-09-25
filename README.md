@@ -126,7 +126,6 @@ INITIAL_CASH=1000000
 - [사건·뉴스·주가 변동 API](docs/EVENT_API.md)
 - [순위·최종 결과 API](docs/RANKING_API.md)
 - [월별 거래·주가 분석 API](docs/MARKET_HISTORY_API.md)
-- [개인 비밀 미션 API](docs/MISSION_API.md)
 - [QA 11단계 Frontend 통합 브라우저 검증](docs/QA_STAGE11_FRONTEND.md)
 - [Frontend 품질 개선 후속 계획](docs/QA_FRONTEND_REWORK_PLAN.md)
 

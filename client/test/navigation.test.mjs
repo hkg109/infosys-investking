@@ -9,6 +9,12 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { adminMenu, gameMenu } from '../src/navigation/menus.js'
 
+test('retired missions are absent and information has its own route', () => {
+  assert.equal(adminMenu.some(([path]) => path === 'missions'), false)
+  assert.equal(gameMenu.some(([path]) => path === 'missions'), false)
+  assert.deepEqual(gameMenu.find(([path]) => path === 'intelligence'), ['intelligence', '정보 상점'])
+})
+
 test('every menu has one active accessible link at its direct URL', async () => {
   const directory = await mkdtemp(join(process.cwd(), '.navigation-test-'))
   try {

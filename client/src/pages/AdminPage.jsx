@@ -5,7 +5,6 @@ import { adminMenu } from '../navigation/menus'
 import AdminResults from '../admin/AdminResults'
 import IntelligenceManager from '../intelligence/IntelligenceManager'
 import { intelligenceEnabled } from '../intelligence/api'
-import MissionManager from '../missions/MissionManager'
 import CompanyManager from '../companies/CompanyManager'
 import ParticipantPanel from '../admin/ParticipantPanel'
 import ResetPanel from '../admin/ResetPanel'
@@ -19,8 +18,6 @@ import { useGame } from '../game/useGame'
 function AdminWorkspace({ adminPassword }) {
   const [intelligenceBusy, setIntelligenceBusy] = useState(false)
   const [intelligenceVersion, setIntelligenceVersion] = useState(0)
-  const [missionsBusy, setMissionsBusy] = useState(false)
-  const [missionVersion, setMissionVersion] = useState(0)
   const [companiesBusy, setCompaniesBusy] = useState(false)
   const [companyVersion, setCompanyVersion] = useState(0)
   const [eventsBusy, setEventsBusy] = useState(false)
@@ -28,7 +25,7 @@ function AdminWorkspace({ adminPassword }) {
   const participants = useParticipants(adminPassword, gameState.snapshot)
   const [resetBusy, setResetBusy] = useState(false)
   const [eventVersion, setEventVersion] = useState(0)
-  const busy = gameState.pending || eventsBusy || resetBusy || companiesBusy || missionsBusy || intelligenceBusy
+  const busy = gameState.pending || eventsBusy || resetBusy || companiesBusy || intelligenceBusy
   const [confirmEnd, setConfirmEnd] = useState(false)
   const handleControl = (action) => {
     if (busy) return
@@ -37,12 +34,11 @@ function AdminWorkspace({ adminPassword }) {
   }
   const screens = {
     overview: (<><AdminDashboard {...gameState} game={{ ...gameState.game, connectedParticipants: participants.error || gameState.error ? null : participants.data?.onlineParticipants }} pending={busy} onControl={handleControl} />
-<ResetPanel {...gameState} pending={gameState.pending || eventsBusy || companiesBusy || missionsBusy || intelligenceBusy} onBusy={setResetBusy} onReset={() => { participants.refresh(); setIntelligenceVersion(n => n + 1); setMissionVersion(n => n + 1); setCompanyVersion(n => n + 1); setEventVersion(n => n + 1); setConfirmEnd(false) }} /></>),
+<ResetPanel {...gameState} pending={gameState.pending || eventsBusy || companiesBusy || intelligenceBusy} onBusy={setResetBusy} onReset={() => { participants.refresh(); setIntelligenceVersion(n => n + 1); setCompanyVersion(n => n + 1); setEventVersion(n => n + 1); setConfirmEnd(false) }} /></>),
     participants: (<ParticipantPanel {...participants} stale={Boolean(gameState.error)} />),
-    companies: (<CompanyManager key={`companies-${companyVersion}`} password={adminPassword} game={gameState.game} stale={gameState.loading || Boolean(gameState.error) || gameState.pending || eventsBusy || resetBusy || missionsBusy || intelligenceBusy} onBusy={setCompaniesBusy} onChanged={() => setEventVersion(n => n + 1)} />),
-    events: (<EventManager key={`events-${eventVersion}`} password={adminPassword} game={gameState.game} stale={gameState.loading || Boolean(gameState.error) || gameState.pending || companiesBusy || resetBusy || missionsBusy || intelligenceBusy} onBusy={setEventsBusy} />),
-    missions: (<MissionManager key={`missions-${missionVersion}`} password={adminPassword} game={gameState.game} stale={gameState.loading || Boolean(gameState.error) || gameState.pending || eventsBusy || companiesBusy || resetBusy || intelligenceBusy} onBusy={setMissionsBusy} />),
-    intelligence: (intelligenceEnabled && <IntelligenceManager key={`intelligence-${intelligenceVersion}`} password={adminPassword} game={gameState.game} stale={gameState.loading || Boolean(gameState.error) || gameState.pending || eventsBusy || companiesBusy || resetBusy || missionsBusy} onBusy={setIntelligenceBusy} /> || <p>정보 기능이 비활성화되어 있습니다.</p>),
+    companies: (<CompanyManager key={`companies-${companyVersion}`} password={adminPassword} game={gameState.game} stale={gameState.loading || Boolean(gameState.error) || gameState.pending || eventsBusy || resetBusy || intelligenceBusy} onBusy={setCompaniesBusy} onChanged={() => setEventVersion(n => n + 1)} />),
+    events: (<EventManager key={`events-${eventVersion}`} password={adminPassword} game={gameState.game} stale={gameState.loading || Boolean(gameState.error) || gameState.pending || companiesBusy || resetBusy || intelligenceBusy} onBusy={setEventsBusy} />),
+    intelligence: (intelligenceEnabled && <IntelligenceManager key={`intelligence-${intelligenceVersion}`} password={adminPassword} game={gameState.game} stale={gameState.loading || Boolean(gameState.error) || gameState.pending || eventsBusy || companiesBusy || resetBusy} onBusy={setIntelligenceBusy} /> || <p>정보 기능이 비활성화되어 있습니다.</p>),
     results: (<AdminResults revision={gameState.snapshot} />),
   }
   return (

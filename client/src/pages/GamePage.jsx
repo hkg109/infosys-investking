@@ -4,7 +4,6 @@ import NavigationGuard from '../navigation/NavigationGuard'
 import { gameMenu } from '../navigation/menus'
 import IntelligencePanel from '../intelligence/IntelligencePanel'
 import { intelligenceEnabled } from '../intelligence/api'
-import MissionPanel from '../missions/MissionPanel'
 import RankingPanel from '../ranking/RankingPanel'
 import EventNews from '../events/EventNews'
 import { useEffect, useRef, useState } from 'react'
@@ -24,7 +23,6 @@ function GamePage() {
   const navigate = useNavigate()
   const [floatingClock, setFloatingClock] = useState(false)
   const { logout, user, checkSession } = useSession()
-  const [intelligenceRevision, setIntelligenceRevision] = useState(0)
   const gameState = useGame('', checkSession)
   const trading = useTrading(user.userId)
   useEffect(() => { trading.refresh() }, [gameState.snapshot, trading.refresh])
@@ -74,7 +72,7 @@ function GamePage() {
 <TradingPanel game={gameState.game} stale={gameState.loading || Boolean(gameState.error)} trading={trading} selectedCompanyId={selectedCompanyId} onSelectCompany={setSelectedCompanyId} /></>),
     history: (<><label>차트 종목<select value={selectedCompanyId} onChange={e => setSelectedCompanyId(e.target.value)}><option value="">종목 선택</option>{(trading.companies || []).map(item => <option key={item.companyId} value={item.companyId}>{item.name}</option>)}</select></label><PriceHistoryPanel companyId={selectedCompanyId} revision={gameState.snapshot} /><TradeHistoryPanel totalRounds={gameState.game?.totalRounds} revision={trading.account} /></>),
     ranking: (<RankingPanel userId={user.userId} game={gameState.game} revision={gameState.snapshot} />),
-    missions: (<><MissionPanel key={`mission-${intelligenceRevision}`} userId={user.userId} game={gameState.game} revision={gameState.snapshot} />{intelligenceEnabled && <IntelligencePanel key={user.userId} userId={user.userId} game={gameState.game} revision={gameState.snapshot} stale={gameState.loading || Boolean(gameState.error)} onPurchased={() => setIntelligenceRevision(n => n + 1)} />}</>),
+    intelligence: (intelligenceEnabled && <IntelligencePanel key={user.userId} userId={user.userId} game={gameState.game} revision={gameState.snapshot} stale={gameState.loading || Boolean(gameState.error)} onPurchased={trading.refresh} /> || <p>정보 기능이 비활성화되어 있습니다.</p>),
     profile: (<section className="panel my-info" id="my-info" aria-label="내 정보">
         <h2>내 정보</h2>
         <p className="ranking-name"><strong>닉네임:</strong> {user.nickname}</p>
