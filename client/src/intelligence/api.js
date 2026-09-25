@@ -20,17 +20,17 @@ function unique(items) {
   return items
 }
 export function validateStore(data) {
-  if (!integer(data?.points, 0, Number.MAX_SAFE_INTEGER) || !Array.isArray(data.items) || !Array.isArray(data.purchases)) throw new Error('INVALID_RESPONSE')
+  if (!integer(data?.cash, 0, Number.MAX_SAFE_INTEGER) || !Array.isArray(data.items) || !Array.isArray(data.purchases)) throw new Error('INVALID_RESPONSE')
   // Whitelist public fields. Unpurchased content never enters component state.
   const items = unique(data.items.map(item => {
     if (!item || typeof item.canPurchase !== 'boolean') throw new Error('INVALID_RESPONSE')
     return { ...metadata(item), canPurchase: item.canPurchase }
   }))
   const purchases = unique(data.purchases.map(item => {
-    if (!item || !text(item.content, 5000) || typeof item.purchasedAt !== 'string' || !Number.isFinite(Date.parse(item.purchasedAt)) || !integer(item.paidPoints, 1, 1000000)) throw new Error('INVALID_RESPONSE')
-    return { ...metadata(item), content: item.content, purchasedAt: item.purchasedAt, paidPoints: item.paidPoints }
+    if (!item || !text(item.content, 5000) || typeof item.purchasedAt !== 'string' || !Number.isFinite(Date.parse(item.purchasedAt)) || !integer(item.paidCash, 1, 1000000)) throw new Error('INVALID_RESPONSE')
+    return { ...metadata(item), content: item.content, purchasedAt: item.purchasedAt, paidCash: item.paidCash }
   }))
-  return { points: data.points, items, purchases }
+  return { cash: data.cash, items, purchases }
 }
 export function validateClues(data) {
   if (!Array.isArray(data?.clues)) throw new Error('INVALID_RESPONSE')
@@ -40,7 +40,7 @@ export function validateClues(data) {
   })) }
 }
 export function canBuy(data, item, { status, stale, busy }) {
-  return Boolean(data && item && status === 'RUNNING' && !stale && !busy && item.canPurchase && data.points >= item.price && !data.purchases.some(p => p.clueId === item.clueId))
+  return Boolean(data && item && status === 'RUNNING' && !stale && !busy && item.canPurchase && data.cash >= item.price && !data.purchases.some(p => p.clueId === item.clueId))
 }
 export async function intelligenceRequest(path, { method = 'GET', password, body, signal } = {}) {
   const response = await fetch(`${base}/api/intelligence${path}`, {
@@ -60,7 +60,7 @@ export async function intelligenceRequest(path, { method = 'GET', password, body
   return { clue: validateClues({ clues: [data.clue] }).clues[0] }
 }
 export function intelligenceError(error) {
-  return ({ AUTH_REQUIRED: '참가 인증이 만료됐습니다. 다시 로그인해 주세요.', ADMIN_AUTH_REQUIRED: '관리자 잠금 후 다시 인증해 주세요.', SERVICE_UNAVAILABLE: '정보 상점을 현재 이용할 수 없습니다.', INVALID_RESPONSE: '정보 응답을 확인하지 못했습니다. 다시 조회해 주세요.', INVALID_CLUE: '제목 1~100자, 요약 1~500자, 본문 1~5,000자, 가격 1~1,000,000P, 공개 월 1~1,000을 확인해 주세요.', INSUFFICIENT_POINTS: '정보 포인트가 부족합니다.', CLUE_UNAVAILABLE: '지금 구매할 수 없는 정보입니다.', PRICE_CHANGED: '가격이 변경되었습니다. 목록을 다시 확인해 주세요.', PURCHASE_CLOSED: '게임 진행 중에만 구매할 수 있습니다.', CLUE_MANAGEMENT_CLOSED: '게임 대기 중에만 단서를 변경할 수 있습니다.' })[error.message] || '요청 결과를 확인하지 못했습니다. 목록을 다시 조회해 주세요.'
+  return ({ AUTH_REQUIRED: '참가 인증이 만료됐습니다. 다시 로그인해 주세요.', ADMIN_AUTH_REQUIRED: '관리자 잠금 후 다시 인증해 주세요.', SERVICE_UNAVAILABLE: '정보 상점을 현재 이용할 수 없습니다.', INVALID_RESPONSE: '정보 응답을 확인하지 못했습니다. 다시 조회해 주세요.', INVALID_CLUE: '제목 1~100자, 요약 1~500자, 본문 1~5,000자, 가격 1~1,000,000원, 공개 월 1~1,000을 확인해 주세요.', INSUFFICIENT_CASH: '보유 현금이 부족합니다.', CLUE_UNAVAILABLE: '지금 구매할 수 없는 정보입니다.', PRICE_CHANGED: '가격이 변경되었습니다. 목록을 다시 확인해 주세요.', PURCHASE_CLOSED: '게임 진행 중에만 구매할 수 있습니다.', CLUE_MANAGEMENT_CLOSED: '게임 대기 중에만 단서를 변경할 수 있습니다.' })[error.message] || '요청 결과를 확인하지 못했습니다. 목록을 다시 조회해 주세요.'
 }
 export function privateStoreFailure(previous, userId, error) {
   return { userId, data: error.message === 'AUTH_REQUIRED' || previous.userId !== userId ? null : previous.data, error: intelligenceError(error), fresh: false }

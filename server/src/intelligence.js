@@ -75,48 +75,53 @@ export async function deactivateClue(database, engine, id) {
     requireWaiting({ ...game, live: engine.getSnapshot() })
   })
 }
-async function readStore(client, userId, engine) {
+async function readStore(client, userId, engine, initialCash = 1_000_000) {
   // All queries share one snapshot (GET) or the purchase transaction and wallet lock (POST).
   const game = (await client.query('SELECT status,current_round FROM games WHERE id=$1', [ACTIVE_GAME_ID])).rows[0]
   if (!game) fail(503, 'GAME_UNAVAILABLE')
-  const wallet = (await client.query('SELECT points FROM user_reward_wallets WHERE game_id=$1 AND user_id=$2', [ACTIVE_GAME_ID, userId])).rows[0]
+  const wallet = (await client.query('SELECT cash FROM wallets WHERE game_id=$1 AND user_id=$2', [ACTIVE_GAME_ID, userId])).rows[0]
   const purchases = (await client.query(`SELECT * FROM intelligence_purchases WHERE game_id=$1 AND user_id=$2 ORDER BY purchased_at,clue_id`, [ACTIVE_GAME_ID, userId])).rows.map(row => ({
-    ...metadata(row), content: row.content, paidPoints: row.paid_points, purchasedAt: row.purchased_at.toISOString(),
+    ...metadata(row), content: row.content, paidCash: Number(row.paid_cash), purchasedAt: row.purchased_at.toISOString(),
   }))
   const live = engine.getSnapshot(), round = Math.min(game.current_round, live.currentRound)
   // Query only public fields: unpurchased content is never loaded into catalog rows.
   const rows = (await client.query(`SELECT id,title,summary,price,available_round FROM intelligence_clues
     WHERE is_active AND available_round <= $1 ORDER BY available_round,created_at,id`, [round])).rows
   const owned = new Set(purchases.map(p => p.clueId))
-  const points = Number(wallet?.points || 0)
-  if (!Number.isSafeInteger(points)) fail(503, 'POINTS_OUT_OF_RANGE')
-  return { points, items: rows.map(row => ({ ...metadata(row), canPurchase: game.status === 'RUNNING' && live.status === 'RUNNING' && !owned.has(row.id) })), purchases }
+  const cash = Number(wallet?.cash ?? initialCash)
+  if (!Number.isSafeInteger(cash) || cash < 0) fail(503, 'CASH_OUT_OF_RANGE')
+  return { cash, items: rows.map(row => ({ ...metadata(row), canPurchase: game.status === 'RUNNING' && live.status === 'RUNNING' && !owned.has(row.id) })), purchases }
 }
-export function getIntelligence(database, engine, userId) {
-  return transaction(database, client => readStore(client, userId, engine), { readOnly: true })
+export async function getIntelligence(database, engine, userId, initialCash = 1_000_000) {
+  return transaction(database, client => readStore(client, userId, engine, initialCash), { readOnly: true })
 }
-export async function purchaseClue(database, engine, userId, input) {
+export async function purchaseClue(database, engine, userId, input, initialCash = 1_000_000) {
   const id = clueId(input?.clueId)
   if (!integer(input?.expectedPrice, 1, 1000000)) fail(400, 'INVALID_PRICE')
   return transaction(database, async client => {
-    const game = await lockedGame(client, engine)
     // Ensure a session resolved just before reset cannot recreate an obsolete user's wallet.
     if (!(await client.query('SELECT id FROM users WHERE id=$1', [userId])).rowCount) fail(401, 'AUTH_REQUIRED')
-    await client.query(`INSERT INTO user_reward_wallets(game_id,user_id,points) VALUES($1,$2,0)
-      ON CONFLICT (game_id,user_id) DO NOTHING`, [ACTIVE_GAME_ID, userId])
-    const wallet = (await client.query(`SELECT points FROM user_reward_wallets WHERE game_id=$1 AND user_id=$2 FOR UPDATE`, [ACTIVE_GAME_ID, userId])).rows[0]
-    // Same wallet serializes different purchases and mission reward increments.
+    // Use the same per-user lock as stock orders so a purchase and an order
+    // cannot both spend the same cash balance concurrently.
+    await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [`order-user:${userId}`])
+    // Match stock-order lock ordering (user before game state) to avoid a
+    // purchase/order deadlock while both operations serialize the same wallet.
+    const game = await lockedGame(client, engine)
+    await client.query(`INSERT INTO wallets(game_id,user_id,cash) VALUES($1,$2,$3)
+      ON CONFLICT (game_id,user_id) DO NOTHING`, [ACTIVE_GAME_ID, userId, initialCash])
+    const wallet = (await client.query(`SELECT cash FROM wallets WHERE game_id=$1 AND user_id=$2 FOR UPDATE`, [ACTIVE_GAME_ID, userId])).rows[0]
+    // The wallet row serializes different information purchases.
     const existing = await client.query('SELECT clue_id FROM intelligence_purchases WHERE game_id=$1 AND user_id=$2 AND clue_id=$3', [ACTIVE_GAME_ID,userId,id])
-    if (existing.rowCount) return readStore(client, userId, engine)
+    if (existing.rowCount) return readStore(client, userId, engine, initialCash)
     requireRunning({ ...game, live: engine.getSnapshot() })
     const clue = (await client.query('SELECT * FROM intelligence_clues WHERE id=$1 FOR SHARE', [id])).rows[0]
     if (!clue || !clue.is_active || clue.available_round > Math.min(game.row.current_round, engine.getSnapshot().currentRound)) fail(409, 'CLUE_UNAVAILABLE')
     if (clue.price !== input.expectedPrice) fail(409, 'PRICE_CHANGED')
-    if (BigInt(wallet.points) < BigInt(clue.price)) fail(409, 'INSUFFICIENT_POINTS')
-    await client.query('UPDATE user_reward_wallets SET points=points-$3,updated_at=NOW() WHERE game_id=$1 AND user_id=$2', [ACTIVE_GAME_ID,userId,clue.price])
-    await client.query(`INSERT INTO intelligence_purchases(game_id,user_id,clue_id,title,summary,content,price,available_round,paid_points)
-      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$7)`, [ACTIVE_GAME_ID,userId,id,clue.title,clue.summary,clue.content,clue.price,clue.available_round])
-    const result = await readStore(client, userId, engine)
+    if (BigInt(wallet.cash) < BigInt(clue.price)) fail(409, 'INSUFFICIENT_CASH')
+    await client.query('UPDATE wallets SET cash=cash-$3,updated_at=NOW() WHERE game_id=$1 AND user_id=$2', [ACTIVE_GAME_ID,userId,clue.price])
+    await client.query(`INSERT INTO intelligence_purchases(game_id,user_id,clue_id,title,summary,content,price,available_round,paid_cash)
+      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`, [ACTIVE_GAME_ID,userId,id,clue.title,clue.summary,clue.content,clue.price,clue.available_round,clue.price])
+    const result = await readStore(client, userId, engine, initialCash)
     // Roll back if pause/end arrived during the asynchronous database work.
     requireRunning({ ...game, live: engine.getSnapshot() })
     return result

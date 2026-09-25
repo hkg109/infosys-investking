@@ -164,6 +164,8 @@ app.use('/api/events', createEventRouter(pool, game, {
 app.use('/api/intelligence', createIntelligenceRouter(pool, game, {
   adminPassword: process.env.ADMIN_PASSWORD,
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
+  initialCash,
+  onPurchaseCommitted: () => rankingCoordinator.refreshAndEmit(),
 }))
 app.use('/api/missions', createMissionRouter(pool, game, {
   adminPassword: process.env.ADMIN_PASSWORD,

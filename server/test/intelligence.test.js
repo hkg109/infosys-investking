@@ -10,7 +10,6 @@ import { ACTIVE_GAME_ID, loadGameState } from '../src/game-store.js'
 import { createIntelligenceRouter } from '../src/intelligence-routes.js'
 import { validateClue, saveClue, purchaseClue, getIntelligence } from '../src/intelligence.js'
 import { digestSessionToken, SESSION_COOKIE_NAME } from '../src/session-auth.js'
-import { createMission, createMissionCoordinator } from '../src/missions.js'
 import { createGameResetCoordinator } from '../src/game-reset.js'
 const dbOptions = { skip: !process.env.TEST_DATABASE_URL && 'Set TEST_DATABASE_URL for PostgreSQL integration tests', timeout: 30000 }
 const input = { title: '수요 단서', summary: '공개 요약', content: '구매자 전용 비밀\n다음 줄', price: 10, availableRound: 1, isActive: true }
@@ -30,15 +29,15 @@ async function setup(t) {
     snapshot = { ...snapshot, status, currentRound: round, phase: status === 'RUNNING' ? 'TRADING' : status }
     await database.query('UPDATE games SET status=$2,current_round=$3 WHERE id=$1', [ACTIVE_GAME_ID, status, round])
   }
-  async function user(points = 0) {
+  async function user(cash = 100) {
     const id = randomUUID(), token = randomBytes(32).toString('hex')
     await database.query("INSERT INTO users(id,nickname,pin_hash) VALUES($1,$2,'test')", [id,id.slice(0,20)])
     await database.query("INSERT INTO user_sessions(token_hash,user_id,expires_at) VALUES($1,$2,NOW()+INTERVAL '1 hour')", [digestSessionToken(token),id])
-    await database.query('INSERT INTO user_reward_wallets(game_id,user_id,points) VALUES($1,$2,$3)', [ACTIVE_GAME_ID,id,points])
+    await database.query('INSERT INTO wallets(game_id,user_id,cash) VALUES($1,$2,$3)', [ACTIVE_GAME_ID,id,cash])
     return { id, token, cookie: `${SESSION_COOKIE_NAME}=${token}` }
   }
   const app = express(); app.use(express.json({ limit: '32kb' }))
-  app.use('/api/intelligence', createIntelligenceRouter(database, engine, { adminPassword: 'test-admin', clientUrl }))
+  app.use('/api/intelligence', createIntelligenceRouter(database, engine, { adminPassword: 'test-admin', clientUrl, initialCash: 100 }))
   app.use((_error,_req,res,_next) => res.status(503).json({ error: 'SERVICE_UNAVAILABLE' }))
   const server = app.listen(0,'127.0.0.1'); await once(server,'listening')
   t.after(() => new Promise(resolve => { server.close(resolve); server.closeAllConnections() }))
@@ -75,21 +74,21 @@ test('intelligence HTTP: admin CRUD, auth/origin, round filtering and no public 
   for(const method of ['POST','PUT','DELETE']) assert.equal((await c.request(method==='POST'?'/admin':`/admin/${clue.clueId}`,{method,admin:true,body:input})).status,409)
   assert.equal((await c.request('/purchases',{method:'POST',body:{clueId:clue.clueId,expectedPrice:10}})).status,401)
 })
-test('intelligence concurrent duplicate/different purchases serialize wallet without overspending',dbOptions,async t=>{
+test('intelligence concurrent duplicate/different purchases serialize cash wallet without overspending',dbOptions,async t=>{
   const c=await setup(t), who=await c.user(20), clue=await c.create(), second=await c.create({title:'다른 단서',price:15})
   await c.state('RUNNING')
   const results=await Promise.all(Array.from({length:8},()=>c.buy(who,clue)))
-  assert.ok(results.every(r=>r.points===10 && r.purchases.length===1))
+  assert.ok(results.every(r=>r.cash===10 && r.purchases.length===1))
   assert.equal((await c.database.query('SELECT count(*)::int AS n FROM intelligence_purchases')).rows[0].n,1)
-  await assert.rejects(c.buy(who,second),/INSUFFICIENT_POINTS/)
+  await assert.rejects(c.buy(who,second),/INSUFFICIENT_CASH/)
   const other=await c.user(20)
   const raced=await Promise.allSettled([c.buy(other,clue),c.buy(other,second)])
   assert.equal(raced.filter(r=>r.status==='fulfilled').length,1)
-  const mine=await getIntelligence(c.database,c.engine,other.id);assert.equal(mine.purchases.length,1);assert.ok([5,10].includes(mine.points))
+  const mine=await getIntelligence(c.database,c.engine,other.id,100);assert.equal(mine.purchases.length,1);assert.ok([5,10].includes(mine.cash))
   await c.state('FINISHED')
-  const retry=await c.buy(who,clue,999);assert.equal(retry.points,10);assert.equal(retry.purchases.length,1)
+  const retry=await c.buy(who,clue,999);assert.equal(retry.cash,10);assert.equal(retry.purchases.length,1)
 })
-test('intelligence purchase rejects unavailable/changed/closed conditions without changing points',dbOptions,async t=>{
+test('intelligence purchase rejects unavailable/changed/closed conditions without changing cash',dbOptions,async t=>{
   const c=await setup(t), who=await c.user(40), clue=await c.create(), future=await c.create({availableRound:2}), inactive=await c.create({isActive:false})
   await c.state('RUNNING')
   await assert.rejects(c.buy(who,clue,11),/PRICE_CHANGED/)
@@ -97,9 +96,9 @@ test('intelligence purchase rejects unavailable/changed/closed conditions withou
   for(const status of ['WAITING','PAUSED','FINISHED']){await c.state(status);await assert.rejects(c.buy(who,clue),/PURCHASE_CLOSED/)}
   await c.state('RUNNING');c.setLive({status:'PAUSED'})
   await assert.rejects(c.buy(who,clue),/PURCHASE_CLOSED/)
-  assert.equal((await getIntelligence(c.database,c.engine,who.id)).points,40)
+  assert.equal((await getIntelligence(c.database,c.engine,who.id,100)).cash,40)
   c.setLive({status:'RUNNING',phase:'RESULT'}) // Closing phase remains eligible while RUNNING.
-  assert.equal((await c.buy(who,clue)).points,30)
+  assert.equal((await c.buy(who,clue)).cash,30)
 })
 test('intelligence private history restores with a new session and preserves purchase snapshots',dbOptions,async t=>{
   const c=await setup(t), who=await c.user(40), other=await c.user(40), clue=await c.create()
@@ -107,38 +106,33 @@ test('intelligence private history restores with a new session and preserves pur
   const stolen=await c.request(`/me?userId=${who.id}`,{who:other});const publicData=await stolen.json()
   assert.deepEqual(publicData.purchases,[]);assert.equal(JSON.stringify(publicData).includes('구매자 전용 비밀'),false)
   const own=await c.request('/purchases',{method:'POST',who:other,body:{clueId:clue.clueId,expectedPrice:10,userId:who.id}})
-  assert.equal(own.status,200);assert.equal((await own.json()).points,30) // Always charges authenticated caller.
+  assert.equal(own.status,200);assert.equal((await own.json()).cash,30) // Always charges authenticated caller.
   const newToken=randomBytes(32).toString('hex')
   await c.database.query('DELETE FROM user_sessions WHERE user_id=$1',[who.id])
   assert.equal((await c.request('/me',{who})).status,401)
   await c.database.query("INSERT INTO user_sessions(token_hash,user_id,expires_at) VALUES($1,$2,NOW()+INTERVAL '1 hour')",[digestSessionToken(newToken),who.id])
   who.cookie=`${SESSION_COOKIE_NAME}=${newToken}`
-  const recovered=await (await c.request('/me',{who})).json();assert.equal(recovered.points,30);assert.equal(recovered.purchases[0].content,input.content)
+  const recovered=await (await c.request('/me',{who})).json();assert.equal(recovered.cash,30);assert.equal(recovered.purchases[0].content,input.content)
   // Simulate a later catalog edit while keeping purchase history; normal HTTP edits require WAITING.
   await c.database.query("UPDATE intelligence_clues SET title='변경 제목',content='변경 본문',price=99,is_active=FALSE WHERE id=$1",[clue.clueId])
-  const snapshot=await (await c.request('/me',{who})).json();assert.equal(snapshot.items.length,0);assert.equal(snapshot.purchases[0].content,input.content);assert.equal(snapshot.purchases[0].paidPoints,10)
+  const snapshot=await (await c.request('/me',{who})).json();assert.equal(snapshot.items.length,0);assert.equal(snapshot.purchases[0].content,input.content);assert.equal(snapshot.purchases[0].paidCash,10)
 })
-test('intelligence rolls back wallet on insert failure and combines safely with mission rewards',dbOptions,async t=>{
+test('intelligence rolls back cash wallet on purchase record failure',dbOptions,async t=>{
   const c=await setup(t), who=await c.user(40), clue=await c.create()
-  await createMission(c.database,{title:'분산',description:'한 종목',missionType:'DIVERSIFIED_HOLDINGS',targetValue:1,rewardPoints:30,isActive:true})
-  const missions=createMissionCoordinator(c.database,{to:()=>({emit:()=>{}})})
-  await missions.prepareGameStart()
-  await c.database.query('INSERT INTO portfolios(game_id,user_id,company_id,quantity) VALUES($1,$2,\'A\',1)',[ACTIVE_GAME_ID,who.id])
   await c.state('RUNNING')
   await c.database.query("CREATE FUNCTION reject_purchase() RETURNS trigger AS $$ BEGIN RAISE EXCEPTION 'test rollback'; END $$ LANGUAGE plpgsql")
   await c.database.query('CREATE TRIGGER reject_purchase BEFORE INSERT ON intelligence_purchases FOR EACH ROW EXECUTE FUNCTION reject_purchase()')
   await assert.rejects(c.buy(who,clue),/test rollback/)
-  assert.equal((await getIntelligence(c.database,c.engine,who.id)).points,40)
+  assert.equal((await getIntelligence(c.database,c.engine,who.id,100)).cash,40)
   await c.database.query('DROP TRIGGER reject_purchase ON intelligence_purchases')
-  await Promise.all([c.buy(who,clue),missions.handleTrade({userId:who.id,round:1})])
-  assert.equal((await getIntelligence(c.database,c.engine,who.id)).points,60)
+  assert.equal((await c.buy(who,clue)).cash,30)
 })
 test('intelligence purchases disappear on game reset while clue originals remain',dbOptions,async t=>{
   const c=await setup(t), who=await c.user(40), clue=await c.create()
   await c.state('RUNNING');await c.buy(who,clue);await c.state('FINISHED')
   await createGameResetCoordinator(c.database,c.engine).reset()
   assert.equal((await c.database.query('SELECT count(*)::int n FROM intelligence_purchases')).rows[0].n,0)
-  assert.equal((await c.database.query('SELECT count(*)::int n FROM user_reward_wallets')).rows[0].n,0)
+  assert.equal((await c.database.query('SELECT count(*)::int n FROM wallets')).rows[0].n,0)
   assert.equal((await c.database.query('SELECT count(*)::int n FROM intelligence_clues')).rows[0].n,1)
   assert.equal((await c.request('/me',{who})).status,401)
   await assert.rejects(c.buy(who,clue),/AUTH_REQUIRED/)
@@ -157,7 +151,7 @@ test('intelligence rolls back if game pauses during purchase or starts during cl
   } })
   const pauseDuringInsert=intercept(/INSERT INTO intelligence_purchases/,()=>c.setLive({status:'PAUSED'}))
   await assert.rejects(purchaseClue(pauseDuringInsert,c.engine,who.id,{clueId:clue.clueId,expectedPrice:10}),/PURCHASE_CLOSED/)
-  let mine=await getIntelligence(c.database,c.engine,who.id);assert.equal(mine.points,40);assert.equal(mine.purchases.length,0)
+  let mine=await getIntelligence(c.database,c.engine,who.id,100);assert.equal(mine.cash,40);assert.equal(mine.purchases.length,0)
   await c.state('WAITING',0)
   const startDuringEdit=intercept(/UPDATE intelligence_clues SET title/,()=>c.setLive({status:'RUNNING',currentRound:1}))
   await assert.rejects(saveClue(startDuringEdit,c.engine,clue.clueId,{...input,content:'변경'}),/CLUE_MANAGEMENT_CLOSED/)
@@ -165,33 +159,26 @@ test('intelligence rolls back if game pauses during purchase or starts during cl
 })
 
 
-test('real PostgreSQL HTTP responses work with the frontend intelligence adapter',dbOptions,async t=>{
+test('real PostgreSQL HTTP responses expose cash and recover a lost purchase response',dbOptions,async t=>{
   const c=await setup(t), who=await c.user(40), other=await c.user(0)
-  const { intelligenceRequest }=await import('../../client/src/intelligence/api.js')
-  const originalFetch=globalThis.fetch
-  let currentUser=who, loseResponse=false, purchaseCalls=0
-  globalThis.fetch=async(url,options={})=>{
-    if (!String(url).startsWith('/api/intelligence')) return originalFetch(url,options)
-    const path=String(url).slice('/api/intelligence'.length)
-    const admin=options.headers?.Authorization==='Bearer test-admin'
-    const response=await c.request(path,{method:options.method,body:options.body?JSON.parse(options.body):undefined,who:admin?undefined:currentUser,admin,origin:clientUrl})
-    if(path==='/purchases'){purchaseCalls++;if(loseResponse){loseResponse=false;throw new Error('lost response after commit')}}
-    return response
-  }
-  try{
-    const created=await intelligenceRequest('/admin',{password:'test-admin',method:'POST',body:input})
-    assert.equal(created.clue.content,input.content)
-    assert.equal((await intelligenceRequest('/admin',{password:'test-admin'})).clues.length,1)
-    await c.state('RUNNING')
-    const before=await intelligenceRequest('/me');assert.equal(before.points,40);assert.equal(before.items[0].content,undefined)
-    loseResponse=true
-    await assert.rejects(intelligenceRequest('/purchases',{method:'POST',body:{clueId:created.clue.clueId,expectedPrice:10}}),/lost response/)
-    assert.equal(purchaseCalls,1)
-    const recovered=await intelligenceRequest('/me');assert.equal(recovered.points,30);assert.equal(recovered.purchases[0].content,input.content)
-    currentUser=other
-    const separate=await intelligenceRequest('/me');assert.equal(separate.points,0);assert.deepEqual(separate.purchases,[])
-    await assert.rejects(intelligenceRequest('/purchases',{method:'POST',body:{clueId:created.clue.clueId,expectedPrice:10}}),/INSUFFICIENT_POINTS/)
-    await c.database.query('DELETE FROM user_sessions WHERE user_id=$1',[other.id])
-    await assert.rejects(intelligenceRequest('/me'),/AUTH_REQUIRED/)
-  }finally{globalThis.fetch=originalFetch}
+  const createdResponse=await c.request('/admin',{method:'POST',admin:true,body:input})
+  assert.equal(createdResponse.status,201)
+  const created=(await createdResponse.json()).clue
+  assert.equal(created.content,input.content)
+  await c.state('RUNNING')
+  const before=await (await c.request('/me',{who})).json()
+  assert.equal(before.cash,40);assert.equal(before.items[0].content,undefined)
+  // A client may lose the response after the server commits. GET restores the
+  // authoritative balance and private purchase without repeating the charge.
+  const purchased=await c.request('/purchases',{method:'POST',who,body:{clueId:created.clueId,expectedPrice:10}})
+  assert.equal(purchased.status,200)
+  const recovered=await (await c.request('/me',{who})).json()
+  assert.equal(recovered.cash,30);assert.equal(recovered.purchases[0].content,input.content)
+  assert.equal(recovered.purchases[0].paidCash,10)
+  const separate=await (await c.request('/me',{who:other})).json()
+  assert.equal(separate.cash,0);assert.deepEqual(separate.purchases,[])
+  const insufficient=await c.request('/purchases',{method:'POST',who:other,body:{clueId:created.clueId,expectedPrice:10}})
+  assert.equal(insufficient.status,409);assert.equal((await insufficient.json()).error,'INSUFFICIENT_CASH')
+  await c.database.query('DELETE FROM user_sessions WHERE user_id=$1',[other.id])
+  assert.equal((await c.request('/me',{who:other})).status,401)
 })

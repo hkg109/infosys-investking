@@ -62,7 +62,7 @@ export default function IntelligenceManager({ password, game, stale, onBusy }) {
     {message && <p role="status">{message}</p>}
     {clues && !fresh && <p>마지막 확인 정보입니다. 재조회 후 편집할 수 있습니다.</p>}
     {clues && <>
-      {!clues.length ? <p>등록된 단서가 없습니다.</p> : <ul className="mission-list">{clues.map(item => <li key={item.clueId}><h3>{item.title}</h3><p>{item.summary}</p><details><summary>구매자에게 공개할 본문</summary><p className="intelligence-content">{item.content}</p></details><p>{item.price} P · {item.availableRound}월부터 · {item.isActive ? '활성' : '비활성'}</p><div className="event-actions">
+      {!clues.length ? <p>등록된 단서가 없습니다.</p> : <ul className="mission-list">{clues.map(item => <li key={item.clueId}><h3>{item.title}</h3><p>{item.summary}</p><details><summary>구매자에게 공개할 본문</summary><p className="intelligence-content">{item.content}</p></details><p>{item.price.toLocaleString('ko-KR')}원 · {item.availableRound}월부터 · {item.isActive ? '활성' : '비활성'}</p><div className="event-actions">
         <button type="button" className="secondary-button" disabled={!editable} onClick={() => { setEditing(item.clueId); setForm({ ...item, price: String(item.price), availableRound: String(item.availableRound) }); setEditorOpen(true); setReview(null) }}>{item.title} 수정</button>
         {item.isActive && <button type="button" className="secondary-button" disabled={!editable} onClick={() => setReview(item)}>{item.title} 비활성화</button>}
       </div></li>)}</ul>}
@@ -72,7 +72,7 @@ export default function IntelligenceManager({ password, game, stale, onBusy }) {
         <label htmlFor="clue-title">단서 제목</label><input id="clue-title" name="title" maxLength={100} value={form.title} onChange={change}/>
         <label htmlFor="clue-summary">구매 전 공개 요약</label><textarea id="clue-summary" name="summary" maxLength={500} value={form.summary} onChange={change}/>
         <label htmlFor="clue-content">구매자 전용 본문</label><textarea id="clue-content" name="content" rows={5} maxLength={5000} value={form.content} onChange={change}/>
-        <label htmlFor="clue-price">가격 (정보 포인트)</label><input id="clue-price" name="price" inputMode="numeric" value={form.price} onChange={change}/>
+        <label htmlFor="clue-price">가격 (원)</label><input id="clue-price" name="price" inputMode="numeric" value={form.price} onChange={change}/>
         <label htmlFor="clue-round">공개 시작 월</label><input id="clue-round" name="availableRound" inputMode="numeric" value={form.availableRound} onChange={change}/>
         <label className="reset-ack"><input name="isActive" type="checkbox" checked={form.isActive} onChange={change}/>상점에서 판매</label>
         <div className="dialog-actions"><button className="secondary-button" type="button" onClick={requestDialogClose}>취소</button><button className="primary-button" type="submit">{editing ? '단서 수정 저장' : '단서 등록'}</button></div>
