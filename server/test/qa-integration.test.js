@@ -9,7 +9,6 @@ import pg from 'pg'
 import { io } from 'socket.io-client'
 import { validateCompanies } from '../../client/src/companies/api.js'
 import { validateParticipants } from '../../client/src/admin/participants.js'
-import { validateMine, validateAdmin } from '../../client/src/missions/api.js'
 import { validateStore, validateClues } from '../../client/src/intelligence/api.js'
 import { validateRanking } from '../../client/src/ranking/api.js'
 import { validateTradeHistory, validatePriceHistory } from '../../client/src/trading/historyApi.js'
@@ -77,6 +76,7 @@ test('stage 11: concurrent HTTP orders, process crash recovery, events and final
   await start()
   const participants = await Promise.all(Array.from({length:12}, (_, index) => request('/users/join', {body:{nickname:`qa-${index}`,pin:'1234'}})))
   assert.ok(participants.every(p => p.status === 201))
+  assert.equal((await fetch(base + '/api/missions/me', { headers: { Cookie: participants[0].cookie } })).status, 404)
   assert.equal((await feed()).ranking.totalParticipants, 12)
   // Stage 12: page-specific reads use existing routes and real frontend validators.
   async function checkPageReads(cookie) {
@@ -84,7 +84,7 @@ test('stage 11: concurrent HTTP orders, process crash recovery, events and final
       ['/admin/participants', validateParticipants], ['/companies/admin', validateCompanies],
       ['/events/admin', data => assert.ok(Array.isArray(data.events))],
       ['/events/admin/schedule', data => assert.ok(Array.isArray(data.rounds))],
-      ['/missions/admin', validateAdmin], ['/intelligence/admin', validateClues],
+      ['/intelligence/admin', validateClues],
       ['/rankings/admin', data => assert.ok(Array.isArray(data.ranking.rankings))],
     ]
     const participantReads = [
@@ -92,7 +92,7 @@ test('stage 11: concurrent HTTP orders, process crash recovery, events and final
       ['/trading/portfolio', data => assert.ok(Number.isSafeInteger(data.account.cash))],
       ['/trading/orders/recovery', data => assert.ok(data && typeof data === 'object')],
       ['/trading/history', validateTradeHistory], ['/trading/companies/A/history', validatePriceHistory],
-      ['/rankings', validateRanking], ['/missions/me', validateMine], ['/intelligence/me', validateStore],
+      ['/rankings', validateRanking], ['/intelligence/me', validateStore],
     ]
     for (const [path, validate] of adminReads) {
       const result = await request(path, { admin: true })
@@ -120,7 +120,6 @@ test('stage 11: concurrent HTTP orders, process crash recovery, events and final
     for (const [root, id, invalid, missing] of [
       ['/companies/admin', 'A', 'INVALID_COMPANY', 'COMPANY_NOT_FOUND'],
       ['/events/admin', randomUUID(), 'INVALID_EVENT', 'EVENT_NOT_FOUND'],
-      ['/missions/admin', randomUUID(), 'INVALID_MISSION', 'MISSION_NOT_FOUND'],
     ]) {
       await expectError(`${root}/${id}`, {method:'PUT',body:{},cookie:participants[0].cookie}, 401, {error:'ADMIN_AUTH_REQUIRED'})
       await expectError(`${root}/${id}`, {method:'PUT',body:{},admin:true}, 400, {error:invalid})
@@ -128,7 +127,6 @@ test('stage 11: concurrent HTTP orders, process crash recovery, events and final
     }
     assert.deepEqual((await request('/companies/admin', {admin:true})).body, original)
     assert.deepEqual((await request('/events/admin', {admin:true})).body.events, [])
-    assert.deepEqual((await request('/missions/admin', {admin:true})).body.missions, [])
   })
 
 
@@ -144,11 +142,12 @@ test('stage 11: concurrent HTTP orders, process crash recovery, events and final
   ]}]}})).status,200)
   assert.equal((await control('start')).status,200)
   await feed() // Wait for the server's start-event queue.
+  assert.equal(Number((await database.query('SELECT COUNT(*) AS count FROM game_missions')).rows[0].count), 0)
+  assert.equal(Number((await database.query('SELECT COUNT(*) AS count FROM user_reward_wallets')).rows[0].count), 0)
   await t.test('stage 13: editing closes when the game starts without changing error details', async () => {
     for (const [path, code] of [
       ['/companies/admin/A','COMPANY_MANAGEMENT_CLOSED'],
       [`/events/admin/${events[0]}`,'EVENT_MANAGEMENT_CLOSED'],
-      [`/missions/admin/${randomUUID()}`,'MISSION_MANAGEMENT_CLOSED'],
     ]) {
       await expectError(path,{method:'PUT',body:{},admin:true},409,{error:code,status:'RUNNING'})
     }
@@ -158,6 +157,7 @@ test('stage 11: concurrent HTTP orders, process crash recovery, events and final
   const responses = await Promise.all(participants.flatMap((p,i) => [0,1].map(() => request('/trading/orders',{cookie:p.cookie,body:orders[i]}))))
   assert.equal(responses.filter(r=>r.status===201).length,12)
   assert.equal(responses.filter(r=>r.status===200 && r.body.duplicate).length,12)
+  assert.equal(Number((await database.query('SELECT COUNT(*) AS count FROM user_reward_wallets')).rows[0].count), 0)
   const overspend = await Promise.all([0,1,2].map(() => request('/trading/orders',{cookie:participants[0].cookie,body:{orderId:randomUUID(),companyId:'A',type:'BUY',quantity:60}})))
   assert.equal(overspend.filter(r=>r.status===201).length,1)
   assert.equal(overspend.filter(r=>r.body.error==='INSUFFICIENT_CASH').length,2)

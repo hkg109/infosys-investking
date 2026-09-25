@@ -16,8 +16,6 @@ import { createGameRouter } from './game-routes.js'
 import { loadGameState, saveGameState } from './game-store.js'
 import { createMarketGate } from './market-gate.js'
 import { createMarketHistoryCoordinator } from './market-history.js'
-import { createMissionRouter } from './mission-routes.js'
-import { createMissionCoordinator } from './missions.js'
 import { createRankingRouter } from './ranking-routes.js'
 import { createRankingCoordinator } from './rankings.js'
 import { createUserRouter } from './users.js'
@@ -69,7 +67,6 @@ const rankingCoordinator = createRankingCoordinator(pool, io, {
 })
 const marketGate = createMarketGate()
 const marketHistoryCoordinator = createMarketHistoryCoordinator(pool)
-const missionCoordinator = createMissionCoordinator(pool, io, { initialCash })
 const eventHaltDurationMs = positiveInteger(process.env.EVENT_HALT_DURATION_MS, 3_000, 'EVENT_HALT_DURATION_MS')
 const eventCoordinator = createEventCoordinator(pool, io, {
   marketGate,
@@ -82,7 +79,6 @@ try {
   await marketHistoryCoordinator.reconcileBeforeEvents(restoredGame)
   await eventCoordinator.reconcile(restoredGame)
   await marketHistoryCoordinator.reconcileAfterEvents(restoredGame)
-  await missionCoordinator.reconcile(restoredGame)
   await rankingCoordinator.reconcile(game.getSnapshot())
 } catch (error) {
   if (error.code !== '42P01') console.error('Failed to reconcile game state')
@@ -110,7 +106,6 @@ game.on('game-event', (event) => {
     await marketHistoryCoordinator.beforeGameEvent(event)
     await eventCoordinator.handleGameEvent(event)
     await marketHistoryCoordinator.afterGameEvent(event)
-    await missionCoordinator.handleGameEvent(event)
     await rankingCoordinator.handleGameEvent(event)
   }).catch((error) => {
     if (error.code !== '42P01') console.error('Failed to process game event')
@@ -139,7 +134,6 @@ app.use('/api/users', createUserRouter(pool, {
   secureCookies: process.env.NODE_ENV === 'production',
   onUserCreated: async (user) => {
     await eventProcessing
-    await missionCoordinator.assignUserIfRunning(user.userId, game.getSnapshot())
     return rankingCoordinator.refreshAndEmit({ final: game.getSnapshot().status === 'FINISHED' })
   },
   onUserLogout: (userIds) => presence.disconnectUsers(userIds),
@@ -149,7 +143,6 @@ app.use('/api/game', createGameRouter(game, {
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
   beforeStart: async (snapshot) => {
     await eventCoordinator.prepareGameStart(snapshot)
-    await missionCoordinator.prepareGameStart(snapshot)
   },
   resetGame: async () => {
     await eventProcessing
@@ -167,17 +160,10 @@ app.use('/api/intelligence', createIntelligenceRouter(pool, game, {
   initialCash,
   onPurchaseCommitted: () => rankingCoordinator.refreshAndEmit(),
 }))
-app.use('/api/missions', createMissionRouter(pool, game, {
-  adminPassword: process.env.ADMIN_PASSWORD,
-  clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
-}))
 app.use('/api/trading', createTradingRouter(pool, game, {
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
   initialCash,
-  onTradeCommitted: async (trade) => {
-    await missionCoordinator.handleTrade(trade)
-    return rankingCoordinator.refreshAndEmit()
-  },
+  onTradeCommitted: () => rankingCoordinator.refreshAndEmit(),
   marketGate,
 }))
 app.use('/api/broadcast', createBroadcastRouter(pool, {

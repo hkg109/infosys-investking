@@ -6,7 +6,6 @@ import { fileURLToPath } from 'node:url'
 import { createServer } from 'vite'
 import { loadGameState } from '../../server/src/game-store.js'
 import { createEvent, saveGameSchedule } from '../../server/src/events.js'
-import { createMission } from '../../server/src/missions.js'
 import { saveClue } from '../../server/src/intelligence.js'
 
 if (!process.env.TEST_DATABASE_URL) throw new Error('Set TEST_DATABASE_URL to a disposable PostgreSQL database')
@@ -38,7 +37,6 @@ try {
   const first = await createEvent(database, {title:'QA 장중 수요 증가',news:'수요 증가 소식',result:'A 종목 10% 상승',effects:[{companyId:'A',changeRate:10}]})
   const last = await createEvent(database, {title:'QA 월 마감',news:'월말 실적 발표 예정',result:'A 종목 5% 하락',effects:[{companyId:'A',changeRate:-5}]})
   await saveGameSchedule(database,{rounds:[{round:1,events:[{eventId:first.eventId,triggerPhase:'INTRADAY',triggerOffsetSeconds:120,preannounceSeconds:10},{eventId:last.eventId,triggerPhase:'CLOSE'}]}]},{totalRounds:1,tradingDurationMs:300000,haltDurationMs:3000})
-  await createMission(database,{title:'첫 종목 보유',description:'한 종목을 매수하세요.',missionType:'DIVERSIFIED_HOLDINGS',targetValue:1,rewardPoints:10,isActive:true})
   await saveClue(database,{getSnapshot:()=>({status:'WAITING',totalRounds:1})},null,{title:'QA 시장 단서',summary:'구매 후 확인',content:'QA 구매자 전용 내용',price:5,availableRound:1,isActive:true})
   child = spawn(process.execPath,[fileURLToPath(new URL('../../server/src/server.js',import.meta.url))],{env:{...process.env,DATABASE_URL:url.href,PORT:'0',CLIENT_URL:'http://127.0.0.1:4173',ADMIN_PASSWORD:'qa-ui-only',INITIAL_CASH:'1000000',NODE_ENV:'test'},stdio:['ignore','pipe','inherit']})
   const port = await new Promise((resolve,reject)=>{

@@ -3,7 +3,7 @@ import { io } from 'socket.io-client'
 import { controlGame, gameError, getGame } from './api'
 import { allowedControl, remainingSeconds } from './model'
 
-const events = ['game:state', 'game:start', 'game:pause', 'game:resume', 'game:end', 'round:start', 'round:end', 'trading:open', 'trading:close', 'stock:update', 'news:publish', 'event:result', 'ranking:update', 'participants:presence', 'game:reset', 'market:event:warning', 'market:event:breaking', 'trading:halt', 'trading:resume', 'mission:assigned', 'mission:progress', 'mission:completed']
+const events = ['game:state', 'game:start', 'game:pause', 'game:resume', 'game:end', 'round:start', 'round:end', 'trading:open', 'trading:close', 'stock:update', 'news:publish', 'event:result', 'ranking:update', 'participants:presence', 'game:reset', 'market:event:warning', 'market:event:breaking', 'trading:halt', 'trading:resume']
 export function useGame(adminPassword = '', onSessionCheck) {
   const [snapshot, setSnapshot] = useState(null)
   const [error, setError] = useState('')

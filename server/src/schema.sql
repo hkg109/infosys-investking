@@ -299,6 +299,8 @@ CREATE TABLE IF NOT EXISTS ranking_snapshots (
 CREATE INDEX IF NOT EXISTS ranking_snapshots_order_idx
   ON ranking_snapshots(game_id, is_final, rank, user_id);
 
+-- Legacy mission tables are retained for non-destructive upgrades. The mission
+-- API, assignment engine and rewards were retired in QA stage 17.
 CREATE TABLE IF NOT EXISTS missions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title VARCHAR(100) NOT NULL CHECK (length(trim(title)) > 0),
