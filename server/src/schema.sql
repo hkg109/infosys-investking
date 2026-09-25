@@ -392,3 +392,14 @@ DO $$ BEGIN
       CHECK (paid_cash BETWEEN 1 AND 1000000);
   END IF;
 END $$;
+
+-- Administrative corrections are not trades. Keep their original before/after values.
+CREATE TABLE IF NOT EXISTS asset_adjustments (
+  request_id UUID PRIMARY KEY,
+  game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  input JSONB NOT NULL,
+  result JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS asset_adjustments_user_idx ON asset_adjustments(game_id,user_id,created_at DESC);

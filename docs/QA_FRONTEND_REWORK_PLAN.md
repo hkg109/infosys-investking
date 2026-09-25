@@ -24,7 +24,7 @@ Hallmark의 사내 프로젝트·업로드 형식은 별도 합의가 필요하�
 | 공동 문서·디자인 검수 | 4 | 1 | 5 |
 | **합계** | **46** | **9** | **55** |
 
-Backend API·DB 계약은 변경하지 않는다. 필요한 경우 기존 API의 조회 단위를 화면별로
+12~15단계 원안에서는 Backend API·DB 계약을 변경하지 않는다. 추가된 16~22단계는 아래 최신 계획을 따른다. 필요한 경우 기존 API의 조회 단위를 화면별로
 나누어 호출하되, 응답 계약을 깨지 않고 Frontend에서 조합한다.
 
 ## 새 단계 요약
@@ -34,7 +34,7 @@ Backend API·DB 계약은 변경하지 않는다. 필요한 경우 기존 API의
 | 12 | 네비게이션·페이지 분리 | `F-25~27` 공통 레이아웃, 관리자 메뉴, 게임 메뉴·라우트 분리 | 화면 목록·URL 계약 | `codex/frontend-navigation` | 모든 메뉴 직접 접근·새로고침·뒤로가기가 동작하고 긴 단일 화면이 없음 |
 | 13 | 액션 오버레이 | `F-28~30` Modal/Drawer, 관리자 CRUD 편집, 게임 주문·상세 액션 | 액션 상태·오류 처리 계약 | `codex/action-surface-ui` | 열기·닫기·저장·취소·ESC·포커스·미저장 경고가 일관됨 |
 | 14 | 디자인 시스템·Hallmark | `F-31` 토큰·공통 컴포넌트·반응형 상태 정리 | `D-05` Hallmark 검수 기록 | `codex/hallmark-design-review` | Hallmark 리뷰 승인 또는 수정 이슈가 PR에 기록됨 |
-| 15 | 통합 회귀·행사 인계 | `F-32` 관리자·참가자·중계 전체 흐름 재검증 | 결과·스크린샷·릴리스 체크리스트 | `codex/frontend-regression` | 기능·화면·접근성·반응형·콘솔 오류 기준을 모두 통과함 |
+| 22 (기존 15 이관) | 통합 회귀·행사 인계 | `F-32` 관리자·참가자·중계 전체 흐름 재검증 | 결과·스크린샷·릴리스 체크리스트 | `codex/cash-economy-regression` | 기능·화면·접근성·반응형·콘솔 오류 기준을 모두 통과함 |
 
 ## 12단계 — 네비게이션과 화면 분리
 
@@ -151,7 +151,7 @@ Backend API·DB 계약은 변경하지 않는다. 필요한 경우 기존 API의
 Hallmark에서 `수정 필요`가 나오면 기능 PR을 바로 완료 처리하지 않는다. 수정 후 같은
 화면을 재검토하고, 승인되지 않은 화면은 행사 기능 플래그에서 제외한다.
 
-## 15단계 — 통합 회귀와 행사 인계
+## 22단계 — 통합 회귀와 행사 인계 (15단계에서 이관)
 
 기존 F-24 시나리오에 네비게이션·오버레이·디자인 검수를 포함한다.
 
@@ -177,7 +177,7 @@ Hallmark에서 `수정 필요`가 나오면 기능 PR을 바로 완료 처리하
 1. `codex/frontend-navigation`: F-25~27, 최신 `main`에서 시작
 2. `codex/action-surface-ui`: F-28~30, Navigation PR merge 후 시작
 3. `codex/hallmark-design-review`: F-31/D-05, Action PR merge 후 시작
-4. `codex/frontend-regression`: F-32, Hallmark 승인 후 시작
+4. `codex/cash-economy-regression`: F-32, 16~21단계 완료 후 시작
 
 각 PR은 한 단계 범위만 포함하고, 기존 사용자 문서나 `.env`를 함께 커밋하지 않는다.
 PR 본문에는 자동 테스트와 실제 브라우저/Hallmark 검수 결과를 구분해 기록한다.
@@ -187,3 +187,23 @@ PR 본문에는 자동 테스트와 실제 브라우저/Hallmark 검수 결과�
 사용자가 확정한 12~15단계 Backend 범위는 12단계 기존 API 연결 확인, 13단계 기존 오류
 응답 유지, 14단계 변경 없음, 15단계 B-18 재실행 및 결함 별도 수정이다.
 12단계 API 연결표·검증 결과는 [QA_STAGE12_BACKEND.md](QA_STAGE12_BACKEND.md)를 참고한다.
+
+## 최신 QA 피드백 계획 (2026-09-25)
+
+사용자 결정: **15단계 전체 QA는 별도로 진행하지 않고 22단계에 통합한다.**
+각 기능 PR의 자동 테스트·관련 화면 검증은 해당 단계에서 수행한다. 실물 아이폰·삼성폰
+테스트는 범위에서 제외하며 브라우저의 좁은 화면 검증은 유지한다.
+
+| 단계 | 작업 | 범위 / 브랜치 |
+|---:|---|---|
+| 16 | 정보상점 현금 결제 | Backend / `codex/cash-intelligence-backend` |
+| 17 | 비밀 미션 제거·현금 상점 | Frontend / `codex/cash-intelligence-ui` |
+| 18 | 관리자 참가자 현금·주식 수정 | Backend·Frontend / `codex/admin-asset-adjustments` |
+| 19 | 사건 수동 배정 전용화 | Backend·Frontend |
+| 20 | 게임 종료 후 실제 이름 공개 | Backend·Frontend |
+| 21 | 메인 문구·중계 TOP 3 수정 | `codex/event-copy-broadcast-polish` |
+| 22 | 전체 회귀 QA·행사 인계 | 기존 15단계 포함 / `codex/cash-economy-regression` |
+
+22단계에서는 비밀 미션 대신 현금 정보상점·관리자 자산 정정·수동 사건 배정·종료 후
+이름 공개·중계 변경을 포함해 최종 기능 기준으로 전체 흐름을 검증한다. 위의 과거 화면
+목록에서 미션 및 포인트 관련 항목은 17단계 이후의 현금 정보상점으로 대체한다.

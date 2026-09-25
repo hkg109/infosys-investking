@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import Panel from '../components/Panel'
-import ActionDialog from '../components/ActionDialog'
+import AssetEditor from './AssetEditor'
 import { money } from '../game/model'
-export default function ParticipantPanel({ data, error, loading, updatedAt, refresh, stale }) {
+export default function ParticipantPanel({ data, error, loading, updatedAt, refresh, stale, password, game, onBusy }) {
   const [selected, setSelected] = useState(null)
   return <Panel title="참가자 현황">
     {loading && <p role="status">참가자 현황을 불러오고 있습니다.</p>}
@@ -15,9 +15,7 @@ export default function ParticipantPanel({ data, error, loading, updatedAt, refr
     </>}
     {!loading && !data && <p>확인된 참가자 정보가 없습니다.</p>}
     <button className="secondary-button" type="button" onClick={refresh}>참가자 다시 확인</button>
-    <ActionDialog open={Boolean(selected)} title={`${selected?.nickname || ''} 참가자 상세`} eyebrow="ADMIN ONLY" onClose={() => setSelected(null)} width="small">
-      {selected && <><div className="participant-detail-grid"><div><span>접속 상태</span><strong>{selected.online ? '온라인' : '오프라인'}</strong></div><div><span>총자산</span><strong>{money(selected.totalAssets)}</strong></div><div><span>보유 현금</span><strong>{money(selected.cash)}</strong></div><div><span>주식 평가액</span><strong>{money(selected.stockValue)}</strong></div></div><h3>보유 종목</h3>{selected.holdings.length ? <ul className="participant-holdings">{selected.holdings.map(h => <li key={h.companyId}>{h.name} · {h.quantity.toLocaleString('ko-KR')}주 · {money(h.marketValue)}</li>)}</ul> : <p className="empty-state">보유 종목이 없습니다.</p>}</>}
-    </ActionDialog>
+    {selected && <AssetEditor key={selected.userId} participant={selected} password={password} game={game} stale={stale} onBusy={onBusy} onChanged={refresh} onClose={() => setSelected(null)} />}
   </Panel>
 }
 export function ParticipantTable({ participants, onSelect = () => {} }) {

@@ -124,6 +124,8 @@ app.use('/api/admin', createAdminRouter(pool, {
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
   presence,
   initialCash,
+  engine: game,
+  onAssetsAdjusted: () => rankingCoordinator.refreshAndEmit(),
 }))
 app.use('/api/companies', createCompanyRouter(pool, game, {
   adminPassword: process.env.ADMIN_PASSWORD,
