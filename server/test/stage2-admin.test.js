@@ -175,6 +175,7 @@ test('PostgreSQL stage 2: participant assets, multi-tab presence, reconnect, and
   await database.query(`INSERT INTO events (id, title, news, result) VALUES ($1, '사건', '뉴스', '결과')`, [eventId])
   await database.query(`INSERT INTO game_events (game_id, event_id, round_number, applied_at)
     VALUES ($1, $2, 1, NOW())`, [ACTIVE_GAME_ID, eventId])
+  await database.query("INSERT INTO event_schedule_states (game_id, mode) VALUES ($1, 'MANUAL')", [ACTIVE_GAME_ID])
   await database.query(`INSERT INTO stock_price_changes
     (game_id, round_number, event_id, company_id, previous_price, new_price, change_rate)
     VALUES ($1, 1, $2, 'A', 10000, 12000, 20)`, [ACTIVE_GAME_ID, eventId])
@@ -211,12 +212,23 @@ test('PostgreSQL stage 2: participant assets, multi-tab presence, reconnect, and
     'game reset should disconnect authenticated participant sockets')
 
   for (const table of ['user_sessions', 'wallets', 'portfolios', 'transactions', 'order_intents',
-    'game_events', 'stock_price_changes', 'stock_price_history', 'ranking_states', 'ranking_snapshots',
+    'stock_price_changes', 'stock_price_history', 'ranking_states', 'ranking_snapshots',
     'game_missions', 'user_reward_wallets']) {
     assert.equal(Number((await database.query(`SELECT COUNT(*) AS count FROM ${table}`)).rows[0].count), 0, table)
   }
   assert.equal(Number((await database.query("SELECT COUNT(*) AS count FROM users WHERE role = 'USER'")).rows[0].count), 0)
   assert.equal(Number((await database.query('SELECT COUNT(*) AS count FROM events')).rows[0].count), 1)
+  const retainedEvent = (await database.query(`SELECT round_number, display_order, trigger_phase,
+    scheduled_at, warning_sent_at, applied_at FROM game_events WHERE game_id = $1`, [ACTIVE_GAME_ID])).rows[0]
+  assert.deepEqual(retainedEvent, {
+    round_number: 1,
+    display_order: 1,
+    trigger_phase: 'CLOSE',
+    scheduled_at: null,
+    warning_sent_at: null,
+    applied_at: null,
+  })
+  assert.equal((await database.query('SELECT mode FROM event_schedule_states WHERE game_id = $1', [ACTIVE_GAME_ID])).rows[0].mode, 'MANUAL')
   assert.equal(Number((await database.query('SELECT COUNT(*) AS count FROM missions')).rows[0].count), 1)
   assert.equal(Number((await database.query("SELECT current_price FROM companies WHERE id = 'A'")).rows[0].current_price), 10000)
   assert.equal((await database.query('SELECT status FROM games WHERE id = $1', [ACTIVE_GAME_ID])).rows[0].status, 'WAITING')

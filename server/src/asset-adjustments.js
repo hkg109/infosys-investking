@@ -1,9 +1,9 @@
 import { ACTIVE_GAME_ID } from './game-store.js'
 
 export class AssetAdjustmentError extends Error {
-  constructor(status, code) { super(code); this.status = status; this.code = code }
+  constructor(status, code, details = {}) { super(code); this.status = status; this.code = code; this.details = details }
 }
-const fail = (status, code) => { throw new AssetAdjustmentError(status, code) }
+const fail = (status, code, details) => { throw new AssetAdjustmentError(status, code, details) }
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 export function adjustmentInput(userId, body) {
   if (!uuid.test(userId || '') || !uuid.test(body?.requestId || '')) fail(400, 'INVALID_INPUT')
@@ -47,7 +47,9 @@ export async function adjustAssets(database, engine, userId, body, initialCash =
       quantity = Number((await client.query('SELECT quantity FROM portfolios WHERE game_id=$1 AND user_id=$2 AND company_id=$3 FOR UPDATE', [ACTIVE_GAME_ID,input.userId,input.companyId])).rows[0]?.quantity || 0)
       if (!company.is_active && input.quantity > quantity) fail(409, 'COMPANY_INACTIVE')
     }
-    if (cash !== input.expectedCash || (input.companyId && quantity !== input.expectedQuantity)) fail(409, 'ASSET_CONFLICT')
+    if (cash !== input.expectedCash || (input.companyId && quantity !== input.expectedQuantity)) {
+      fail(409, 'ASSET_CONFLICT', { current: { cash, quantity } })
+    }
     if (cash === input.cash && (!input.companyId || quantity === input.quantity)) fail(400, 'NO_ASSET_CHANGE')
     await client.query('UPDATE wallets SET cash=$3,updated_at=NOW() WHERE game_id=$1 AND user_id=$2', [ACTIVE_GAME_ID,input.userId,input.cash])
     if (input.companyId) await client.query(`INSERT INTO portfolios (game_id,user_id,company_id,quantity) VALUES ($1,$2,$3,$4)

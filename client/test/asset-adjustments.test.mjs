@@ -21,8 +21,8 @@ test('lost or malformed responses stay uncertain and retries use exactly the sup
     assert.equal(calls, 1)
     globalThis.fetch = async () => ({ ok: true, json: async () => ({ ...result, requestId: 'wrong' }) })
     await assert.rejects(adjustmentRequest('user', 'pw', body), e => e.uncertain === true)
-    globalThis.fetch = async () => ({ ok: false, status: 409, json: async () => ({ error: 'ASSET_CONFLICT' }) })
-    await assert.rejects(adjustmentRequest('user', 'pw', body), e => !e.uncertain && e.message === 'ASSET_CONFLICT')
+    globalThis.fetch = async () => ({ ok: false, status: 409, json: async () => ({ error: 'ASSET_CONFLICT', current: { cash: 800000, quantity: 3 } }) })
+    await assert.rejects(adjustmentRequest('user', 'pw', body), e => !e.uncertain && e.message === 'ASSET_CONFLICT' && e.current.cash === 800000 && e.current.quantity === 3)
     globalThis.fetch = async () => ({ ok: true, json: async () => result })
     assert.equal((await adjustmentRequest('user', 'pw', body)).duplicate, true)
   } finally { globalThis.fetch = original }

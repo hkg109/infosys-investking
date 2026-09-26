@@ -4,7 +4,10 @@ export function validateParticipants(data) {
   if (!data || !Number.isInteger(data.onlineParticipants) || !Array.isArray(data.participants)) throw new Error('INVALID_RESPONSE')
   const ids = new Set()
   for (const p of data.participants) {
-    if (!p || typeof p.userId !== 'string' || !p.userId || ids.has(p.userId) || typeof p.nickname !== 'string' || typeof p.online !== 'boolean' || ![p.cash, p.stockValue, p.totalAssets].every(amount) || !Array.isArray(p.holdings) || !p.holdings.every(h => h && typeof h.companyId === 'string' && typeof h.name === 'string' && Number.isSafeInteger(h.quantity) && h.quantity > 0 && amount(h.currentPrice) && amount(h.marketValue))) throw new Error('INVALID_RESPONSE')
+    if (!p || typeof p.userId !== 'string' || !p.userId || ids.has(p.userId) || typeof p.nickname !== 'string' || typeof p.online !== 'boolean' || typeof p.connected !== 'boolean' || p.connected !== p.online || ![p.cash, p.stockValue, p.totalAssets].every(amount) || !Array.isArray(p.holdings) || !p.holdings.every(h => h && typeof h.companyId === 'string' && typeof h.name === 'string' && Number.isSafeInteger(h.quantity) && h.quantity > 0 && amount(h.currentPrice) && amount(h.marketValue))) throw new Error('INVALID_RESPONSE')
+    const companyIds = new Set(p.holdings.map(({ companyId }) => companyId))
+    const stockValue = p.holdings.reduce((sum, holding) => sum + holding.marketValue, 0)
+    if (companyIds.size !== p.holdings.length || !Number.isSafeInteger(stockValue) || stockValue !== p.stockValue || p.cash + p.stockValue !== p.totalAssets) throw new Error('INVALID_RESPONSE')
     ids.add(p.userId)
   }
   if (data.onlineParticipants !== data.participants.filter(p => p.online).length) throw new Error('INVALID_RESPONSE')

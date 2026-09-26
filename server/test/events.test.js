@@ -28,6 +28,9 @@ test('event validation rejects duplicate companies and unsafe rates', () => {
   assert.throws(() => validateEventInput({
     title: '사건', news: '뉴스', result: '결과', effects: [{ companyId: 'A', changeRate: -100 }],
   }), { code: 'INVALID_EVENT_EFFECT' })
+  assert.equal(validateEventInput({
+    title: '[장중] 긴급 소식', news: '뉴스', result: '결과', effects: [{ companyId: 'A', changeRate: 10 }],
+  }).title, '[속보] 긴급 소식')
 })
 
 test('event API reports unavailable databases', async (t) => {

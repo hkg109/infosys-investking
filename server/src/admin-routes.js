@@ -4,8 +4,14 @@ import { createRequireAdmin } from './admin-auth.js'
 import { ACTIVE_GAME_ID } from './game-store.js'
 import { getTradeHistory, MarketHistoryError, parseRound, validateUserId } from './market-history.js'
 
-function number(value) {
-  return value === null || value === undefined ? null : Number(value)
+function amount(value, field) {
+  const parsed = Number(value)
+  if (!Number.isSafeInteger(parsed) || parsed < 0) {
+    const error = new Error('PARTICIPANT_ASSET_OUT_OF_RANGE')
+    error.field = field
+    throw error
+  }
+  return parsed
 }
 
 export async function listParticipants(database, presence, initialCash = 1_000_000) {
@@ -23,27 +29,36 @@ export async function listParticipants(database, presence, initialCash = 1_000_0
   for (const row of result.rows) {
     let participant = participants.get(row.user_id)
     if (!participant) {
+      const connected = presence.isOnline(row.user_id)
       participant = {
         userId: row.user_id,
         nickname: row.nickname,
-        online: presence.isOnline(row.user_id),
-        cash: number(row.cash),
+        online: connected,
+        connected,
+        cash: amount(row.cash, 'cash'),
         stockValue: 0,
-        totalAssets: number(row.cash),
+        totalAssets: amount(row.cash, 'cash'),
         holdings: [],
         joinedAt: row.created_at,
       }
       participants.set(row.user_id, participant)
     }
     if (!row.company_id) continue
-    const marketValue = number(row.quantity) * number(row.current_price)
+    const quantity = amount(row.quantity, 'quantity')
+    const currentPrice = amount(row.current_price, 'currentPrice')
+    const marketValue = quantity * currentPrice
+    if (!Number.isSafeInteger(marketValue) || !Number.isSafeInteger(participant.totalAssets + marketValue)) {
+      const error = new Error('PARTICIPANT_ASSET_OUT_OF_RANGE')
+      error.field = 'marketValue'
+      throw error
+    }
     participant.stockValue += marketValue
     participant.totalAssets += marketValue
     participant.holdings.push({
       companyId: row.company_id,
       name: row.company_name,
-      quantity: number(row.quantity),
-      currentPrice: number(row.current_price),
+      quantity,
+      currentPrice,
       marketValue,
     })
   }
@@ -82,7 +97,7 @@ export function createAdminRouter(database, {
     if (!database) return response.status(503).json({ error: 'DATABASE_UNAVAILABLE' })
     try {
       const participants = await listParticipants(database, presence, initialCash)
-      response.json({ participants, onlineParticipants: presence.onlineCount() })
+      response.json({ participants, onlineParticipants: participants.filter(({ connected }) => connected).length })
     } catch (error) {
       next(error)
     }
@@ -114,7 +129,7 @@ export function createAdminRouter(database, {
       await onAssetsAdjusted()
       response.json(result)
     } catch (error) {
-      if (error instanceof AssetAdjustmentError) return response.status(error.status).json({ error: error.code })
+      if (error instanceof AssetAdjustmentError) return response.status(error.status).json({ error: error.code, ...error.details })
       next(error)
     }
   })

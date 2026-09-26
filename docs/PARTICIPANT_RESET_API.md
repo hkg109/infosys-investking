@@ -19,6 +19,7 @@ Authorization: Bearer <ADMIN_PASSWORD>
       "userId": "user-uuid",
       "nickname": "앨리스",
       "online": true,
+      "connected": true,
       "cash": 700000,
       "stockValue": 50000,
       "totalAssets": 750000,
@@ -104,11 +105,13 @@ Authorization: Bearer <ADMIN_PASSWORD>
 | 일반 참가자와 사용자 세션 | 관리자 계정 |
 | 지갑·보유 주식 | 기업 이름·설명·초기 가격 |
 | 주문 준비·거래 내역 | 사건 원본과 기업별 효과 |
-| 월별 사건 배정·주가 변경·가격 스냅샷 내역 | 서버 환경 설정 |
+| 주가 변경·가격 스냅샷 내역 | 월별 사건 배정과 수동 배정 상태 |
 | 순위 상태·스냅샷 | 게임 시간·라운드 설정 |
 | 개인 미션 배정·진행·포인트 | 미션 원본 |
 | 기업 현재가를 초기 가격으로 복구 |  |
 | 게임 상태를 `WAITING`으로 복구 |  |
+
+사건 배정 행은 삭제하지 않고 `scheduled_at`, `warning_sent_at`, `applied_at`만 `NULL`로 되돌립니다. 따라서 관리자가 만든 1~12월 배정은 다음 게임에도 유지되며, 새 게임 시작 시 새로운 라운드 시작 시각을 기준으로 장중 사건 절대 시각을 다시 계산합니다.
 
 DB advisory lock과 행·테이블 lock으로 중복 초기화와 참가자 생성 경합을 막는다. 초기화 중 다른 변경 요청은 `409 GAME_RESET_IN_PROGRESS`로 거절하며, 일부 SQL이 실패하면 전체 작업을 rollback한다.
 
