@@ -21,9 +21,9 @@ function StockBoard({ market }) {
 function RankingBoard({ ranking, final = false }) {
   return <section className="cast-card cast-ranking" tabIndex={0} aria-label={final ? '최종 순위' : '실시간 순위'}>
     <div className="cast-section-heading"><span>{final ? 'FINAL LEADERBOARD' : 'LIVE LEADERBOARD'}</span><h2>{final ? '최종 순위' : '실시간 TOP 3'}</h2></div>
-    <p className="cast-meta">참가자 {ranking.totalParticipants}명 · 이름 비공개</p>
+    <p className="cast-meta">참가자 {ranking.totalParticipants}명 · {final ? '최종 이름 공개' : '이름 비공개'}</p>
     {ranking.top3.length ? <ol>{ranking.top3.map((person, index) => <li key={`${person.rank}-${index}`}>
-      <span>{person.rank}위</span><strong>{money(person.totalAssets)}</strong>
+      <span>{person.rank}위</span>{final && <strong className="cast-player-name">{person.nickname}</strong>}<strong>{money(person.totalAssets)}</strong>
     </li>)}</ol> : <p className="cast-empty">집계된 순위가 없습니다.</p>}
     {final && ranking.rankings.length > ranking.top3.length && <p className="cast-meta">전체 {ranking.totalParticipants}명 중 공동 3위까지 표시</p>}
   </section>
@@ -74,7 +74,7 @@ export function BroadcastScreen({ data, error, spotlight, remainingSeconds }) {
     <header className="cast-header"><div className="cast-brand"><span>INFOSYS MARKET NETWORK</span><strong>INVEST<span>KING</span></strong></div><div className="cast-round"><span>MARKET SESSION</span><strong>{round} · {stateLabel}</strong></div><div className="cast-clock"><span>TIME TO CLOSE</span><strong>{error ? '—' : formatTime(remainingSeconds)}</strong></div></header>
     {error && <div className="cast-connection" role="alert">{error} · 마지막 확인된 화면을 표시 중</div>}
     <main className="cast-main" aria-live="polite">{data ? <MainScene data={data} scene={scene} spotlight={spotlight} /> : <div className="cast-feature cast-feature--center"><p className="cast-kicker">INVESTKING LIVE</p><h1>중계 화면 연결 중</h1><p>{error || '실시간 시장 정보를 불러오고 있습니다.'}</p></div>}</main>
-    <footer className="cast-footer"><span className="cast-live-dot" /> <strong>LIVE</strong><span>익명 중계 · 개인 정보는 표시하지 않습니다</span><span>{data ? `참가자 ${data.ranking.totalParticipants}명` : '연결 대기'}</span></footer>
+    <footer className="cast-footer"><span className="cast-live-dot" /> <strong>LIVE</strong><span>{data?.ranking.final ? '최종 결과 · 참가자 이름 공개' : '익명 중계 · 개인 정보는 표시하지 않습니다'}</span><span>{data ? `참가자 ${data.ranking.totalParticipants}명` : '연결 대기'}</span></footer>
   </div>
 }
 

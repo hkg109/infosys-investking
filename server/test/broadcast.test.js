@@ -86,6 +86,8 @@ test('broadcast timer, halt, refreshed prices, tied final rankings and game rese
   assert.equal((await c.feed()).ranking.final, false)
   await refreshRankings(c.database, { final: true })
   const final = await c.feed(); assert.equal(final.ranking.final, true); assert.equal(final.ranking.top3.length, 4)
+  assert.deepEqual(new Set(final.ranking.rankings.map(({ nickname }) => nickname)), new Set(['player0','player1','player2','player3']))
+  assert.equal(final.ranking.rankings.some(entry => 'userId' in entry || 'cash' in entry || 'stockValue' in entry), false)
   await createGameResetCoordinator(c.database, { getSnapshot: () => ({status:'FINISHED'}), reset: () => ({status:'WAITING'}) }).reset()
   const reset = await c.feed(); assert.equal(reset.game.status, 'WAITING'); assert.equal(reset.ranking.final, false)
   assert.deepEqual(reset.ranking.rankings, []); assert.equal(reset.market[0].currentPrice, 10000)

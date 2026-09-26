@@ -24,6 +24,11 @@ test('broadcast validates public payload and rejects private ranking fields', ()
   assert.throws(() => validateBroadcast({ ...snapshot, ranking: { ...snapshot.ranking, top3: [{ rank: 1, totalAssets: 1100000, nickname: '비밀' }] } }))
   assert.throws(() => validateBroadcast({ ...snapshot, warnings: [{ gameEventId: 'w', scheduledAt: now, title: '미공개 제목' }] }))
   assert.throws(() => validateBroadcast({ ...snapshot, game: { ...snapshot.game, remainingSeconds: -1 } }))
+  const finalEntries = snapshot.ranking.rankings.map((person, index) => ({ ...person, nickname: `참가자${index + 1}` }))
+  const finalSnapshot = { ...snapshot, game: { ...snapshot.game, status: 'FINISHED', phase: 'FINISHED' }, ranking: { ...snapshot.ranking, final: true, top3: finalEntries, rankings: finalEntries } }
+  assert.equal(validateBroadcast(finalSnapshot), finalSnapshot)
+  assert.throws(() => validateBroadcast({ ...finalSnapshot, ranking: { ...finalSnapshot.ranking, rankings: snapshot.ranking.rankings } }))
+  assert.throws(() => validateBroadcast({ ...snapshot, ranking: { ...snapshot.ranking, final: true } }))
 })
 
 test('scene precedence follows waiting, pause, result, finalization and final ranking', () => {
@@ -75,7 +80,9 @@ test('broadcast screen renders anonymous market, breaking result and shared thir
     const result = { gameEventId: 'e1', title: '속보', result: '주가 상승', triggerPhase: 'INTRADAY', appliedAt: now, changes: [{ companyId: 'A', previousPrice: 10000, newPrice: 11000, changeRate: 10 }] }
     const breaking = renderToStaticMarkup(createElement(BroadcastScreen, { data: { ...snapshot, results: [result] }, spotlight: { kind: 'result', eventId: 'e1' }, remainingSeconds: 50 }))
     assert.match(breaking, /속보|주가 상승|10,000원|11,000원|\+10%/)
-    const final = renderToStaticMarkup(createElement(BroadcastScreen, { data: { ...snapshot, game: { ...snapshot.game, status: 'FINISHED' }, ranking: { final: true, calculatedAt: now, totalParticipants: 3, top3: [{ rank: 1, totalAssets: 100 }, { rank: 3, totalAssets: 90 }, { rank: 3, totalAssets: 90 }], rankings: [{ rank: 1, totalAssets: 100 }, { rank: 3, totalAssets: 90 }, { rank: 3, totalAssets: 90 }] } }, remainingSeconds: null }))
+    const finalEntries = [{ rank: 1, totalAssets: 100, nickname: '투자왕' }, { rank: 3, totalAssets: 90, nickname: '공동삼위A' }, { rank: 3, totalAssets: 90, nickname: '공동삼위B' }]
+    const final = renderToStaticMarkup(createElement(BroadcastScreen, { data: { ...snapshot, game: { ...snapshot.game, status: 'FINISHED' }, ranking: { final: true, calculatedAt: now, totalParticipants: 3, top3: finalEntries, rankings: finalEntries } }, remainingSeconds: null }))
     assert.match(final, /최종 순위|3위.*3위/s)
+    assert.match(final, /투자왕|공동삼위A|공동삼위B|최종 이름 공개/)
   } finally { await rm(dir, { recursive: true, force: true }) }
 })

@@ -17,7 +17,7 @@
 | game | status, phase, phaseBeforePause, currentRound, totalRounds, remainingSeconds, phaseEndsAt, startedAt, finishedAt, tradingHalted, tradingEnabled |
 | market[] | companyId, name, currentPrice, openingPrice, changeRate |
 | ranking | final, calculatedAt, totalParticipants, top3[], rankings[] |
-| ranking 항목 | rank, totalAssets만 포함. 공동 순위는 모두 포함하므로 top3가 3명보다 많을 수 있음 |
+| ranking 항목 | 진행 중에는 rank, totalAssets만 포함. 최종 확정 시 nickname 추가. 공동 순위는 모두 포함하므로 top3가 3명보다 많을 수 있음 |
 | news[] | gameEventId, title, news, triggerPhase |
 | warnings[] | gameEventId, scheduledAt만 포함. 예정 사건의 제목·내용은 미공개 |
 | results[] | gameEventId, title, result, triggerPhase, appliedAt, changes[] |
@@ -38,8 +38,10 @@ FINISHED라도 ranking.final=false이면 최종 집계 완료를 기다려야 �
 
 - 현재 월 마감 사건의 뉴스는 공개하되 결과·가격 효과는 적용된 뒤만 공개한다.
 - 장중 사건은 예고 이후 warnings에 식별자·시각만, 적용 이후 news/results에 내용을 제공한다.
-- 미래 월, 아직 예고되지 않은 장중 사건, 닉네임, 사용자 ID, PIN, 현금/보유 종목,
+- 미래 월, 아직 예고되지 않은 장중 사건, 진행 중 닉네임, 사용자 ID, PIN, 현금/보유 종목,
   미션, 포인트, 구매 단서 및 구매 기록은 응답에 포함하지 않는다.
+- `game.status=FINISHED`와 `ranking.final=true`를 모두 만족한 최종 순위에만 닉네임을 포함한다.
+  게임 초기화 뒤에는 순위와 닉네임이 모두 제거되어 다시 익명 중계로 돌아간다.
 - results는 현재 월 전체 결과다. 프론트는 gameEventId로 이미 연출한 결과를 중복 재생하지 않는다.
   첫 접속은 현재 상태를 표시하고, 이후 새 ID를 속보 연출에 사용한다.
 - 게임 초기화하면 뉴스·결과·순위가 비고 가격이 초기화된다. WAITING 전환 시 UI 연출 기록도 비운다.

@@ -48,10 +48,11 @@ async function readSnapshot(database, gameId = ACTIVE_GAME_ID) {
   }
 }
 
-function publicEntry(entry) {
+function publicEntry(entry, final = false) {
   return {
     rank: entry.rank,
     totalAssets: entry.totalAssets,
+    ...(final ? { nickname: entry.nickname } : {}),
     isMe: false,
   }
 }
@@ -62,7 +63,7 @@ function accountEntry(entry) {
 }
 
 export function publicRankingPayload(snapshot) {
-  const rankings = snapshot.rankings.map(publicEntry)
+  const rankings = snapshot.rankings.map((entry) => publicEntry(entry, snapshot.final))
   return {
     final: snapshot.final,
     calculatedAt: snapshot.calculatedAt,
@@ -74,7 +75,7 @@ export function publicRankingPayload(snapshot) {
 
 export function viewerRankingPayload(snapshot, userId) {
   const rankings = snapshot.rankings.map((entry) => ({
-    ...publicEntry(entry),
+    ...publicEntry(entry, snapshot.final),
     isMe: entry.userId === userId,
   }))
   const mine = snapshot.rankings.find((entry) => entry.userId === userId)

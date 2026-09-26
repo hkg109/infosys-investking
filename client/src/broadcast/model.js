@@ -17,12 +17,16 @@ export function validateBroadcast(data) {
       !ranking || typeof ranking.final !== 'boolean' || !nonnegative(ranking.totalParticipants) ||
       !Array.isArray(ranking.top3) || !Array.isArray(ranking.rankings) ||
       !Array.isArray(data.news) || !Array.isArray(data.warnings) || !Array.isArray(data.results)) throw new Error('INVALID_RESPONSE')
+  if (ranking.final && game.status !== 'FINISHED') throw new Error('INVALID_RESPONSE')
   for (const stock of data.market) {
     if (!publicText(stock?.companyId) || !publicText(stock.name) || !finite(stock.currentPrice) || stock.currentPrice <= 0 ||
         !finite(stock.openingPrice) || stock.openingPrice <= 0 || !finite(stock.changeRate)) throw new Error('INVALID_RESPONSE')
   }
   for (const person of [...ranking.top3, ...ranking.rankings]) {
-    if (!Number.isSafeInteger(person?.rank) || person.rank < 1 || !nonnegative(person.totalAssets) || Object.keys(person).some(key => !['rank', 'totalAssets'].includes(key))) throw new Error('INVALID_RESPONSE')
+    const allowed = ranking.final ? ['rank', 'totalAssets', 'nickname'] : ['rank', 'totalAssets']
+    if (!Number.isSafeInteger(person?.rank) || person.rank < 1 || !nonnegative(person.totalAssets) ||
+        (ranking.final ? !publicText(person.nickname) || !person.nickname.trim() : 'nickname' in person) ||
+        Object.keys(person).some(key => !allowed.includes(key))) throw new Error('INVALID_RESPONSE')
   }
   if (ranking.rankings.length !== ranking.totalParticipants || ranking.top3.some(person => person.rank > 3)) throw new Error('INVALID_RESPONSE')
   for (const item of data.news) if (!publicText(item?.gameEventId) || !publicText(item.title) || !publicText(item.news) || !['INTRADAY', 'CLOSE'].includes(item.triggerPhase)) throw new Error('INVALID_RESPONSE')
