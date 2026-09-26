@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { eligibleEvents, randomInput, scheduleDraft, scheduleInput, validateConstraints } from '../src/events/schedule.js'
+import { eligibleEvents, scheduleDraft, scheduleInput, validateConstraints } from '../src/events/schedule.js'
 import { eventRequest } from '../src/events/api.js'
 const limits = { totalRounds: 2, tradingDurationMs: 60000, haltDurationMs: 3000 }
 const events = ['a','b','c','d','e','f'].map(eventId => ({ eventId, effects: [{companyId:'A',changeRate:10}] }))
@@ -24,12 +24,6 @@ test('overlap validation uses server halt duration and permits exactly adjacent 
   assert.doesNotThrow(()=>scheduleInput([row,second],limits,events))
   assert.throws(()=>scheduleInput([row,{...second,triggerOffsetSeconds:'14'}],limits,events), /EVENT_SCHEDULE_CONFLICT/)
   assert.throws(()=>scheduleInput([row,second],{...limits,haltDurationMs:4000},events), /EVENT_SCHEDULE_CONFLICT/)
-})
-test('random assignment validates pool size, count, clipping and collision before submission', () => {
-  assert.deepEqual(randomInput({intradayEventsPerRound:'0',closingEventsPerRound:'0',preannounceSeconds:'0'},limits,[]), {intradayEventsPerRound:0,closingEventsPerRound:0,preannounceSeconds:0})
-  assert.throws(()=>randomInput({intradayEventsPerRound:'2',closingEventsPerRound:'2',preannounceSeconds:'0'},limits,events), /EVENT_POOL_TOO_SMALL/)
-  assert.throws(()=>randomInput({intradayEventsPerRound:'2',closingEventsPerRound:'0',preannounceSeconds:'30'},limits,events), /EVENT_SCHEDULE_CONFLICT/)
-  assert.equal(randomInput({intradayEventsPerRound:'1',closingEventsPerRound:'1',preannounceSeconds:'300'},limits,events).preannounceSeconds,300)
 })
 test('schedule API sends authenticated full replacement and rejects malformed success without retrying', async () => {
   const before = globalThis.fetch

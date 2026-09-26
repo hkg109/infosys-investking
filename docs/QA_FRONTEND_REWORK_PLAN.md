@@ -199,7 +199,7 @@ PR 본문에는 자동 테스트와 실제 브라우저/Hallmark 검수 결과�
 | 16 | 정보상점 현금 결제 | Backend / `codex/cash-intelligence-backend` |
 | 17 | 비밀 미션 제거·현금 상점 | Frontend / `codex/cash-intelligence-ui` |
 | 18 | 관리자 참가자 현금·주식 수정 | Backend·Frontend / `codex/admin-asset-adjustments` |
-| 19 | 사건 수동 배정 전용화 | Backend·Frontend |
+| 19 | 사건 수동 배정 전용화 | Backend·Frontend / `codex/manual-event-scheduling` |
 | 20 | 게임 종료 후 실제 이름 공개 | Backend·Frontend |
 | 21 | 메인 문구·중계 TOP 3 수정 | `codex/event-copy-broadcast-polish` |
 | 22 | 전체 회귀 QA·행사 인계 | 기존 15단계 포함 / `codex/cash-economy-regression` |

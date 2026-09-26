@@ -187,47 +187,6 @@ export async function saveGameSchedule(database, input, options, gameId = ACTIVE
   return getGameSchedule(database, gameId)
 }
 
-export async function randomizeEvents(database, totalRounds, options = {}, gameId = ACTIVE_GAME_ID) {
-  const intraday = options.intradayEventsPerRound ?? 0
-  const closing = options.closingEventsPerRound ?? 1
-  const preannounce = options.preannounceSeconds ?? 0
-  const tradingDurationMs = options.tradingDurationMs ?? 540_000
-  const haltDurationMs = options.haltDurationMs ?? DEFAULT_HALT_MS
-  if (![intraday, closing].every((value) => Number.isInteger(value) && value >= 0 && value <= 3) || !Number.isInteger(preannounce) || preannounce < 0) throw new EventError(400, 'INVALID_EVENT_SCHEDULE')
-  const required = totalRounds * (intraday + closing)
-  return withTransaction(database, async (client) => {
-    const candidates = await client.query(`SELECT e.id FROM events e WHERE NOT EXISTS (
-      SELECT 1 FROM event_effects ee JOIN companies c ON c.id = ee.company_id WHERE ee.event_id = e.id AND c.is_active = FALSE)
-      ORDER BY random() LIMIT $1`, [required])
-    if (candidates.rowCount < required) throw new EventError(409, 'EVENT_POOL_TOO_SMALL', { required, available: candidates.rowCount })
-    let cursor = 0
-    const rounds = Array.from({ length: totalRounds }, (_, roundIndex) => {
-      const events = []
-      for (let index = 0; index < intraday; index += 1) {
-        const offsetSeconds = Math.floor((tradingDurationMs / 1000) * (index + 1) / (intraday + 1))
-        events.push({ eventId: candidates.rows[cursor++].id, displayOrder: events.length + 1, triggerPhase: 'INTRADAY', triggerOffsetSeconds: offsetSeconds, preannounceSeconds: Math.min(preannounce, offsetSeconds - 1) })
-      }
-      for (let index = 0; index < closing; index += 1) events.push({ eventId: candidates.rows[cursor++].id, displayOrder: events.length + 1, triggerPhase: 'CLOSE' })
-      return { round: roundIndex + 1, events }
-    })
-    const rows = validateSchedule({ rounds }, { totalRounds, tradingDurationMs, haltDurationMs })
-    await replaceSchedule(client, rows, gameId, 'RANDOM')
-    return getGameSchedule(client, gameId)
-  })
-}
-
-export async function assignEvents(database, totalRounds, gameId = ACTIVE_GAME_ID) {
-  if (!Number.isInteger(totalRounds) || totalRounds < 1) throw new TypeError('totalRounds must be a positive integer')
-  const configured = await database.query('SELECT 1 FROM event_schedule_states WHERE game_id = $1', [gameId])
-  if (configured.rowCount) return getGameSchedule(database, gameId)
-  const existing = await database.query('SELECT 1 FROM game_events WHERE game_id = $1 LIMIT 1', [gameId])
-  if (existing.rowCount) {
-    await database.query(`INSERT INTO event_schedule_states (game_id, mode) VALUES ($1, 'RANDOM') ON CONFLICT (game_id) DO NOTHING`, [gameId])
-    return getGameSchedule(database, gameId)
-  }
-  return randomizeEvents(database, totalRounds, {}, gameId)
-}
-
 export async function getGameSchedule(database, gameId = ACTIVE_GAME_ID) {
   const result = await database.query(`SELECT ge.id AS game_event_id, ge.*, e.id AS event_id, e.title, e.news, e.result
     FROM game_events ge JOIN events e ON e.id = ge.event_id WHERE ge.game_id = $1 ORDER BY ge.round_number, ge.display_order`, [gameId])
@@ -345,7 +304,7 @@ export function createEventCoordinator(database, io, { marketGate = null, getGam
     for (const item of items) await emitResult(await applyScheduledEvent(database, item.gameEventId), item.triggerPhase === 'INTRADAY')
   }
   return {
-    async prepareGameStart(game) { if (database) await assignEvents(database, game.totalRounds) },
+    async prepareGameStart() { if (database) await getGameSchedule(database) },
     async handleGameEvent({ name, payload }) {
       if (!database) return
       if (name === 'game:pause') cancelTimers()
@@ -357,7 +316,6 @@ export function createEventCoordinator(database, io, { marketGate = null, getGam
     },
     async reconcile(game) {
       if (!database || game.status === 'WAITING') return
-      await assignEvents(database, game.totalRounds)
       const schedule = await getGameSchedule(database)
       const lastComplete = game.status === 'FINISHED' || game.phase === 'RESULT' ? game.currentRound : game.currentRound - 1
       for (const item of schedule.filter((event) => event.round <= lastComplete && !event.appliedAt)) await emitResult(await applyScheduledEvent(database, item.gameEventId), false)

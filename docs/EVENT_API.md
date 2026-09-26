@@ -33,7 +33,7 @@
 |---|---|
 | `GET /api/events/admin/schedule` | 평면 `schedule`과 라운드별 `rounds` 조회 |
 | `PUT /api/events/admin/schedule` | 전체 수동 배정 교체 |
-| `POST /api/events/admin/schedule/randomize` | 조건에 따라 중복 없이 무작위 재배정 |
+| `POST /api/events/admin/schedule/randomize` | 폐기됨: 관리자 인증 후 410 `MANUAL_SCHEDULE_ONLY`, DB 변경 없음 |
 
 수동 배정 예시입니다. `rounds`에 없는 라운드와 `events: []`인 라운드는 사건이 없습니다.
 
@@ -64,19 +64,13 @@
 
 `triggerOffsetSeconds`와 `preannounceSeconds`는 서버의 라운드 시작 시각을 기준으로 계산합니다. 장중 사건은 거래 종료 및 다른 사건의 예고·거래정지 구간과 겹칠 수 없습니다. `CLOSE` 사건에는 두 시간 필드를 지정하지 않습니다.
 
-무작위 배정 body:
+19단계부터 사건은 수동으로만 배정합니다. 게임 시작과 서버 재시작은 저장된 배정을
+조회·실행할 뿐 새 사건을 고르거나 빈 달을 채우지 않습니다. 배정을 한 번도 저장하지
+않았거나 빈 `rounds`를 저장한 경우 모두 사건 없이 게임을 진행할 수 있습니다.
+기존 무작위 방식으로 저장된 배정도 그대로 보존하며, 변경하려면 수동 배정을 저장합니다.
+DB 구조 변경은 없습니다. `event_schedule_states.mode`의 과거 `RANDOM` 값은 호환을 위해 유지합니다.
 
-```json
-{
-  "intradayEventsPerRound": 1,
-  "closingEventsPerRound": 1,
-  "preannounceSeconds": 30
-}
-```
-
-각 개수는 0~3입니다. body를 비우면 기존 운영과 호환되도록 라운드마다 `CLOSE` 사건 1개를 배정합니다.
-
-주요 오류는 `INVALID_EVENT_SCHEDULE`, `EVENT_SCHEDULE_CONFLICT`, `DUPLICATE_EVENT_ASSIGNMENT`, `EVENT_NOT_FOUND`, `EVENT_POOL_TOO_SMALL`, `EVENT_MANAGEMENT_CLOSED`입니다.
+주요 오류는 `INVALID_EVENT_SCHEDULE`, `EVENT_SCHEDULE_CONFLICT`, `DUPLICATE_EVENT_ASSIGNMENT`, `EVENT_NOT_FOUND`, `EVENT_MANAGEMENT_CLOSED`입니다.
 
 ## 사용자 복구 API
 
@@ -125,6 +119,5 @@ Socket은 실시간 알림이며 재접속 복구 기준은 PostgreSQL과 `GET /
 - 장중 발생은 1초 이상, 예고 초는 0 이상이며 발생 초보다 작아야 합니다. 발생 시각 + 최소 거래정지 시간이 거래 종료보다 엄격히 작아야 합니다.
 - 같은 달의 `[예고 시작, 거래정지 종료)` 구간이 겹치면 거부합니다. 앞 구간 종료와 다음 구간 시작이 정확히 같은 경우는 허용합니다.
 - 월별 최대 10개, `displayOrder`는 월 안에서 서로 다른 양의 정수입니다. 장중 실행 시각과 표시 순서는 별도입니다.
-- `CLOSE`에는 발생 초와 예고 초를 보내지 않습니다. 빈 `rounds` 저장은 사건 없는 게임을 명시적으로 설정합니다. 배정을 한 번도 설정하지 않으면 시작 시 기존 월별 마감 사건 1개 자동 배정을 사용합니다.
-- 무작위 배정은 기존 전체 배정을 교체합니다. 0~3개씩의 장중·마감 사건을 매월 배정하며 전체 기간에 걸쳐 사건이 중복되지 않아야 합니다.
+- `CLOSE`에는 발생 초와 예고 초를 보내지 않습니다. 빈 `rounds` 저장은 사건 없는 게임을 명시적으로 설정합니다. 배정을 한 번도 설정하지 않아도 사건 없이 시작합니다.
 - 프론트엔드 검사는 입력 안내이며 최종 유효성·동시 변경 판정은 서버가 수행합니다. 통신 실패 시 자동 재전송 없이 목록 재조회 후 초안과 비교합니다.
