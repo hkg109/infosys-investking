@@ -1,11 +1,20 @@
+import { useEffect, useRef } from 'react'
 import Panel from '../components/Panel'
 import { money } from '../game/model'
 import useEventNews, { currentEvents } from './useEventNews'
 
 export { currentEvents } from './useEventNews'
 
-export default function EventNews({ game, revision }) {
+export default function EventNews({ game, revision, focusRequest }) {
   const { events, error, loading, refresh } = useEventNews({ game, revision })
+  const articles = useRef(new Map())
+  useEffect(() => {
+    if (!focusRequest?.gameEventId) return
+    const article = articles.current.get(focusRequest.gameEventId)
+    if (!article) return
+    article.focus({ preventScroll: true })
+    article.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [events, focusRequest])
   return <Panel title="시장 뉴스">
     <header className="newsroom-header">
       <div>
@@ -15,16 +24,16 @@ export default function EventNews({ game, revision }) {
       <span>LIVE NEWS</span>
     </header>
     {error && <p role="alert" className="form-error">{error}</p>}
-    {!events.length ? <p className="empty-state">{game?.status === 'WAITING' ? '게임 시작 후 이번 달 뉴스가 공개됩니다.' : loading ? '이번 달 뉴스를 확인하고 있습니다.' : '이번 달에 배정된 사건이 없습니다.'}</p> : events.map(event => <EventArticle key={event.gameEventId || event.eventId} event={event} />)}
+    {!events.length ? <p className="empty-state">{game?.status === 'WAITING' ? '게임 시작 후 이번 달 뉴스가 공개됩니다.' : loading ? '이번 달 뉴스를 확인하고 있습니다.' : '이번 달에 배정된 사건이 없습니다.'}</p> : events.map(event => <EventArticle key={event.gameEventId || event.eventId} event={event} highlighted={focusRequest?.gameEventId === event.gameEventId} articleRef={node => { if (node) articles.current.set(event.gameEventId, node); else articles.current.delete(event.gameEventId) }} />)}
     <button type="button" className="secondary-button newsroom-refresh" disabled={loading} onClick={refresh}>{loading ? '뉴스 업데이트 중…' : '뉴스 업데이트'}</button>
   </Panel>
 }
 
-export function EventArticle({ event }) {
+export function EventArticle({ event, highlighted = false, articleRef }) {
   const intraday = event.triggerPhase === 'INTRADAY'
   const publication = publicationTime(event)
   const changes = Array.isArray(event.changes) ? event.changes : []
-  return <article className={`event-news market-article${intraday ? ' market-article--breaking' : ''}`}>
+  return <article ref={articleRef} tabIndex={highlighted ? -1 : undefined} className={`event-news market-article${intraday ? ' market-article--breaking' : ''}${highlighted ? ' market-article--focused' : ''}`}>
       <div className="market-article__meta">
         <span className={intraday ? 'news-badge news-badge--breaking' : 'news-badge'}>{intraday ? '장중 속보' : '마감 뉴스'}</span>
         <span>{event.round}월</span>

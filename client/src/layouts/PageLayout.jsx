@@ -22,7 +22,7 @@ function PageLayout({ actions, area = 'public', children, title, subtitle, wide 
       </main>
       <footer className="site-footer">
         <span>Infosys InvestKing</span>
-        <span>실시간 모의투자 게임 · 실제 화폐를 사용하지 않습니다.</span>
+        <span>한양대학교 정보시스템학과 16대 학생회 휘연 주최</span>
       </footer>
     </div>
   )
