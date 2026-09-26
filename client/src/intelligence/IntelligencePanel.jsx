@@ -18,14 +18,16 @@ export function IntelligenceStorePanel({ store }) {
     await store.purchase(item)
     setReview(null)
   }
-  return <Panel title="정보 상점">
-    <p>보유 현금으로 시장 정보를 구매하세요. 구매한 본문은 별도의 보관함 탭에서 확인할 수 있습니다.</p>
+  return <Panel title="정보 상점" className="intelligence-shop">
+    <div className="intelligence-shop__intro">
+      <p>시장에 공개되기 전 단서를 골라 현금으로 구매하세요.</p>
+      {store.data && <p className="intelligence-wallet"><span>사용 가능 현금</span><strong>{store.data.cash.toLocaleString('ko-KR')}원</strong></p>}
+    </div>
     {store.error && <p role="alert" className="form-error">{store.error} 구매 요청은 자동 재전송하지 않습니다. 보관함과 잔액을 확인하세요.</p>}
     {!store.fresh && store.data && <p>마지막으로 확인한 정보입니다. 최신 조회가 완료될 때까지 구매할 수 없습니다.</p>}
-    {store.message && <p role="status">{store.message}</p>}
-    <button type="button" className="secondary-button" disabled={store.busy} onClick={store.refresh}>{store.busy ? '구매 확인 중...' : '정보 상점 업데이트'}</button>
+    {store.message && <p role="status" className="intelligence-shop__status">{store.message}</p>}
+    <button type="button" className="secondary-button intelligence-shop__refresh" disabled={store.busy} onClick={store.refresh}>{store.busy ? '구매 확인 중…' : '정보 상점 업데이트'}</button>
     {store.data ? <>
-      <p className="mission-points">보유 현금 <strong>{store.data.cash.toLocaleString('ko-KR')}원</strong></p>
       {store.options.status !== 'RUNNING' && <p>게임 진행 중에만 구매할 수 있습니다.</p>}
       <StoreItems data={store.data} options={store.options} onReview={selected => setReview({ clueId: selected.clueId, price: selected.price, title: selected.title })} />
       {review && <section className="end-confirmation" aria-label="정보 구매 확인"><h3>정보 구매 확인</h3><p>{review.title} · {review.price.toLocaleString('ko-KR')}원을 사용합니다. 구매한 정보는 보관함에 남습니다.</p>
@@ -47,10 +49,35 @@ export function IntelligenceLibraryPanel({ store }) {
 }
 
 export function StoreItems({ data, options, onReview }) {
-  return <section aria-label="판매 중인 정보"><h3>판매 중인 정보</h3>{data.items.length ? <ul className="mission-list">{data.items.map(item => {
-    const owned = data.purchases.some(purchase => purchase.clueId === item.clueId)
-    return <li key={item.clueId}><h4>{item.title}</h4><p>{item.summary}</p><p>{item.price.toLocaleString('ko-KR')}원 · {item.availableRound}월부터</p><button type="button" className="secondary-button" disabled={!canBuy(data, item, options)} onClick={() => onReview(item)}>{owned ? '보관함에 있음' : !item.canPurchase ? '현재 구매 불가' : data.cash < item.price ? '현금 부족' : `${item.title} 구매`}</button></li>
-  })}</ul> : <p>현재 판매 중인 정보가 없습니다.</p>}</section>
+  return <section className="intelligence-catalog" aria-label="판매 중인 정보" aria-busy={options.busy || undefined}>
+    <div className="intelligence-catalog__heading"><h3>정보 카드</h3><p>구매한 정보는 보관함에서 언제든 다시 읽을 수 있습니다.</p></div>
+    {data.items.length ? <ul className="intelligence-grid">{data.items.map((item, index) => {
+      const state = storeItemState(data, item, options)
+      const labels = {
+        owned: '보유 중', locked: `${item.availableRound}월 해금`, insufficient: '현금 부족', loading: '처리 중…', available: '구매 가능',
+      }
+      return <li key={item.clueId} className="intelligence-card" data-state={state}>
+        <div className="intelligence-card__topline"><span className="intelligence-card__slot">SLOT {String(index + 1).padStart(2, '0')}</span><span className="intelligence-card__state">{labels[state]}</span></div>
+        <div className="intelligence-card__body"><h4>{item.title}</h4><p>{item.summary}</p></div>
+        <dl className="intelligence-card__meta"><div><dt>가격</dt><dd>{item.price.toLocaleString('ko-KR')}원</dd></div><div><dt>공개</dt><dd>{item.availableRound}월</dd></div></dl>
+        <button type="button" className="intelligence-card__action" disabled={!canBuy(data, item, options)} onClick={() => onReview(item)}>{storeItemAction(state, item.title)}</button>
+      </li>
+    })}</ul> : <p className="empty-state">현재 판매 중인 정보가 없습니다. 관리자가 카드를 등록하면 이곳에 표시됩니다.</p>}
+  </section>
+}
+
+export function storeItemState(data, item, options) {
+  if (data.purchases.some(purchase => purchase.clueId === item.clueId)) return 'owned'
+  if (options.busy) return 'loading'
+  if (!item.canPurchase || options.status !== 'RUNNING' || options.stale) return 'locked'
+  if (data.cash < item.price) return 'insufficient'
+  return 'available'
+}
+
+export function storeItemAction(state, title) {
+  return ({
+    owned: '보관함에 있음', locked: '아직 구매할 수 없음', insufficient: '현금이 부족함', loading: '구매 확인 중…', available: `${title} 구매`,
+  })[state]
 }
 
 export function IntelligenceLibrary({ purchases }) {

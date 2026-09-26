@@ -1,6 +1,6 @@
-function Panel({ children, title }) {
+function Panel({ children, title, className = '' }) {
   return (
-    <section className="panel">
+    <section className={`panel${className ? ` ${className}` : ''}`}>
       <h2>{title}</h2>
       {children}
     </section>

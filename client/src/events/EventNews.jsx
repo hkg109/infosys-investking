@@ -1,20 +1,11 @@
-import { useEffect, useState } from 'react'
-import { eventRequest } from './api'
 import Panel from '../components/Panel'
 import { money } from '../game/model'
+import useEventNews, { currentEvents } from './useEventNews'
+
+export { currentEvents } from './useEventNews'
 
 export default function EventNews({ game, revision }) {
-  const [data, setData] = useState(null)
-  const [error, setError] = useState('')
-  const [retry, setRetry] = useState(0)
-  useEffect(() => {
-    let active = true
-    eventRequest('/current').then(next => {
-      if (active) { setData(next); setError('') }
-    }).catch(() => { if (active) setError('뉴스를 불러오지 못했습니다. 다시 확인해 주세요.') })
-    return () => { active = false }
-  }, [revision, retry])
-  const events = currentEvents(data, game?.currentRound)
+  const { events, error, loading, refresh } = useEventNews({ game, revision })
   return <Panel title="시장 뉴스">
     <header className="newsroom-header">
       <div>
@@ -24,8 +15,8 @@ export default function EventNews({ game, revision }) {
       <span>LIVE NEWS</span>
     </header>
     {error && <p role="alert" className="form-error">{error}</p>}
-    {!events.length ? <p className="empty-state">{game?.status === 'WAITING' ? '게임 시작 후 이번 달 뉴스가 공개됩니다.' : data && data.game?.currentRound === game?.currentRound ? '이번 달에 배정된 사건이 없습니다.' : '이번 달 뉴스를 확인하고 있습니다.'}</p> : events.map(event => <EventArticle key={event.gameEventId || event.eventId} event={event} />)}
-    <button type="button" className="secondary-button newsroom-refresh" onClick={() => setRetry(n => n + 1)}>뉴스 업데이트</button>
+    {!events.length ? <p className="empty-state">{game?.status === 'WAITING' ? '게임 시작 후 이번 달 뉴스가 공개됩니다.' : loading ? '이번 달 뉴스를 확인하고 있습니다.' : '이번 달에 배정된 사건이 없습니다.'}</p> : events.map(event => <EventArticle key={event.gameEventId || event.eventId} event={event} />)}
+    <button type="button" className="secondary-button newsroom-refresh" disabled={loading} onClick={refresh}>{loading ? '뉴스 업데이트 중…' : '뉴스 업데이트'}</button>
   </Panel>
 }
 
@@ -65,9 +56,4 @@ export function publicationTime(event) {
   if (Number.isNaN(date.getTime())) return { dateTime: undefined, label: event.applied ? '공개 시각 미정' : '공개 예정' }
   const time = date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
   return { dateTime: date.toISOString(), label: `${event.applied ? '공개' : '예정'} ${time}` }
-}
-
-export function currentEvents(data, round) {
-  const events = Array.isArray(data?.events) ? data.events : data?.event ? [data.event] : []
-  return events.filter(event => event.round === round)
 }

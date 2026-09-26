@@ -13,10 +13,10 @@ const data = { cash: 40, items: [item], purchases: [] }
 const options = { status: 'RUNNING', stale: false, busy: false }
 const form = { title: ' 단서 ', summary: '요약', content: '본문\n두번째 줄', price: '10', availableRound: '1', isActive: true }
 const dir = await mkdtemp(join(process.cwd(), '.intelligence-test-'))
-let StoreItems, IntelligenceLibrary, IntelligenceStorePanel, IntelligenceLibraryPanel
+let StoreItems, IntelligenceLibrary, IntelligenceStorePanel, IntelligenceLibraryPanel, storeItemState, storeItemAction
 try {
  await build({entryPoints:['src/intelligence/IntelligencePanel.jsx'],outfile:join(dir,'panel.mjs'),bundle:true,platform:'node',format:'esm',packages:'external',jsx:'automatic'})
- ;({StoreItems,IntelligenceLibrary,IntelligenceStorePanel,IntelligenceLibraryPanel}=await import(pathToFileURL(join(dir,'panel.mjs')).href))
+ ;({StoreItems,IntelligenceLibrary,IntelligenceStorePanel,IntelligenceLibraryPanel,storeItemState,storeItemAction}=await import(pathToFileURL(join(dir,'panel.mjs')).href))
 } finally { await rm(dir,{recursive:true,force:true}) }
 test('intelligence is enabled after backend contract integration',()=>assert.equal(intelligenceEnabled,true))
 test('new intelligence uses the event cash price',()=>assert.equal(DEFAULT_INTELLIGENCE_PRICE,100000))
@@ -53,6 +53,20 @@ test('catalog never renders secret content and library escapes HTML',()=>{
  assert.match(library,/&lt;script&gt;/);assert.doesNotMatch(library,/<script>/)
  assert.match(renderToStaticMarkup(createElement(StoreItems,{data:{...data,cash:0},options})),/현금 부족/)
  assert.match(renderToStaticMarkup(createElement(StoreItems,{data:{...data,purchases:[purchase]},options})),/보관함에 있음/)
+})
+test('RPG store cards expose distinct available, locked, insufficient, loading, and owned states',()=>{
+ assert.equal(storeItemState(data,item,options),'available')
+ assert.equal(storeItemState(data,{...item,canPurchase:false},options),'locked')
+ assert.equal(storeItemState({...data,cash:0},item,options),'insufficient')
+ assert.equal(storeItemState(data,item,{...options,busy:true}),'loading')
+ assert.equal(storeItemState({...data,purchases:[purchase]},item,options),'owned')
+ assert.equal(storeItemAction('available','단서'),'단서 구매')
+ const cards=Array.from({length:12},(_,index)=>({...item,clueId:`clue-${index}`,title:`정보 ${index+1}`}))
+ const html=renderToStaticMarkup(createElement(StoreItems,{data:{...data,items:cards},options,onReview:()=>{}}))
+ assert.match(html,/intelligence-grid/)
+ assert.equal((html.match(/class="intelligence-card"/g)||[]).length,12)
+ assert.match(html,/data-state="available"/)
+ assert.match(html,/SLOT 12/)
 })
 test('store and purchased information render as separate route panels',()=>{
  const store={data:{...data,purchases:[purchase]},fresh:true,error:'',busy:false,message:'',options,refresh:()=>{},purchase:async()=>true}
