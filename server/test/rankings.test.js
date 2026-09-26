@@ -180,6 +180,10 @@ test('PostgreSQL rankings: asset totals, ties, API, socket updates and final fre
   await database.query("UPDATE companies SET current_price = 30 WHERE id = 'A'")
   releaseEvents()
   const final = (await (await finalRequest).json()).ranking
+  // The one-shot deferred event gate has served its purpose. Reconnect-style
+  // reads must use the settled event queue instead of waiting on the same
+  // manually controlled thenable a second time.
+  pendingEvents = Promise.resolve()
   assert.equal(final.final, true)
   assert.equal(final.rankings.find(({ nickname }) => nickname === '앨리스').totalAssets, 1100)
   const finalParticipant = await fetch(base, { headers: { Cookie: `${SESSION_COOKIE_NAME}=${sessionToken}` } })
