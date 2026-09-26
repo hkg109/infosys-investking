@@ -19,6 +19,29 @@ import { digestSessionToken, SESSION_COOKIE_NAME } from '../src/session-auth.js'
 const clientUrl = 'http://localhost:5173'
 const adminPassword = 'ranking-test-admin'
 
+test('ranking projections reveal nicknames only after final confirmation', () => {
+  const snapshot = {
+    final: false,
+    calculatedAt: '2026-09-27T00:00:00.000Z',
+    rankings: [
+      { userId: 'alice-id', nickname: '앨리스', rank: 1, cash: 700, stockValue: 300, totalAssets: 1000 },
+      { userId: 'bob-id', nickname: '밥', rank: 2, cash: 500, stockValue: 300, totalAssets: 800 },
+    ],
+  }
+  const livePublic = publicRankingPayload(snapshot)
+  const liveViewer = viewerRankingPayload(snapshot, 'bob-id')
+  assert.equal(JSON.stringify(livePublic).includes('앨리스'), false)
+  assert.equal(liveViewer.rankings.some(entry => 'nickname' in entry), false)
+  assert.equal(liveViewer.rankings.find(entry => entry.isMe).rank, 2)
+  assert.equal(liveViewer.me.nickname, '밥')
+
+  const finalPublic = publicRankingPayload({ ...snapshot, final: true })
+  const finalViewer = viewerRankingPayload({ ...snapshot, final: true }, 'bob-id')
+  assert.deepEqual(finalPublic.rankings.map(({ nickname }) => nickname), ['앨리스', '밥'])
+  assert.equal(finalViewer.rankings.find(entry => entry.isMe).nickname, '밥')
+  assert.equal(finalPublic.rankings.some(entry => 'userId' in entry || 'cash' in entry || 'stockValue' in entry), false)
+})
+
 test('ranking API reports unavailable databases', async (t) => {
   const app = express()
   app.use('/api/rankings', createRankingRouter(null, { getSnapshot: () => ({ status: 'WAITING' }) }, {
@@ -157,8 +180,23 @@ test('PostgreSQL rankings: asset totals, ties, API, socket updates and final fre
   await database.query("UPDATE companies SET current_price = 30 WHERE id = 'A'")
   releaseEvents()
   const final = (await (await finalRequest).json()).ranking
+  // The one-shot deferred event gate has served its purpose. Reconnect-style
+  // reads must use the settled event queue instead of waiting on the same
+  // manually controlled thenable a second time.
+  pendingEvents = Promise.resolve()
   assert.equal(final.final, true)
   assert.equal(final.rankings.find(({ nickname }) => nickname === '앨리스').totalAssets, 1100)
+  const finalParticipant = await fetch(base, { headers: { Cookie: `${SESSION_COOKIE_NAME}=${sessionToken}` } })
+  assert.equal(finalParticipant.status, 200)
+  const finalParticipantPayload = (await finalParticipant.json()).ranking
+  assert.equal(finalParticipantPayload.final, true)
+  assert.deepEqual(new Set(finalParticipantPayload.rankings.map(({ nickname }) => nickname)), new Set(['앨리스', '밥', '찰리']))
+  assert.equal(finalParticipantPayload.rankings.some((entry) => 'userId' in entry || 'cash' in entry || 'stockValue' in entry), false)
+  assert.equal(finalParticipantPayload.rankings.find(({ isMe }) => isMe).nickname, '찰리')
+  delivered.length = 0
+  await coordinator.handleGameEvent({ name: 'game:end' })
+  assert.equal(delivered.every(({ payload }) => payload.final), true)
+  assert.equal(delivered.every(({ payload }) => payload.rankings.every(({ nickname }) => typeof nickname === 'string')), true)
   await database.query('UPDATE wallets SET cash = 999999 WHERE game_id = $1 AND user_id = $2', [ACTIVE_GAME_ID, charlieId])
   const frozen = await refreshRankings(database, { initialCash: 100 })
   assert.equal(frozen.final, true)

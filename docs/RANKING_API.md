@@ -11,7 +11,7 @@ GET /api/rankings
 Cookie: investking_session=...
 ```
 
-응답에는 `top3`, 전체 `rankings`, 로그인한 참가자의 `me`, 참가자 수와 계산 시각이 포함됩니다. `rankings`와 `top3`의 모든 항목은 `rank`, `totalAssets`, `isMe`만 제공합니다. 다른 참가자의 닉네임·`userId`·현금·주식 평가액은 공개하지 않으며 로그인한 본인 항목 하나만 `isMe: true`입니다. `me`에는 본인 계정의 닉네임, 현금, 주식 평가액과 총자산을 계속 제공합니다.
+응답에는 `top3`, 전체 `rankings`, 로그인한 참가자의 `me`, 참가자 수와 계산 시각이 포함됩니다. 게임 종료 전 `rankings`와 `top3`의 모든 항목은 `rank`, `totalAssets`, `isMe`만 제공합니다. 다른 참가자의 닉네임·`userId`·현금·주식 평가액은 공개하지 않으며 로그인한 본인 항목 하나만 `isMe: true`입니다. `me`에는 본인 계정의 닉네임, 현금, 주식 평가액과 총자산을 계속 제공합니다.
 
 ```json
 {
@@ -62,8 +62,10 @@ ranking:update
 
 `game:end` 처리 시 게임 단위 확정 상태를 `ranking_states`에, 참가자별 결과를 `ranking_snapshots`에 저장합니다. 참가자가 0명인 종료 결과도 확정 상태로 남습니다. 이후 주가나 지갑 데이터가 변경되더라도 최종 스냅샷은 다시 계산하거나 덮어쓰지 않으며, 서버 재시작 시에도 동일한 결과를 사용합니다.
 
+`gameStatus=FINISHED`이면서 `ranking.final=true`인 확정 응답에서는 `rankings`와 `top3`의 각 항목에 `nickname`을 추가합니다. 이 두 조건을 모두 만족하기 전에는 이름을 보내지 않습니다. 사용자 ID·현금·주식 평가액은 최종 공개 목록에도 포함하지 않습니다. 게임 초기화로 최종 스냅샷을 제거하면 공개 목록은 다시 익명 계약으로 돌아갑니다.
+
 ## QA 5단계 Frontend 연동
 
-HTTP 응답은 `{ gameStatus, ranking }`이며 위 익명 순위 객체는 `ranking` 안에 있습니다. Frontend는 `ranking.rankings`와 `ranking.top3`에서 순위·총자산·`isMe`만 사용하고, 본인 상세는 `ranking.me`로 표시합니다. 공개 목록에는 다른 참가자의 식별자를 생성하거나 표시하지 않습니다.
+HTTP 응답은 `{ gameStatus, ranking }`이며 순위 객체는 `ranking` 안에 있습니다. Frontend는 진행 중 목록에서 순위·총자산·`isMe`만 사용하고, 본인 상세는 `ranking.me`로 표시합니다. 최종 확정 뒤에는 목록의 `nickname`을 함께 표시합니다. 진행 중 응답에 닉네임이 섞이거나 최종 응답에서 닉네임이 빠지면 잘못된 응답으로 거부합니다.
 
 TOP 3는 순위가 3 이하인 모든 참가자를 포함하므로 동점일 때 3명보다 많을 수 있습니다. 전체 순위에서도 본인 행만 ‘나’로 강조합니다. Socket은 갱신 알림으로 사용하고 인증된 GET 응답으로 화면을 갱신·복구합니다. 세션 만료 또는 계정 변경 시 이전 개인 결과를 표시하지 않습니다.

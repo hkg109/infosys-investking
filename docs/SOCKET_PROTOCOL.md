@@ -25,7 +25,7 @@
 
 사건 이벤트는 기존 `news:publish`, `event:result`, `stock:update`에 장중 사건용 `market:event:warning`, `trading:halt`, `market:event:breaking`, `trading:resume`이 추가됩니다. 거래정지 중 HTTP 주문은 `MARKET_HALTED`로 거절되며 Payload와 정확한 순서는 [EVENT_API.md](EVENT_API.md)를 참조합니다.
 
-순위 이벤트는 `ranking:update`입니다. 공개 연결에는 닉네임과 계정 식별자가 없는 익명 순위를 보내고, 인증된 참가자 연결에는 본인 항목 하나만 `isMe: true`로 표시한 사용자별 Payload를 보냅니다. 거래 커밋, 사건에 따른 주가 변경, 게임 종료 뒤 갱신되며 상세 Payload와 복구 API는 [RANKING_API.md](RANKING_API.md)를 참조합니다.
+순위 이벤트는 `ranking:update`입니다. 게임 진행 중 공개 연결에는 닉네임과 계정 식별자가 없는 익명 순위를 보내고, 인증된 참가자 연결에는 본인 항목 하나만 `isMe: true`로 표시한 사용자별 Payload를 보냅니다. 게임 종료 및 최종 순위 확정 뒤에는 모든 연결의 순위 항목에 닉네임을 추가합니다. 사용자 ID·현금·주식 평가액은 이때도 공개 목록에 넣지 않습니다. 거래 커밋, 사건에 따른 주가 변경, 게임 종료 뒤 갱신되며 상세 Payload와 복구 API는 [RANKING_API.md](RANKING_API.md)를 참조합니다.
 
 ## 검증
 

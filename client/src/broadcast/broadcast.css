@@ -38,6 +38,7 @@
 .cast-ranking li { display: flex; justify-content: space-between; gap: 1cqw; align-items: center; padding: .85cqw 1cqw; border-radius: .7cqw; background: #ffffff12; }
 .cast-ranking li:first-child { color: #fbd980; background: #dcae3330; }
 .cast-ranking li strong { font-size: 1.2em; }
+.cast-ranking .cast-player-name { min-width: 0; flex: 1; overflow: hidden; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 .cast-meta { margin: .8cqw 0; color: #9eb3cf; font-size: .77em; }
 .cast-news li { padding: .6cqw 0; border-bottom: 1px solid #ffffff1c; }
 .cast-news li > span { display: inline-block; margin-bottom: .25cqw; color: #f6bd4d; font-size: .7em; font-weight: 900; }

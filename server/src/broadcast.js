@@ -30,10 +30,17 @@ export async function readBroadcast(database, { now = Date.now, isHalted = () =>
       currentPrice: Number(c.current_price), openingPrice: Number(c.opening_price),
       changeRate: Math.round((Number(c.current_price) / Number(c.opening_price) - 1) * 1e6) / 1e4 }))
     const { rows: [state] } = await client.query('SELECT is_final, calculated_at FROM ranking_states WHERE game_id=$1', [ACTIVE_GAME_ID])
-    const { rows: entries } = await client.query(`SELECT rank, total_assets FROM ranking_snapshots
-      WHERE game_id=$1 ORDER BY rank, total_assets DESC`, [ACTIVE_GAME_ID])
-    const rankings = entries.map(r => ({ rank: Number(r.rank), totalAssets: Number(r.total_assets) }))
-    const ranking = { final: row.status === 'FINISHED' && state?.is_final === true,
+    const rankingFinal = row.status === 'FINISHED' && state?.is_final === true
+    const rankingQuery = rankingFinal
+      ? `SELECT rs.rank, rs.total_assets, u.nickname FROM ranking_snapshots rs
+        JOIN users u ON u.id=rs.user_id
+        WHERE rs.game_id=$1 ORDER BY rs.rank, rs.total_assets DESC, u.nickname`
+      : `SELECT rank, total_assets FROM ranking_snapshots
+        WHERE game_id=$1 ORDER BY rank, total_assets DESC`
+    const { rows: entries } = await client.query(rankingQuery, [ACTIVE_GAME_ID])
+    const rankings = entries.map(r => ({ rank: Number(r.rank), totalAssets: Number(r.total_assets),
+      ...(rankingFinal ? { nickname: r.nickname } : {}) }))
+    const ranking = { final: rankingFinal,
       calculatedAt: state?.calculated_at ?? null, totalParticipants: rankings.length,
       top3: rankings.filter(r => r.rank <= 3), rankings }
     const { rows: events } = await client.query(`SELECT ge.id, ge.round_number, ge.trigger_phase,
