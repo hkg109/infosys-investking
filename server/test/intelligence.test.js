@@ -69,6 +69,7 @@ test('intelligence HTTP: admin CRUD, auth/origin, round filtering and no public 
   await c.state('RUNNING')
   const response=await c.request('/me',{who,origin:clientUrl}), data=await response.json()
   assert.equal(response.headers.get('Cache-Control'),'no-store');assert.equal(response.headers.get('Access-Control-Allow-Origin'),clientUrl)
+  assert.equal(data.purchaseOpen,true);assert.equal(data.currentRound,1)
   assert.equal(data.items.length,1);assert.equal(data.items[0].content,undefined);assert.deepEqual(data.purchases,[])
   assert.equal(JSON.stringify(data).includes(input.content),false)
   for(const method of ['POST','PUT','DELETE']) assert.equal((await c.request(method==='POST'?'/admin':`/admin/${clue.clueId}`,{method,admin:true,body:input})).status,409)
@@ -167,7 +168,7 @@ test('real PostgreSQL HTTP responses expose cash and recover a lost purchase res
   assert.equal(created.content,input.content)
   await c.state('RUNNING')
   const before=await (await c.request('/me',{who})).json()
-  assert.equal(before.cash,40);assert.equal(before.items[0].content,undefined)
+  assert.equal(before.cash,40);assert.equal(before.purchaseOpen,true);assert.equal(before.currentRound,1);assert.equal(before.items[0].content,undefined)
   // A client may lose the response after the server commits. GET restores the
   // authoritative balance and private purchase without repeating the charge.
   const purchased=await c.request('/purchases',{method:'POST',who,body:{clueId:created.clueId,expectedPrice:10}})

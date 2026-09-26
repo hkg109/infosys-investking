@@ -15,8 +15,7 @@ export function IntelligenceStorePanel({ store }) {
   const priceChanged = Boolean(review && item?.price !== review.price)
   const confirmPurchase = async () => {
     if (!item || priceChanged) { setReview(null); return }
-    await store.purchase(item)
-    setReview(null)
+    if (await store.purchase(item)) setReview(null)
   }
   return <Panel title="정보 상점" className="intelligence-shop">
     <div className="intelligence-shop__intro">
@@ -28,7 +27,7 @@ export function IntelligenceStorePanel({ store }) {
     {store.message && <p role="status" className="intelligence-shop__status">{store.message}</p>}
     <button type="button" className="secondary-button intelligence-shop__refresh" disabled={store.busy} onClick={store.refresh}>{store.busy ? '구매 확인 중…' : '정보 상점 업데이트'}</button>
     {store.data ? <>
-      {store.options.status !== 'RUNNING' && <p>게임 진행 중에만 구매할 수 있습니다.</p>}
+      {!store.data.purchaseOpen && <p>게임 진행 중에만 구매할 수 있습니다.</p>}
       <StoreItems data={store.data} options={store.options} onReview={selected => setReview({ clueId: selected.clueId, price: selected.price, title: selected.title })} />
       {review && <section className="end-confirmation" aria-label="정보 구매 확인"><h3>정보 구매 확인</h3><p>{review.title} · {review.price.toLocaleString('ko-KR')}원을 사용합니다. 구매한 정보는 보관함에 남습니다.</p>
         {priceChanged && <p>가격이 변경되었습니다. 취소 후 다시 선택하세요.</p>}
@@ -60,7 +59,7 @@ export function StoreItems({ data, options, onReview }) {
         <div className="intelligence-card__topline"><span className="intelligence-card__slot">SLOT {String(index + 1).padStart(2, '0')}</span><span className="intelligence-card__state">{labels[state]}</span></div>
         <div className="intelligence-card__body"><h4>{item.title}</h4><p>{item.summary}</p></div>
         <dl className="intelligence-card__meta"><div><dt>가격</dt><dd>{item.price.toLocaleString('ko-KR')}원</dd></div><div><dt>공개</dt><dd>{item.availableRound}월</dd></div></dl>
-        <button type="button" className="intelligence-card__action" disabled={!canBuy(data, item, options)} onClick={() => onReview(item)}>{storeItemAction(state, item.title)}</button>
+        <button type="button" className="intelligence-card__action" disabled={!canBuy(data, item, options)} onClick={() => onReview(item)}>{storeItemAction(state)}</button>
       </li>
     })}</ul> : <p className="empty-state">현재 판매 중인 정보가 없습니다. 관리자가 카드를 등록하면 이곳에 표시됩니다.</p>}
   </section>
@@ -69,14 +68,14 @@ export function StoreItems({ data, options, onReview }) {
 export function storeItemState(data, item, options) {
   if (data.purchases.some(purchase => purchase.clueId === item.clueId)) return 'owned'
   if (options.busy) return 'loading'
-  if (!item.canPurchase || options.status !== 'RUNNING' || options.stale) return 'locked'
+  if (!data.purchaseOpen || !item.canPurchase || options.stale) return 'locked'
   if (data.cash < item.price) return 'insufficient'
   return 'available'
 }
 
-export function storeItemAction(state, title) {
+export function storeItemAction(state) {
   return ({
-    owned: '보관함에 있음', locked: '아직 구매할 수 없음', insufficient: '현금이 부족함', loading: '구매 확인 중…', available: `${title} 구매`,
+    owned: '보관함에 있음', locked: '아직 구매할 수 없음', insufficient: '현금이 부족함', loading: '구매 처리 중…', available: '정보 구매',
   })[state]
 }
 
