@@ -50,7 +50,7 @@ test('admin verification only accepts explicit success and never includes passwo
 test('healthy connection is compact; disconnected and failed states retain retry', () => {
   const html = props => renderToStaticMarkup(createElement(Connection, props))
   assert.doesNotMatch(html({ connected: true }), /<button/)
-  assert.match(html({ connected: false }), /연결 다시 확인/)
+  assert.match(html({ connected: false }), /연결 업데이트/)
   assert.match(html({ connected: true, error: '조회 실패' }), /조회 실패/)
   assert.match(html({ loading: true }), /불러오고/)
 })

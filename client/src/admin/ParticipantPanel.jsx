@@ -14,7 +14,7 @@ export default function ParticipantPanel({ data, error, loading, updatedAt, refr
       <ParticipantTable participants={data.participants} onSelect={setSelected} />
     </>}
     {!loading && !data && <p>확인된 참가자 정보가 없습니다.</p>}
-    <button className="secondary-button" type="button" onClick={refresh}>참가자 다시 확인</button>
+    <button className="secondary-button" type="button" onClick={refresh}>참가자 업데이트</button>
     {selected && <AssetEditor key={selected.userId} participant={selected} password={password} game={game} stale={stale} onBusy={onBusy} onChanged={refresh} onClose={() => setSelected(null)} />}
   </Panel>
 }

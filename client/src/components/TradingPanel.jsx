@@ -90,6 +90,6 @@ export default function TradingPanel({ game, stale, trading, selectedCompanyId, 
       <p>{!trading.result.cancelled && <>{trading.result.companyId} · {trading.result.type === 'BUY' ? '매수' : '매도'} {trading.result.quantity}주 · 체결가 {money(trading.result.price)} · 총 {money(trading.result.totalPrice)}</>}</p>
     </div>}
     {trading.recovery?.history?.length > 0 && <details className="order-history"><summary>최근 거래 내역 (최대 20건)</summary><ul>{trading.recovery.history.map(tx => <li key={tx.orderId}>{tx.companyId} · {tx.type === 'BUY' ? '매수' : '매도'} {tx.quantity}주 · {money(tx.totalPrice)}<br /><small>{new Date(tx.createdAt).toLocaleString('ko-KR')}</small></li>)}</ul></details>}
-    <button className="secondary-button trading-refresh" type="button" disabled={trading.pending} onClick={trading.refresh}>자산·종목 다시 확인</button>
+    <button className="secondary-button trading-refresh" type="button" disabled={trading.pending} onClick={trading.refresh}>자산·종목 업데이트</button>
   </Panel>
 }

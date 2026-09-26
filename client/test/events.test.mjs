@@ -40,7 +40,9 @@ test('unapplied event never renders result or rates even if accidentally present
 })
 
 test('news initial loading render tolerates absent game and response', () => {
-  assert.match(renderToStaticMarkup(createElement(EventNews, {})), /이번 달 뉴스를 확인/)
+  const html = renderToStaticMarkup(createElement(EventNews, {}))
+  assert.match(html, /이번 달 뉴스를 확인/)
+  assert.match(html, /뉴스 업데이트/)
 })
 
 test('current news includes every event in the current month and never leaks the previous month', () => {
