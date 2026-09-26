@@ -19,7 +19,9 @@ export function validateClue(input, totalRounds) {
   return { title, summary, content, price, availableRound, isActive }
 }
 function metadata(row) {
-  return { clueId: row.clue_id || row.id, title: row.title, summary: row.summary, price: row.price, availableRound: row.available_round }
+  const price = Number(row.price), availableRound = Number(row.available_round)
+  if (!integer(price, 1, 1000000) || !integer(availableRound, 1, 1000)) fail(503, 'INTELLIGENCE_DATA_OUT_OF_RANGE')
+  return { clueId: row.clue_id || row.id, title: row.title, summary: row.summary, price, availableRound }
 }
 const adminClue = row => ({ ...metadata(row), content: row.content, isActive: row.is_active })
 async function transaction(database, work, { readOnly = false } = {}) {
@@ -81,8 +83,9 @@ async function readStore(client, userId, engine, initialCash = 1_000_000) {
   if (!game) fail(503, 'GAME_UNAVAILABLE')
   const wallet = (await client.query('SELECT cash FROM wallets WHERE game_id=$1 AND user_id=$2', [ACTIVE_GAME_ID, userId])).rows[0]
   const purchases = (await client.query(`SELECT * FROM intelligence_purchases WHERE game_id=$1 AND user_id=$2 ORDER BY purchased_at,clue_id`, [ACTIVE_GAME_ID, userId])).rows.map(row => ({
-    ...metadata(row), content: row.content, paidCash: Number(row.paid_cash), purchasedAt: row.purchased_at.toISOString(),
+    ...metadata(row), content: row.content, paidCash: Number(row.paid_cash), purchasedAt: new Date(row.purchased_at).toISOString(),
   }))
+  if (purchases.some(item => !integer(item.paidCash, 1, 1000000))) fail(503, 'INTELLIGENCE_DATA_OUT_OF_RANGE')
   const live = engine.getSnapshot(), round = Math.min(game.current_round, live.currentRound)
   // Query only public fields: unpurchased content is never loaded into catalog rows.
   const rows = (await client.query(`SELECT id,title,summary,price,available_round FROM intelligence_clues
@@ -116,7 +119,7 @@ export async function purchaseClue(database, engine, userId, input, initialCash 
     requireRunning({ ...game, live: engine.getSnapshot() })
     const clue = (await client.query('SELECT * FROM intelligence_clues WHERE id=$1 FOR SHARE', [id])).rows[0]
     if (!clue || !clue.is_active || clue.available_round > Math.min(game.row.current_round, engine.getSnapshot().currentRound)) fail(409, 'CLUE_UNAVAILABLE')
-    if (clue.price !== input.expectedPrice) fail(409, 'PRICE_CHANGED')
+    if (Number(clue.price) !== input.expectedPrice) fail(409, 'PRICE_CHANGED')
     if (BigInt(wallet.cash) < BigInt(clue.price)) fail(409, 'INSUFFICIENT_CASH')
     await client.query('UPDATE wallets SET cash=cash-$3,updated_at=NOW() WHERE game_id=$1 AND user_id=$2', [ACTIVE_GAME_ID,userId,clue.price])
     await client.query(`INSERT INTO intelligence_purchases(game_id,user_id,clue_id,title,summary,content,price,available_round,paid_cash)

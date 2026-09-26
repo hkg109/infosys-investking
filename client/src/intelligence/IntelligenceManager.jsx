@@ -2,8 +2,8 @@ import { useDraftGuard } from '../navigation/NavigationGuard'
 import { useEffect, useRef, useState } from 'react'
 import Panel from '../components/Panel'
 import ActionDialog, { ConfirmDialog, requestDialogClose } from '../components/ActionDialog'
-import { clueInput, intelligenceError, intelligenceRequest } from './api'
-const blank = () => ({ title: '', summary: '', content: '', price: '10', availableRound: '1', isActive: true })
+import { DEFAULT_INTELLIGENCE_PRICE, clueInput, intelligenceError, intelligenceRequest } from './api'
+const blank = () => ({ title: '', summary: '', content: '', price: String(DEFAULT_INTELLIGENCE_PRICE), availableRound: '1', isActive: true })
 export default function IntelligenceManager({ password, game, stale, onBusy }) {
   const [clues, setClues] = useState(null), [fresh, setFresh] = useState(false)
   const [form, setForm] = useState(blank), [editing, setEditing] = useState(null)

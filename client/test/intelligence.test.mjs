@@ -6,7 +6,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { clueInput, validateStore, validateClues, canBuy, privateStoreFailure, intelligenceRequest, intelligenceEnabled } from '../src/intelligence/api.js'
+import { DEFAULT_INTELLIGENCE_PRICE, clueInput, validateStore, validateClues, canBuy, privateStoreFailure, intelligenceRequest, intelligenceEnabled } from '../src/intelligence/api.js'
 const item = { clueId: 'clue-1', title: '단서', summary: '공개 요약', price: 10, availableRound: 1, canPurchase: true }
 const purchase = { ...item, content: '<script>비밀</script>', paidCash: 10, purchasedAt: '2026-09-18T00:00:00Z' }
 const data = { cash: 40, items: [item], purchases: [] }
@@ -19,6 +19,7 @@ try {
  ;({StoreItems,IntelligenceLibrary}=await import(pathToFileURL(join(dir,'panel.mjs')).href))
 } finally { await rm(dir,{recursive:true,force:true}) }
 test('intelligence is enabled after backend contract integration',()=>assert.equal(intelligenceEnabled,true))
+test('new intelligence uses the event cash price',()=>assert.equal(DEFAULT_INTELLIGENCE_PRICE,100000))
 test('clue fields enforce boundaries and allow multiline private body',()=>{
  assert.equal(clueInput(form).title,'단서')
  for(const patch of [{title:''},{summary:'x'.repeat(501)},{content:'x'.repeat(5001)},{price:'0'},{price:'1e2'},{price:'1000001'},{availableRound:'0'},{availableRound:'1001'},{content:'a\u0000b'},{isActive:'true'}])assert.throws(()=>clueInput({...form,...patch}))

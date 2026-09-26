@@ -14,7 +14,7 @@ import { createGameResetCoordinator } from '../src/game-reset.js'
 const dbOptions = { skip: !process.env.TEST_DATABASE_URL && 'Set TEST_DATABASE_URL for PostgreSQL integration tests', timeout: 30000 }
 const input = { title: '수요 단서', summary: '공개 요약', content: '구매자 전용 비밀\n다음 줄', price: 10, availableRound: 1, isActive: true }
 const clientUrl = 'http://localhost:5173'
-async function setup(t) {
+async function setup(t, { onPurchaseCommitted } = {}) {
   const schema = `test_intelligence_${randomUUID().replaceAll('-', '')}`
   const admin = new pg.Pool({ connectionString: process.env.TEST_DATABASE_URL })
   await admin.query(`CREATE SCHEMA "${schema}"`)
@@ -37,7 +37,7 @@ async function setup(t) {
     return { id, token, cookie: `${SESSION_COOKIE_NAME}=${token}` }
   }
   const app = express(); app.use(express.json({ limit: '32kb' }))
-  app.use('/api/intelligence', createIntelligenceRouter(database, engine, { adminPassword: 'test-admin', clientUrl, initialCash: 100 }))
+  app.use('/api/intelligence', createIntelligenceRouter(database, engine, { adminPassword: 'test-admin', clientUrl, initialCash: 100, onPurchaseCommitted }))
   app.use((_error,_req,res,_next) => res.status(503).json({ error: 'SERVICE_UNAVAILABLE' }))
   const server = app.listen(0,'127.0.0.1'); await once(server,'listening')
   t.after(() => new Promise(resolve => { server.close(resolve); server.closeAllConnections() }))
@@ -45,7 +45,7 @@ async function setup(t) {
   const request = (path, { method='GET', body, who, admin: isAdmin=false, origin }={}) => fetch(base+path, {method,headers:{'Content-Type':'application/json',...(who?{Cookie:who.cookie}:{}),...(isAdmin?{Authorization:'Bearer test-admin'}:{}),...(origin?{Origin:origin}:{})},...(body?{body:JSON.stringify(body)}:{})})
   const create = async patch => (await saveClue(database,engine,null,{...input,...patch})).clue
   const buy = (who, clue, price=clue.price) => purchaseClue(database,engine,who.id,{clueId:clue.clueId,expectedPrice:price})
-  return { database,engine,state,user,request,create,buy,setLive: patch => { snapshot={...snapshot,...patch} } }
+  return { database,engine,state,user,request,create,buy,sql,setLive: patch => { snapshot={...snapshot,...patch} } }
 }
 test('intelligence input enforces type, Unicode, integer and round limits',()=>{
   assert.equal(validateClue(input,4).content,input.content)
@@ -181,4 +181,31 @@ test('real PostgreSQL HTTP responses expose cash and recover a lost purchase res
   assert.equal(insufficient.status,409);assert.equal((await insufficient.json()).error,'INSUFFICIENT_CASH')
   await c.database.query('DELETE FROM user_sessions WHERE user_id=$1',[other.id])
   assert.equal((await c.request('/me',{who:other})).status,401)
+})
+
+test('a failed ranking refresh does not turn a committed purchase into an HTTP failure',dbOptions,async t=>{
+  const c=await setup(t,{onPurchaseCommitted:async()=>{throw new Error('projection unavailable')}})
+  const who=await c.user(200000), clue=await c.create({price:100000})
+  await c.state('RUNNING')
+  const response=await c.request('/purchases',{method:'POST',who,body:{clueId:clue.clueId,expectedPrice:100000}})
+  assert.equal(response.status,200)
+  const store=await response.json()
+  assert.equal(store.cash,100000);assert.equal(store.purchases[0].paidCash,100000)
+})
+
+test('the event-price migration changes only active clues without purchase history and runs once',dbOptions,async t=>{
+  const c=await setup(t), who=await c.user(200000)
+  const unsold=await c.create({title:'미판매 정보',price:30})
+  const sold=await c.create({title:'구매 완료 정보',price:40})
+  await c.state('RUNNING');await c.buy(who,sold)
+  await c.database.query("DELETE FROM app_schema_migrations WHERE migration_key='2026-09-27-intelligence-price-100000'")
+  await c.database.query(c.sql)
+  const prices=await c.database.query('SELECT id,price FROM intelligence_clues WHERE id=ANY($1::uuid[]) ORDER BY id',[ [unsold.clueId,sold.clueId] ])
+  const byId=new Map(prices.rows.map(row=>[row.id,row.price]))
+  assert.equal(byId.get(unsold.clueId),100000);assert.equal(byId.get(sold.clueId),40)
+  const purchase=(await c.database.query('SELECT price,paid_cash FROM intelligence_purchases WHERE clue_id=$1',[sold.clueId])).rows[0]
+  assert.equal(purchase.price,40);assert.equal(Number(purchase.paid_cash),40)
+  await c.database.query('UPDATE intelligence_clues SET price=75000 WHERE id=$1',[unsold.clueId])
+  await c.database.query(c.sql)
+  assert.equal((await c.database.query('SELECT price FROM intelligence_clues WHERE id=$1',[unsold.clueId])).rows[0].price,75000)
 })

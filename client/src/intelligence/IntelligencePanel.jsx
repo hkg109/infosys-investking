@@ -39,7 +39,7 @@ export default function IntelligencePanel({ userId, game, revision, stale, onPur
     try {
       const data = await intelligenceRequest('/purchases', { method: 'POST', body: { clueId: item.clueId, expectedPrice: item.price } })
       if (owner !== generation.current) return
-      setState({ userId, data, error: '', fresh: true }); setMessage('구매한 정보를 보관함에 저장했습니다.'); onPurchased?.()
+      setState({ userId, data, error: '', fresh: true }); setMessage(`${item.price.toLocaleString('ko-KR')}원을 결제했습니다. 남은 현금은 ${data.cash.toLocaleString('ko-KR')}원이며 구매한 정보는 보관함에 저장했습니다.`); onPurchased?.()
     } catch (error) {
       if (owner === generation.current) setState(previous => privateStoreFailure(previous, userId, error))
     } finally {

@@ -1,5 +1,6 @@
 // Backend contract: docs/INTELLIGENCE_API.md. Set the flag to false to disable.
 export const intelligenceEnabled = import.meta.env?.VITE_ENABLE_INTELLIGENCE !== 'false'
+export const DEFAULT_INTELLIGENCE_PRICE = 100_000
 const base = (import.meta.env?.VITE_API_BASE_URL || '').replace(/\/$/, '')
 const integer = (value, min, max) => Number.isSafeInteger(value) && value >= min && value <= max
 const text = (value, max) => typeof value === 'string' && value.trim().length > 0 && value.length <= max
