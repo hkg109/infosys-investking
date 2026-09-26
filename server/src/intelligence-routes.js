@@ -36,7 +36,10 @@ export function createIntelligenceRouter(database, engine, {
   router.get('/me', requireSessionUser(database), route(async (req, res) => res.json(await getIntelligence(database, engine, req.user.id, initialCash))))
   router.post('/purchases', requireSessionUser(database), route(async (req, res) => {
     const result = await purchaseClue(database, engine, req.user.id, req.body, initialCash)
-    await onPurchaseCommitted({ userId: req.user.id })
+    // A ranking/socket refresh is a projection of an already committed purchase.
+    // Never report the purchase as failed just because that follow-up refresh failed.
+    try { await onPurchaseCommitted({ userId: req.user.id }) }
+    catch (error) { console.error('Failed to refresh projections after intelligence purchase:', error) }
     res.json(result)
   }))
   router.use('/admin', createRequireAdmin(adminPassword))

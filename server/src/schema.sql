@@ -393,6 +393,30 @@ DO $$ BEGIN
   END IF;
 END $$;
 
+-- QA stage 22: normalize unsold active clues to the event price once. Purchase
+-- snapshots are intentionally excluded, and administrators may change prices
+-- again after this migration without a later schema run overwriting them.
+CREATE TABLE IF NOT EXISTS app_schema_migrations (
+  migration_key TEXT PRIMARY KEY,
+  applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM app_schema_migrations
+    WHERE migration_key = '2026-09-27-intelligence-price-100000'
+  ) THEN
+    UPDATE intelligence_clues AS clue
+    SET price = 100000, updated_at = NOW()
+    WHERE clue.is_active
+      AND NOT EXISTS (
+        SELECT 1 FROM intelligence_purchases AS purchase
+        WHERE purchase.clue_id = clue.id
+      );
+    INSERT INTO app_schema_migrations(migration_key)
+    VALUES ('2026-09-27-intelligence-price-100000');
+  END IF;
+END $$;
+
 -- Administrative corrections are not trades. Keep their original before/after values.
 CREATE TABLE IF NOT EXISTS asset_adjustments (
   request_id UUID PRIMARY KEY,

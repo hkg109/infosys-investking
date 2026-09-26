@@ -6,7 +6,7 @@
 
 - 게임의 `wallets.cash`를 사용합니다. 구매 가격만큼 현금과 총자산이 감소합니다.
 - 제목 1~100 UTF-16 코드 유닛, 요약 1~500, 본문 1~5,000. trim/NFC 정규화 후 검사하며 본문만 LF 줄바꿈을 허용합니다. 기타 제어·포맷 문자는 거부합니다.
-- `price`: 1~1,000,000 정수. `availableRound`: 1~1,000 및 게임 총 월 이내 정수. `isActive`: 필수 boolean.
+- `price`: 1~1,000,000 정수이며 신규 등록 기본값은 행사 기준가 100,000원입니다. 관리자는 대기 상태에서 가격을 수정할 수 있습니다. `availableRound`: 1~1,000 및 게임 총 월 이내 정수. `isActive`: 필수 boolean.
 - 관리자 생성·수정·비활성화는 WAITING에서만 가능합니다. 게임 DB 상태와 서버 엔진 상태를 모두 검사합니다.
 - 신규 구매는 RUNNING 상태에서만 가능합니다. TRADING/RESULT 단계 모두 허용하며 PAUSED/FINISHED/WAITING은 거부합니다. 주식 거래 마감 여부와 정보 구매 가능 여부는 별개입니다.
 - 활성 단서 중 현재 월 이하의 단서만 상점에 보입니다. 미래 단서는 제목·요약도 노출하지 않습니다.
@@ -72,13 +72,14 @@
 | 409 | CLUE_UNAVAILABLE | 없거나 비활성·공개 월 미도달 단서 |
 | 409 | PRICE_CHANGED | 표시 가격과 서버 가격 불일치 |
 | 409 | INSUFFICIENT_CASH | 현금 잔액 부족 |
-| 503 | DATABASE_UNAVAILABLE / GAME_UNAVAILABLE / POINTS_OUT_OF_RANGE | DB·게임·안전한 숫자 표현 오류 |
+| 503 | DATABASE_UNAVAILABLE / GAME_UNAVAILABLE / CASH_OUT_OF_RANGE / INTELLIGENCE_DATA_OUT_OF_RANGE | DB·게임·안전한 숫자 표현 오류 |
 
 기존 관리자 middleware의 `ADMIN_AUTH_UNAVAILABLE` 등 인증 오류 정책도 적용됩니다.
 
 ## DB·동시성·복구
 
 - `intelligence_purchases.paid_cash`를 추가합니다. 기존 `paid_points` 구매는 가격을 현금 지불 기록으로 이관하며 원본 열은 호환성을 위해 nullable로 보존합니다. `npm --prefix server run db:migrate`를 실행해야 합니다.
+- 22단계 가격 이관은 구매 이력이 없는 활성 단서만 한 번 100,000원으로 변경합니다. 구매 스냅샷은 변경하지 않으며, 이후 관리자가 수정한 가격도 반복 실행되는 스키마가 덮어쓰지 않습니다.
 - 구매 기본키 `(game_id,user_id,clue_id)`, 사용자 주문 advisory lock, 현금 지갑 행 잠금으로 같은 단서 중복 차감과 주식 주문·다른 정보 구매의 동시 초과 지출을 방지합니다.
 - 차감·구매 기록은 하나의 Transaction으로 처리합니다. 중간 SQL 실패 또는 처리 중 게임 일시정지/종료 확인 시 rollback합니다.
 - 게임 행 잠금으로 DB 상태 변경과 순서를 맞추고, 기존 초기화 advisory lock의 공유 잠금을 사용해 구매·편집이 초기화를 가로지르지 않도록 합니다.
