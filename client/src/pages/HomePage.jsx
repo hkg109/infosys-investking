@@ -72,8 +72,8 @@ function HomePage() {
       <section className="home-studio" aria-labelledby="home-title">
         <div className="home-story">
           <p className="eyebrow">INFORMATION SYSTEMS FESTIVAL · LIVE MARKET</p>
-          <h1 id="home-title"><span>뉴스를 읽고,</span> 시장을 움직여라.</h1>
-          <p className="hero-copy">학과의 사건이 뉴스가 되고, 선택이 수익률이 되는 실시간 모의투자 게임입니다.</p>
+          <h1 id="home-title">정보시스템학과 투자왕</h1>
+          <p className="hero-copy">한양대학교 정보시스템학과 16대 학생회 휘연 주최</p>
           <section className="game-rules" aria-label="게임 규칙">
             <div className="rules-heading"><span>01—05</span><h2>게임 방법</h2></div>
             <ol>
