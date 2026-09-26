@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { quantityValue, tradingBlock, orderError, displayAccount, newOrderId } from '../src/trading/model.js'
+import { quantityValue, tradingBlock, orderError, orderPreview, displayAccount, newOrderId } from '../src/trading/model.js'
 import { getTrading, sendOrder, prepareOrder, cancelOrder } from '../src/trading/api.js'
 
 const order = { orderId: 'f782d648-98fb-4da0-86ba-e2e575ee7d56', companyId: 'A', type: 'BUY', quantity: 2 }
@@ -25,6 +25,15 @@ test('order estimates reject overspending and overselling, allow exact balances'
   assert.equal(orderError({ company, quantity: 2, type: 'SELL', account }), '')
   assert.ok(orderError({ company, quantity: 3, type: 'SELL', account }))
   assert.deepEqual(displayAccount(account), { cash: 80000, stockValue: 20000, totalAssets: 100000 })
+})
+test('order preview calculates maximum buy, full sell and post-trade holdings', () => {
+  assert.deepEqual(orderPreview({ company, account, type: 'BUY', quantity: 3 }), {
+    held: 2, maxBuyQuantity: 8, maxBuyTotal: 80000, maxSellQuantity: 2, estimatedTotal: 30000, estimatedHolding: 5,
+  })
+  assert.equal(orderPreview({ company, account, type: 'SELL', quantity: 2 }).estimatedHolding, 0)
+  assert.equal(orderPreview({ company, account: { ...account, cash: 9999 }, type: 'BUY', quantity: 1 }).maxBuyQuantity, 0)
+  assert.equal(orderPreview({ company: null, account, type: 'BUY', quantity: 1 }).maxBuyQuantity, null)
+  assert.equal(orderPreview({ company: { ...company, currentPrice: Number.MAX_SAFE_INTEGER }, account: { ...account, cash: Number.MAX_SAFE_INTEGER }, type: 'BUY', quantity: 2 }).estimatedTotal, null)
 })
 test('market/portfolio consume the actual Backend response shape', async (t) => {
   t.mock.method(globalThis, 'fetch', async (url, options) => {

@@ -277,10 +277,13 @@ summary { cursor: pointer; min-height: 44px; padding: 12px 0; }
 .stock-select:focus-visible { outline: 3px solid #8fb5fa; border-radius: 7px; }
 .stock-row--selected { background: #edf4ff; }
 .stock-row--selected .stock-select { color: #1f5cc5; }
-.portfolio-holdings li { align-items: center; padding: 5px 0; }
-.portfolio-holdings li > div { display: grid; gap: 5px; min-width: 0; }
-.portfolio-holdings li > div span { color: #64748b; font-size: .8rem; overflow-wrap: anywhere; }
-.portfolio-holdings li > strong { flex: 0 0 auto; }
+.portfolio-holdings li { align-items: center; padding: 5px 0; flex-wrap: wrap; }
+.portfolio-holdings .holding-description { display: grid; gap: 5px; min-width: 0; flex: 1 1 180px; }
+.portfolio-holdings .holding-description span { color: #64748b; font-size: .8rem; overflow-wrap: anywhere; }
+.portfolio-holdings .holding-value { flex: 0 0 auto; }
+.holding-actions, .order-quantity-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.holding-actions { flex: 1 0 100%; justify-content: flex-end; }
+.holding-actions .secondary-button, .order-quantity-actions .secondary-button { min-height: 38px; }
 
 .market-chart-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
 .market-chart-header h3 { margin: 0 0 5px; font-size: 1.35rem; }
