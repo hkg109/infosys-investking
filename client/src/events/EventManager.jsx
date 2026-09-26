@@ -68,7 +68,7 @@ export default function EventManager({ password, game, stale, onBusy }) {
   }
   const updateEffect = (index, field, value) => setForm(f => ({ ...f, effects: f.effects.map((item, i) => i === index ? { ...item, [field]: value } : item) }))
   return <Panel title="사건 관리">
-    <p className="trading-help">대기 중 사건을 등록하고 아래에서 월별로 배정하세요. 한 달에 여러 사건 또는 사건 없는 달을 구성할 수 있습니다. 배정을 저장하지 않으면 시작 시 기존 방식으로 월별 마감 사건 1개를 무작위 배정합니다.</p>
+    <p className="trading-help">대기 중 사건을 등록하고 아래에서 월별로 배정하세요. 한 달에 여러 사건 또는 사건 없는 달을 구성할 수 있습니다. 사건은 저장된 수동 배정대로만 발생합니다. 배정이 없으면 사건 없이 진행합니다.</p>
     <button type="button" className="secondary-button" disabled={!password || busy || stale} onClick={load}>사건 목록 조회</button>
     {error && <p className="form-error" role="alert">{error}</p>}{message && <p role="status">{message}</p>}
     {uncertain && <p className="trading-help">사건·배정의 최신 상태를 확인하려면 목록을 먼저 조회해 주세요. 요청을 자동 재전송하지 않으며 입력 초안은 유지됩니다.</p>}
@@ -98,11 +98,11 @@ export default function EventManager({ password, game, stale, onBusy }) {
     </form>}
     </ActionDialog>
     <ActionDialog open={scheduleOpen} title="월별 사건 배정" eyebrow="EVENT SCHEDULE" onClose={() => setScheduleOpen(false)} busy={busy} width="large">
-    {events && constraints && <ScheduleEditor events={events} companies={companies} schedule={schedule} constraints={constraints} canEdit={canEdit} onWrite={(mode, body) => {
+    {events && constraints && <ScheduleEditor events={events} companies={companies} schedule={schedule} constraints={constraints} canEdit={canEdit} onWrite={body => {
       if (!canEdit) return
       return run(async current => {
         setUncertain(true)
-        const data = await eventRequest(mode === 'manual' ? '/admin/schedule' : '/admin/schedule/randomize', { password, method: mode === 'manual' ? 'PUT' : 'POST', body })
+        const data = await eventRequest('/admin/schedule', { password, method: 'PUT', body })
         if (current()) { setSchedule(data.schedule); setUncertain(false); setMessage('월별 배정을 저장했습니다.'); return data.schedule }
       })
     }} />}

@@ -101,7 +101,7 @@ DELETE /api/companies/admin/:companyId
 - `GET /api/trading/market` 공개 시장 목록
 - 새로운 주문 준비와 체결
 - 새로운 사건 생성·수정의 영향 종목
-- 새 게임의 무작위 사건 배정
+- 새 사건 수동 배정
 
 비활성화 전에 Frontend는 `references`를 확인해 참조 중인 기록이 있음을 관리자에게 경고한다.
 

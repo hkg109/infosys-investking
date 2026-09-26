@@ -7,7 +7,6 @@ import {
   getGameSchedule,
   getRoundEvents,
   listEvents,
-  randomizeEvents,
   saveGameSchedule,
   updateEvent,
 } from './events.js'
@@ -91,14 +90,9 @@ export function createEventRouter(database, engine, { adminPassword, clientUrl, 
     }
   })
 
-  router.post('/admin/schedule/randomize', requireWaiting, async (request, response, next) => {
-    try {
-      const options = { ...request.body, ...scheduleOptions() }
-      response.json({ schedule: await randomizeEvents(database, options.totalRounds, options) })
-    } catch (error) {
-      if (error instanceof EventError) return response.status(error.status).json({ error: error.code, ...error.details })
-      next(error)
-    }
+  // Explicitly retire old clients without changing any saved assignments.
+  router.post('/admin/schedule/randomize', (_request, response) => {
+    response.status(410).json({ error: 'MANUAL_SCHEDULE_ONLY' })
   })
 
   router.post('/admin', requireWaiting, async (request, response, next) => {

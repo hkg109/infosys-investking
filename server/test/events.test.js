@@ -10,7 +10,7 @@ import { createEventRouter } from '../src/event-routes.js'
 import { loadGameState } from '../src/game-store.js'
 import {
   applyRoundEvent,
-  assignEvents,
+  saveGameSchedule,
   createEventCoordinator,
   getGameSchedule,
   validateEventInput,
@@ -111,9 +111,24 @@ test('PostgreSQL events: CRUD, unique scheduling, one-time price changes and soc
   assert.equal((await request(`/admin/${created[3].eventId}`, { method: 'DELETE' })).status, 204)
   assert.equal((await request('/admin').then((response) => response.json())).events.length, 3)
 
-  await assert.rejects(assignEvents(database, 4), { code: 'EVENT_POOL_TOO_SMALL', status: 409 })
-  assert.equal((await getGameSchedule(database)).length, 0)
-  const assigned = await assignEvents(database, 3)
+  const startCoordinator = createEventCoordinator(database, { emit() {} })
+  await startCoordinator.prepareGameStart({ totalRounds: 12 })
+  assert.deepEqual(await getGameSchedule(database), [])
+  await startCoordinator.reconcile({ status: 'FINISHED', phase: 'RESULT', currentRound: 3 })
+  assert.deepEqual(await getGameSchedule(database), [])
+  assert.equal((await database.query('SELECT * FROM event_schedule_states')).rowCount, 0)
+  await saveGameSchedule(database, { rounds: [] }, { totalRounds: 3 })
+  await startCoordinator.prepareGameStart({ totalRounds: 3 })
+  assert.deepEqual(await getGameSchedule(database), [])
+  assert.equal((await fetch(`${base}/admin/schedule/randomize`, { method: 'POST' })).status, 401)
+  assert.equal((await request('/admin/schedule/randomize', { method: 'POST', headers: { Origin: 'https://invalid.example' } })).status, 403)
+  const assigned = await saveGameSchedule(database, { rounds: created.slice(0, 3).map((event, index) => ({
+    round: index + 1, events: [{ eventId: event.eventId, displayOrder: 1, triggerPhase: 'CLOSE' }],
+  })) }, { totalRounds: 3, tradingDurationMs: 540000, haltDurationMs: 3000 })
+  await database.query("UPDATE event_schedule_states SET mode='RANDOM'")
+  await startCoordinator.prepareGameStart({ totalRounds: 3 })
+  await startCoordinator.reconcile({ status: 'PAUSED', phase: 'TRADING', currentRound: 1 })
+  assert.equal((await database.query('SELECT mode FROM event_schedule_states')).rows[0].mode, 'RANDOM')
   assert.equal(assigned.length, 3)
   assert.equal(new Set(assigned.map(({ eventId }) => eventId)).size, 3)
   assert.deepEqual(assigned.map(({ round }) => round), [1, 2, 3])

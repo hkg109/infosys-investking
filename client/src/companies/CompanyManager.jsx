@@ -127,7 +127,7 @@ export default function CompanyManager({ password, game, stale, onBusy, onChange
     </form>
     </ActionDialog>
     <ConfirmDialog open={Boolean(deactivating)} title={`${deactivating?.name || ''} 종목 비활성화`} onCancel={() => setDeactivating(null)} onConfirm={deactivate} busy={busy} confirmDisabled={!acknowledged || !canEdit} confirmLabel="비활성화 확정" danger>
-      {deactivating && <><CompanyReferences references={deactivating.references} /><p>종목과 과거 기록은 삭제되지 않습니다. 비활성화하면 신규 주문·사건 영향 종목·새 게임의 무작위 사건 배정에서 제외됩니다.</p><label className="reset-ack"><input type="checkbox" disabled={busy} checked={acknowledged} onChange={e => setAcknowledged(e.target.checked)} />기록 보존과 신규 사용 제한을 확인했습니다.</label>{!acknowledged && <p className="trading-help">확인 항목을 체크해야 비활성화를 진행할 수 있습니다.</p>}</>}
+      {deactivating && <><CompanyReferences references={deactivating.references} /><p>종목과 과거 기록은 삭제되지 않습니다. 비활성화하면 신규 주문·사건 영향 종목·새 사건 배정에서 제외됩니다.</p><label className="reset-ack"><input type="checkbox" disabled={busy} checked={acknowledged} onChange={e => setAcknowledged(e.target.checked)} />기록 보존과 신규 사용 제한을 확인했습니다.</label>{!acknowledged && <p className="trading-help">확인 항목을 체크해야 비활성화를 진행할 수 있습니다.</p>}</>}
     </ConfirmDialog>
   </Panel>
 }

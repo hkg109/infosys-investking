@@ -130,9 +130,11 @@ test('PostgreSQL multi-event schedule supports empty rounds, intraday execution 
   assert.deepEqual(sameA.changes, sameB.changes)
   const count = await database.query('SELECT COUNT(*)::int AS count FROM stock_price_changes WHERE game_event_id = $1', [applied[0].gameEventId])
   assert.equal(count.rows[0].count, 1)
+  const beforeRetiredRequest = await getGameSchedule(database)
   const randomized = await fetch(`${base}/randomize`, {
     method: 'POST', headers, body: JSON.stringify({ intradayEventsPerRound: 0, closingEventsPerRound: 1 }),
   })
-  assert.equal(randomized.status, 200)
-  assert.equal((await randomized.json()).schedule.length, 2)
+  assert.equal(randomized.status, 410)
+  assert.deepEqual(await randomized.json(), { error: 'MANUAL_SCHEDULE_ONLY' })
+  assert.deepEqual(await getGameSchedule(database), beforeRetiredRequest)
 })

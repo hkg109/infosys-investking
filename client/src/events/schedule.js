@@ -34,20 +34,6 @@ export function scheduleInput(rows, constraints, eligible) {
   }
   return { rounds: Array.from(rounds, ([round, events]) => ({ round, events: events.sort((a,b) => a.displayOrder - b.displayOrder) })).sort((a,b) => a.round - b.round) }
 }
-export function randomInput(form, constraints, eligible) {
-  validateConstraints(constraints)
-  const keys = ['intradayEventsPerRound', 'closingEventsPerRound', 'preannounceSeconds']
-  if (!keys.every(k => integer(form[k]))) throw new Error('INVALID_EVENT_SCHEDULE')
-  const body = Object.fromEntries(keys.map(k => [k, Number(form[k])]))
-  if (body.intradayEventsPerRound > 3 || body.closingEventsPerRound > 3) throw new Error('INVALID_EVENT_SCHEDULE')
-  if ((body.intradayEventsPerRound + body.closingEventsPerRound) * constraints.totalRounds > eligible.length) throw new Error('EVENT_POOL_TOO_SMALL')
-  const sample = Array.from({ length: body.intradayEventsPerRound }, (_, index) => {
-    const offset = Math.floor(constraints.tradingDurationMs / 1000 * (index + 1) / (body.intradayEventsPerRound + 1))
-    return { eventId: eligible[index].eventId, round: 1, displayOrder: index + 1, triggerPhase: 'INTRADAY', triggerOffsetSeconds: offset, preannounceSeconds: Math.min(body.preannounceSeconds, offset - 1) }
-  })
-  scheduleInput(sample, constraints, eligible)
-  return body
-}
 export function eventTiming(event) {
   return event.triggerPhase === 'INTRADAY' ? `장중 · 월 시작 ${event.triggerOffsetSeconds}초 후 발생 · ${event.preannounceSeconds}초 전 예고` : '거래 마감 후 발생'
 }
