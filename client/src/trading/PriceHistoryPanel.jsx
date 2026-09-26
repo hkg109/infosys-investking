@@ -73,7 +73,7 @@ export default function PriceHistoryPanel({ companyId, revision }) {
       {current.loading && !current.data && <p role="status">주가 이력을 불러오고 있습니다.</p>}
       {current.error && <p className="form-error" role="alert">{current.error}</p>}
       {current.data && <PriceChart series={series} companyName={current.data.company.name} />}
-      {current.error && <button type="button" className="secondary-button" onClick={() => setRetry(value => value + 1)}>주가 이력 다시 확인</button>}
+      {current.error && <button type="button" className="secondary-button" onClick={() => setRetry(value => value + 1)}>주가 이력 업데이트</button>}
     </>}
   </Panel>
 }

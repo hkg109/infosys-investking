@@ -2,8 +2,9 @@ import { Outlet, useOutletContext } from 'react-router-dom'
 import PageShell from '../layouts/PageShell'
 import NavigationGuard from '../navigation/NavigationGuard'
 import { gameMenu } from '../navigation/menus'
-import IntelligencePanel from '../intelligence/IntelligencePanel'
+import { IntelligenceLibraryPanel, IntelligenceStorePanel } from '../intelligence/IntelligencePanel'
 import { intelligenceEnabled } from '../intelligence/api'
+import useIntelligenceStore from '../intelligence/useIntelligenceStore'
 import RankingPanel from '../ranking/RankingPanel'
 import EventNews from '../events/EventNews'
 import { useEffect, useRef, useState } from 'react'
@@ -25,6 +26,7 @@ function GamePage() {
   const { logout, user, checkSession } = useSession()
   const gameState = useGame('', checkSession)
   const trading = useTrading(user.userId)
+  const intelligence = useIntelligenceStore({ userId: user.userId, game: gameState.game, revision: gameState.snapshot, stale: gameState.loading || Boolean(gameState.error), onPurchased: trading.refresh, enabled: intelligenceEnabled })
   useEffect(() => { trading.refresh() }, [gameState.snapshot, trading.refresh])
   const snapshot = {
     ...gameState.snapshot,
@@ -66,13 +68,14 @@ function GamePage() {
   }
 
   const screens = {
-    market: (<><UserDashboard showHoldings={false} game={gameState.game} snapshot={snapshot} selectedCompanyId={selectedCompanyId} onSelectCompany={id => { setSelectedCompanyId(id); navigate('/game/orders') }} />
-<EventNews game={gameState.game} revision={gameState.snapshot} /></>),
+    market: (<UserDashboard showHoldings={false} game={gameState.game} snapshot={snapshot} selectedCompanyId={selectedCompanyId} onSelectCompany={id => { setSelectedCompanyId(id); navigate('/game/orders') }} />),
+    news: (<EventNews game={gameState.game} revision={gameState.snapshot} />),
     orders: (<><UserDashboard showMarket={false} game={gameState.game} snapshot={snapshot} selectedCompanyId={selectedCompanyId} onSelectCompany={id => { setSelectedCompanyId(id); navigate('/game/orders') }} />
 <TradingPanel game={gameState.game} stale={gameState.loading || Boolean(gameState.error)} trading={trading} selectedCompanyId={selectedCompanyId} onSelectCompany={setSelectedCompanyId} /></>),
     history: (<><label>차트 종목<select value={selectedCompanyId} onChange={e => setSelectedCompanyId(e.target.value)}><option value="">종목 선택</option>{(trading.companies || []).map(item => <option key={item.companyId} value={item.companyId}>{item.name}</option>)}</select></label><PriceHistoryPanel companyId={selectedCompanyId} revision={gameState.snapshot} /><TradeHistoryPanel totalRounds={gameState.game?.totalRounds} revision={trading.account} /></>),
     ranking: (<RankingPanel userId={user.userId} game={gameState.game} revision={gameState.snapshot} />),
-    intelligence: (intelligenceEnabled && <IntelligencePanel key={user.userId} userId={user.userId} game={gameState.game} revision={gameState.snapshot} stale={gameState.loading || Boolean(gameState.error)} onPurchased={trading.refresh} /> || <p>정보 기능이 비활성화되어 있습니다.</p>),
+    intelligence: (intelligenceEnabled && <IntelligenceStorePanel store={intelligence} /> || <p>정보 기능이 비활성화되어 있습니다.</p>),
+    library: (intelligenceEnabled && <IntelligenceLibraryPanel store={intelligence} /> || <p>정보 기능이 비활성화되어 있습니다.</p>),
     profile: (<section className="panel my-info" id="my-info" aria-label="내 정보">
         <h2>내 정보</h2>
         <p className="ranking-name"><strong>닉네임:</strong> {user.nickname}</p>

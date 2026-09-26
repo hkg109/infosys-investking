@@ -25,7 +25,7 @@ export default function EventNews({ game, revision }) {
     </header>
     {error && <p role="alert" className="form-error">{error}</p>}
     {!events.length ? <p className="empty-state">{game?.status === 'WAITING' ? '게임 시작 후 이번 달 뉴스가 공개됩니다.' : data && data.game?.currentRound === game?.currentRound ? '이번 달에 배정된 사건이 없습니다.' : '이번 달 뉴스를 확인하고 있습니다.'}</p> : events.map(event => <EventArticle key={event.gameEventId || event.eventId} event={event} />)}
-    <button type="button" className="secondary-button newsroom-refresh" onClick={() => setRetry(n => n + 1)}>뉴스 다시 확인</button>
+    <button type="button" className="secondary-button newsroom-refresh" onClick={() => setRetry(n => n + 1)}>뉴스 업데이트</button>
   </Panel>
 }
 

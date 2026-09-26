@@ -13,6 +13,10 @@ test('retired missions are absent and information has its own route', () => {
   assert.equal(adminMenu.some(([path]) => path === 'missions'), false)
   assert.equal(gameMenu.some(([path]) => path === 'missions'), false)
   assert.deepEqual(gameMenu.find(([path]) => path === 'intelligence'), ['intelligence', '정보 상점'])
+  assert.deepEqual(gameMenu.find(([path]) => path === 'news'), ['news', '뉴스'])
+  assert.deepEqual(gameMenu.find(([path]) => path === 'library'), ['library', '보관함'])
+  assert.ok(gameMenu.findIndex(([path]) => path === 'news') < gameMenu.findIndex(([path]) => path === 'orders'))
+  assert.ok(gameMenu.findIndex(([path]) => path === 'intelligence') < gameMenu.findIndex(([path]) => path === 'library'))
 })
 
 test('every menu has one active accessible link at its direct URL', async () => {
