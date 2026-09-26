@@ -5,7 +5,7 @@ import { getTrading, sendOrder, prepareOrder, cancelOrder } from '../src/trading
 
 const order = { orderId: 'f782d648-98fb-4da0-86ba-e2e575ee7d56', companyId: 'A', type: 'BUY', quantity: 2 }
 const account = { cash: 80000, holdings: [{ companyId: 'A', name: 'A', quantity: 2, marketValue: 20000 }] }
-const company = { companyId: 'A', currentPrice: 10000 }
+const company = { companyId: 'A', description: '기업 설명', currentPrice: 10000 }
 
 test('quantity rejects fractions, signs, exponent notation and out-of-range input', () => {
   for (const value of ['', '0', '-1', '1.5', '1e3', ' 1', '1000001', '9007199254740993']) assert.equal(quantityValue(value), null)

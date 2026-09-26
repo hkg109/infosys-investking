@@ -21,11 +21,14 @@ import FloatingNews from '../components/FloatingNews'
 import PriceHistoryPanel from '../trading/PriceHistoryPanel'
 import TradeHistoryPanel from '../trading/TradeHistoryPanel'
 import CompanySelectMenu from '../components/CompanySelectMenu'
+import MarketEventNotifications from '../components/MarketEventNotifications'
 
 function GamePage() {
   const navigate = useNavigate()
   const [floatingClock, setFloatingClock] = useState(false)
   const [floatingNews, setFloatingNews] = useState(false)
+  const [newsFocus, setNewsFocus] = useState(null)
+  const newsFocusSequence = useRef(0)
   const { logout, user, checkSession } = useSession()
   const gameState = useGame('', checkSession)
   const trading = useTrading(user.userId)
@@ -84,7 +87,7 @@ function GamePage() {
 
   const screens = {
     market: (<UserDashboard showHoldings={false} game={gameState.game} snapshot={snapshot} selectedCompanyId={selectedCompanyId} onSelectCompany={id => { setSelectedCompanyId(id); navigate('/game/orders') }} />),
-    news: (<EventNews game={gameState.game} revision={gameState.snapshot} />),
+    news: (<EventNews game={gameState.game} revision={gameState.snapshot} focusRequest={newsFocus} />),
     orders: (<><div className="game-context-actions"><button type="button" className="secondary-button" aria-pressed={floatingNews} onClick={() => setFloatingNews(value => !value)}>{floatingNews ? '뉴스 창 닫기' : '뉴스 창 열기'}</button></div><UserDashboard showMarket={false} game={gameState.game} snapshot={snapshot} selectedCompanyId={selectedCompanyId} onSelectCompany={id => { setSelectedCompanyId(id); navigate('/game/orders') }} onOrder={openPortfolioOrder} />
 <TradingPanel game={gameState.game} stale={gameState.loading || Boolean(gameState.error)} trading={trading} selectedCompanyId={selectedCompanyId} onSelectCompany={setSelectedCompanyId} orderIntent={orderIntent} /></>),
     history: (<><CompanySelectMenu companies={trading.companies || []} value={selectedCompanyId} onChange={setSelectedCompanyId} /><PriceHistoryPanel companyId={selectedCompanyId} revision={gameState.snapshot} /><TradeHistoryPanel totalRounds={gameState.game?.totalRounds} revision={trading.account} /></>),
@@ -108,6 +111,12 @@ function GamePage() {
       <Outlet context={screens} />
       {floatingNews && <FloatingNews game={gameState.game} revision={gameState.snapshot} onClose={closeFloatingNews} onOpenFull={openNewsTab} />}
     </PageShell>
+    <MarketEventNotifications notices={gameState.marketNotices} onDismiss={gameState.dismissMarketNotice} onOpen={notice => {
+      gameState.dismissMarketNotice(notice.gameEventId)
+      setFloatingNews(false)
+      setNewsFocus({ gameEventId: notice.gameEventId, requestId: ++newsFocusSequence.current })
+      navigate('/game/news')
+    }} />
   </NavigationGuard>
 }
 export function GameSection({ name }) { return useOutletContext()[name] }

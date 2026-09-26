@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import Panel from './Panel'
 import StatCard from './StatCard'
+import CompanyInfoPopover from './CompanyInfoPopover'
 import { money, statusLabels } from '../game/model'
 
 const messages = {
@@ -7,6 +9,7 @@ const messages = {
   PAUSED: '게임이 일시정지되었습니다. 재개될 때까지 거래할 수 없습니다.', FINISHED: '게임이 종료되었습니다. 자산 현황을 확인하세요.',
 }
 export default function UserDashboard({ game, snapshot, selectedCompanyId, onSelectCompany, onOrder, showMarket = true, showHoldings = true }) {
+  const [openCompanyId, setOpenCompanyId] = useState('')
   const account = snapshot?.account
   const stocks = snapshot?.stocks
   const holdings = snapshot?.holdings
@@ -25,10 +28,10 @@ export default function UserDashboard({ game, snapshot, selectedCompanyId, onSel
     <div className="portfolio-grid">
       {showMarket && <Panel title="시장 종목">
         {!Array.isArray(stocks) ? <p className="empty-state">종목 정보를 기다리고 있습니다.</p> : stocks.length === 0 ? <p className="empty-state">등록된 종목이 없습니다.</p> : <div className="table-wrap"><table>
-          <caption>종목별 현재 주가 · 종목을 누르면 주문 화면으로 이동합니다.</caption>
+          <caption>종목별 현재 주가 · 기업 이름을 누르면 상세 설명을 확인할 수 있습니다.</caption>
           <thead><tr><th scope="col">기업</th><th scope="col">현재가</th><th scope="col">초기 대비</th></tr></thead>
           <tbody>{stocks.map((stock) => <tr key={stock.id} className={selectedCompanyId === stock.id ? 'stock-row--selected' : undefined}>
-            <th scope="row"><button type="button" className="stock-select" aria-pressed={selectedCompanyId === stock.id} onClick={() => onSelectCompany?.(stock.id)}>{stock.name}<small>{stock.id}</small></button></th>
+            <th scope="row"><CompanyInfoPopover company={stock} selected={selectedCompanyId === stock.id} open={openCompanyId === stock.id} onToggle={() => setOpenCompanyId(current => current === stock.id ? '' : stock.id)} onClose={() => setOpenCompanyId('')} onTrade={onSelectCompany} /></th>
             <td>{money(stock.currentPrice)}</td>
             <td className={stock.changeRate > 0 ? 'market-up' : stock.changeRate < 0 ? 'market-down' : ''}>{Number.isFinite(stock.changeRate) ? `${stock.changeRate > 0 ? '+' : ''}${stock.changeRate}%` : '—'}</td>
           </tr>)}</tbody>

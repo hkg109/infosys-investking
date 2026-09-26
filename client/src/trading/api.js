@@ -30,7 +30,7 @@ export async function cancelOrder(order) {
 }
 export async function getTrading() {
   const [market, portfolio, recovery] = await Promise.all([request('/market'), request('/portfolio'), request('/orders/recovery')])
-  if (!Array.isArray(market?.companies) || !market.companies.every((c) => typeof c.companyId === 'string' && typeof c.name === 'string' && Number.isSafeInteger(c.currentPrice) && c.currentPrice > 0) || !validAccount(portfolio?.account)) throw new TradingError('INVALID_RESPONSE')
+  if (!Array.isArray(market?.companies) || !market.companies.every((c) => typeof c.companyId === 'string' && typeof c.name === 'string' && typeof c.description === 'string' && Number.isSafeInteger(c.currentPrice) && c.currentPrice > 0) || !validAccount(portfolio?.account)) throw new TradingError('INVALID_RESPONSE')
   if (!Array.isArray(recovery?.history) || (recovery.pending !== null && (!recovery.pending || typeof recovery.pending.orderId !== 'string'))) throw new TradingError('INVALID_RESPONSE')
   return { companies: market.companies, account: portfolio.account, recovery }
 }

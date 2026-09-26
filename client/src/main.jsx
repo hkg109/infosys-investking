@@ -10,6 +10,7 @@ import './styles/global.css'
 import './styles/hallmark.css'
 import './styles/stage25.css'
 import './styles/company-select.css'
+import './styles/stage27.css'
 
 const router = createBrowserRouter([{ path: '*', element: <SessionProvider><App /></SessionProvider> }])
 

@@ -2,14 +2,16 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { io } from 'socket.io-client'
 import { controlGame, gameError, getGame } from './api'
 import { allowedControl, remainingSeconds } from './model'
+import { appendMarketNotice } from './marketNotice'
 
-const events = ['game:state', 'game:start', 'game:pause', 'game:resume', 'game:end', 'round:start', 'round:end', 'trading:open', 'trading:close', 'stock:update', 'news:publish', 'event:result', 'ranking:update', 'participants:presence', 'game:reset', 'market:event:warning', 'market:event:breaking', 'trading:halt', 'trading:resume']
+const events = ['game:state', 'game:start', 'game:pause', 'game:resume', 'game:end', 'round:start', 'round:end', 'trading:open', 'trading:close', 'stock:update', 'news:publish', 'event:result', 'ranking:update', 'participants:presence', 'market:event:warning', 'trading:halt', 'trading:resume']
 export function useGame(adminPassword = '', onSessionCheck) {
   const [snapshot, setSnapshot] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [pending, setPending] = useState(false)
   const [connected, setConnected] = useState(false)
+  const [marketNotices, setMarketNotices] = useState([])
   const [elapsed, setElapsed] = useState(0)
   const requestId = useRef(0)
   const receivedAt = useRef(0)
@@ -54,7 +56,11 @@ export function useGame(adminPassword = '', onSessionCheck) {
     socket.on('connect', () => { setConnected(true); refresh(); onSessionCheck?.() })
     socket.on('disconnect', disconnect)
     socket.on('connect_error', disconnect)
-    socket.on('game:reset', () => onSessionCheck?.())
+    socket.on('game:reset', () => { setMarketNotices([]); onSessionCheck?.(); refresh() })
+    socket.on('market:event:breaking', (payload) => {
+      setMarketNotices(current => appendMarketNotice(current, payload))
+      refresh()
+    })
     // Legacy game:start is only a notification; never treat it as a state transition.
     events.forEach((event) => socket.on(event, refresh))
     const poll = setInterval(refresh, 5000)
@@ -90,11 +96,14 @@ export function useGame(adminPassword = '', onSessionCheck) {
       if (id === requestId.current) setPending(false)
     }
   }, [apply, adminPassword])
+  const dismissMarketNotice = useCallback((gameEventId) => {
+    setMarketNotices(current => current.filter(item => item.gameEventId !== gameEventId))
+  }, [])
 
   return {
     snapshot,
     game: snapshot?.game ? { ...snapshot.game, remainingSeconds: error ? null : remainingSeconds(snapshot.game, elapsed) } : null,
-    loading, error, connected, pending, refresh, control,
+    loading, error, connected, pending, refresh, control, marketNotices, dismissMarketNotice,
     canControl: !error && !loading && Boolean(adminPassword),
   }
 }
