@@ -67,6 +67,14 @@
   --shadow-card: 0 18px 42px -32px oklch(20% 0.06 255 / 0.55);
   --shadow-dialog: -20px 0 60px oklch(16% 0.05 255 / 0.24);
 
+  --z-base: 1;
+  --z-raised: 10;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-modal: 400;
+  --z-toast: 500;
+  --z-tooltip: 600;
+
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);

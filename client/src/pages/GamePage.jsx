@@ -7,7 +7,7 @@ import { intelligenceEnabled } from '../intelligence/api'
 import useIntelligenceStore from '../intelligence/useIntelligenceStore'
 import RankingPanel from '../ranking/RankingPanel'
 import EventNews from '../events/EventNews'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ApiError } from '../api/users'
 import { useSession } from '../auth/SessionContext'
@@ -17,12 +17,14 @@ import { displayAccount } from '../trading/model'
 import UserDashboard from '../components/UserDashboard'
 import { useGame } from '../game/useGame'
 import FloatingGameTimer from '../components/FloatingGameTimer'
+import FloatingNews from '../components/FloatingNews'
 import PriceHistoryPanel from '../trading/PriceHistoryPanel'
 import TradeHistoryPanel from '../trading/TradeHistoryPanel'
 
 function GamePage() {
   const navigate = useNavigate()
   const [floatingClock, setFloatingClock] = useState(false)
+  const [floatingNews, setFloatingNews] = useState(false)
   const { logout, user, checkSession } = useSession()
   const gameState = useGame('', checkSession)
   const trading = useTrading(user.userId)
@@ -73,11 +75,16 @@ function GamePage() {
     setOrderIntent({ requestId: ++orderIntentId.current, companyId, type })
     navigate('/game/orders')
   }
+  const closeFloatingNews = useCallback(() => setFloatingNews(false), [])
+  const openNewsTab = useCallback(() => {
+    setFloatingNews(false)
+    navigate('/game/news')
+  }, [navigate])
 
   const screens = {
     market: (<UserDashboard showHoldings={false} game={gameState.game} snapshot={snapshot} selectedCompanyId={selectedCompanyId} onSelectCompany={id => { setSelectedCompanyId(id); navigate('/game/orders') }} />),
     news: (<EventNews game={gameState.game} revision={gameState.snapshot} />),
-    orders: (<><UserDashboard showMarket={false} game={gameState.game} snapshot={snapshot} selectedCompanyId={selectedCompanyId} onSelectCompany={id => { setSelectedCompanyId(id); navigate('/game/orders') }} onOrder={openPortfolioOrder} />
+    orders: (<><div className="game-context-actions"><button type="button" className="secondary-button" aria-pressed={floatingNews} onClick={() => setFloatingNews(value => !value)}>{floatingNews ? '뉴스 창 닫기' : '뉴스 창 열기'}</button></div><UserDashboard showMarket={false} game={gameState.game} snapshot={snapshot} selectedCompanyId={selectedCompanyId} onSelectCompany={id => { setSelectedCompanyId(id); navigate('/game/orders') }} onOrder={openPortfolioOrder} />
 <TradingPanel game={gameState.game} stale={gameState.loading || Boolean(gameState.error)} trading={trading} selectedCompanyId={selectedCompanyId} onSelectCompany={setSelectedCompanyId} orderIntent={orderIntent} /></>),
     history: (<><label>차트 종목<select value={selectedCompanyId} onChange={e => setSelectedCompanyId(e.target.value)}><option value="">종목 선택</option>{(trading.companies || []).map(item => <option key={item.companyId} value={item.companyId}>{item.name}</option>)}</select></label><PriceHistoryPanel companyId={selectedCompanyId} revision={gameState.snapshot} /><TradeHistoryPanel totalRounds={gameState.game?.totalRounds} revision={trading.account} /></>),
     ranking: (<RankingPanel userId={user.userId} game={gameState.game} revision={gameState.snapshot} />),
@@ -98,6 +105,7 @@ function GamePage() {
       {logoutError && <p className="page-error" role="alert">{logoutError}</p>}
       <div className="game-clock-bar"><button type="button" className="secondary-button" onClick={() => setFloatingClock(value => !value)}>{floatingClock ? '타이머 본문에 고정' : '타이머 띄우기'}</button><FloatingGameTimer game={gameState.game} docked={!floatingClock} /></div>
       <Outlet context={screens} />
+      {floatingNews && <FloatingNews game={gameState.game} revision={gameState.snapshot} onClose={closeFloatingNews} onOpenFull={openNewsTab} />}
     </PageShell>
   </NavigationGuard>
 }
