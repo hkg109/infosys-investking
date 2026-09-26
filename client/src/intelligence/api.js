@@ -21,7 +21,8 @@ function unique(items) {
   return items
 }
 export function validateStore(data) {
-  if (!integer(data?.cash, 0, Number.MAX_SAFE_INTEGER) || !Array.isArray(data.items) || !Array.isArray(data.purchases)) throw new Error('INVALID_RESPONSE')
+  if (!integer(data?.cash, 0, Number.MAX_SAFE_INTEGER) || typeof data.purchaseOpen !== 'boolean' ||
+      !integer(data.currentRound, 0, 1000) || !Array.isArray(data.items) || !Array.isArray(data.purchases)) throw new Error('INVALID_RESPONSE')
   // Whitelist public fields. Unpurchased content never enters component state.
   const items = unique(data.items.map(item => {
     if (!item || typeof item.canPurchase !== 'boolean') throw new Error('INVALID_RESPONSE')
@@ -31,7 +32,7 @@ export function validateStore(data) {
     if (!item || !text(item.content, 5000) || typeof item.purchasedAt !== 'string' || !Number.isFinite(Date.parse(item.purchasedAt)) || !integer(item.paidCash, 1, 1000000)) throw new Error('INVALID_RESPONSE')
     return { ...metadata(item), content: item.content, purchasedAt: item.purchasedAt, paidCash: item.paidCash }
   }))
-  return { cash: data.cash, items, purchases }
+  return { cash: data.cash, purchaseOpen: data.purchaseOpen, currentRound: data.currentRound, items, purchases }
 }
 export function validateClues(data) {
   if (!Array.isArray(data?.clues)) throw new Error('INVALID_RESPONSE')
@@ -40,8 +41,8 @@ export function validateClues(data) {
     return { ...metadata(item), content: item.content, isActive: item.isActive }
   })) }
 }
-export function canBuy(data, item, { status, stale, busy }) {
-  return Boolean(data && item && status === 'RUNNING' && !stale && !busy && item.canPurchase && data.cash >= item.price && !data.purchases.some(p => p.clueId === item.clueId))
+export function canBuy(data, item, { stale, busy }) {
+  return Boolean(data && item && data.purchaseOpen && !stale && !busy && item.canPurchase && data.cash >= item.price && !data.purchases.some(p => p.clueId === item.clueId))
 }
 export async function intelligenceRequest(path, { method = 'GET', password, body, signal } = {}) {
   const response = await fetch(`${base}/api/intelligence${path}`, {

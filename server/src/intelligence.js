@@ -87,13 +87,20 @@ async function readStore(client, userId, engine, initialCash = 1_000_000) {
   }))
   if (purchases.some(item => !integer(item.paidCash, 1, 1000000))) fail(503, 'INTELLIGENCE_DATA_OUT_OF_RANGE')
   const live = engine.getSnapshot(), round = Math.min(game.current_round, live.currentRound)
+  const purchaseOpen = game.status === 'RUNNING' && live.status === 'RUNNING'
   // Query only public fields: unpurchased content is never loaded into catalog rows.
   const rows = (await client.query(`SELECT id,title,summary,price,available_round FROM intelligence_clues
     WHERE is_active AND available_round <= $1 ORDER BY available_round,created_at,id`, [round])).rows
   const owned = new Set(purchases.map(p => p.clueId))
   const cash = Number(wallet?.cash ?? initialCash)
   if (!Number.isSafeInteger(cash) || cash < 0) fail(503, 'CASH_OUT_OF_RANGE')
-  return { cash, items: rows.map(row => ({ ...metadata(row), canPurchase: game.status === 'RUNNING' && live.status === 'RUNNING' && !owned.has(row.id) })), purchases }
+  return {
+    cash,
+    purchaseOpen,
+    currentRound: Number(round),
+    items: rows.map(row => ({ ...metadata(row), canPurchase: purchaseOpen && !owned.has(row.id) })),
+    purchases,
+  }
 }
 export async function getIntelligence(database, engine, userId, initialCash = 1_000_000) {
   return transaction(database, client => readStore(client, userId, engine, initialCash), { readOnly: true })

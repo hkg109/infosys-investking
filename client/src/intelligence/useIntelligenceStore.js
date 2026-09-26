@@ -31,7 +31,10 @@ export default function useIntelligenceStore({ userId, game, revision, stale, on
   }, [enabled, userId, revision, refreshVersion])
 
   const current = state.userId === userId ? state : { data: null, fresh: false, error: '' }
-  const options = { status: game?.status, stale: stale || !current.fresh, busy }
+  // Purchase eligibility comes from the fresh, authenticated store response.
+  // Socket freshness is useful for the rest of the game UI, but must not lock a
+  // working cash purchase while the realtime connection is reconnecting.
+  const options = { status: game?.status, stale: !current.fresh, gameStale: stale, busy }
   const refresh = useCallback(() => setRefreshVersion(value => value + 1), [])
 
   const purchase = async item => {

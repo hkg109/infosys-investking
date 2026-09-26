@@ -23,12 +23,14 @@
 ```json
 {
   "cash":999990,
+  "purchaseOpen":true,
+  "currentRound":1,
   "items":[{"clueId":"uuid","title":"수요 단서","summary":"공개 요약","price":10,"availableRound":1,"canPurchase":false}],
   "purchases":[{"clueId":"uuid","title":"수요 단서","summary":"공개 요약","price":10,"availableRound":1,"content":"구매자 전용 본문","paidCash":10,"purchasedAt":"2026-09-19T00:00:00.000Z"}]
 }
 ```
 
-`items`에는 본문이 없으며 SQL에서도 본문을 선택하지 않습니다. `canPurchase`는 게임 상태와 구매 여부를 나타냅니다. 잔액 부족 여부는 `cash`와 `price`로 표시할 수 있으며 서버가 구매 시 다시 검증합니다. 본문은 `purchases`에만 포함됩니다. 판매 중단된 구매도 보관함에 남습니다.
+`items`에는 본문이 없으며 SQL에서도 본문을 선택하지 않습니다. `purchaseOpen`은 DB와 실행 중 게임 엔진이 모두 `RUNNING`일 때만 `true`이고, `currentRound`는 두 상태에서 확인된 안전한 현재 월입니다. `canPurchase`는 이 구매 가능 상태와 기존 구매 여부를 반영합니다. Frontend는 실시간 Socket이 재연결 중이더라도 새로 받은 이 응답을 구매 가능 여부의 기준으로 사용하며, 서버는 POST에서 모든 조건을 다시 검증합니다. 잔액 부족 여부는 `cash`와 `price`로 표시할 수 있습니다. 본문은 `purchases`에만 포함됩니다. 판매 중단된 구매도 보관함에 남습니다.
 
 ### POST `/api/intelligence/purchases`
 
@@ -89,7 +91,7 @@
 
 ## 검증
 
-정보상점 PostgreSQL 통합 테스트 `node --test test/intelligence.test.js`: **9/9 통과, skip 0**.
+정보상점 PostgreSQL 통합 테스트 `node --test test/intelligence.test.js`: **11/11 통과, skip 0**.
 
 - 스키마 2회 실행, 관리자 CRUD·대기 제한, 5,000자 한글 본문, 인증·Origin·CORS·no-store.
 - 공개 전·비활성 단서 필터, 미구매 본문 비노출, 타인 ID 조작에도 본인 계정만 사용.
@@ -98,5 +100,6 @@
 - 새 세션으로 구매 복구, 판매 중단·원본 수정 후 본문/지불 가격 보존.
 - 강제 INSERT 실패 시 현금 차감 rollback.
 - 구매 중 pause·편집 중 start의 rollback, 게임 초기화 후 구매/현금 지갑 삭제와 단서 유지.
+- Socket 상태가 재연결 중이어도 최신 상점 응답의 `purchaseOpen`을 기준으로 UI 구매 가능 여부를 판정.
 
 실제 UI·다른 기기·행사 네트워크 통합 검증을 완료했다는 의미는 아닙니다. 후속 현금 정보상점 Frontend 작업에서 이 계약으로 실제 서버 연동을 검증해야 합니다.

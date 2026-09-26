@@ -9,7 +9,7 @@ import { pathToFileURL } from 'node:url'
 import { DEFAULT_INTELLIGENCE_PRICE, clueInput, validateStore, validateClues, canBuy, privateStoreFailure, intelligenceRequest, intelligenceEnabled } from '../src/intelligence/api.js'
 const item = { clueId: 'clue-1', title: '단서', summary: '공개 요약', price: 10, availableRound: 1, canPurchase: true }
 const purchase = { ...item, content: '<script>비밀</script>', paidCash: 10, purchasedAt: '2026-09-18T00:00:00Z' }
-const data = { cash: 40, items: [item], purchases: [] }
+const data = { cash: 40, purchaseOpen: true, currentRound: 1, items: [item], purchases: [] }
 const options = { status: 'RUNNING', stale: false, busy: false }
 const form = { title: ' 단서 ', summary: '요약', content: '본문\n두번째 줄', price: '10', availableRound: '1', isActive: true }
 const dir = await mkdtemp(join(process.cwd(), '.intelligence-test-'))
@@ -28,13 +28,16 @@ test('clue fields enforce boundaries and allow multiline private body',()=>{
 test('unowned secrets are discarded; purchased snapshots survive removed catalog items',()=>{
  const safe=validateStore({...data,items:[{...item,content:'LEAK',userId:'OTHER'}]})
  assert.equal(safe.items[0].content,undefined);assert.equal(safe.items[0].userId,undefined)
- assert.equal(validateStore({cash:30,items:[],purchases:[purchase]}).purchases[0].content,purchase.content)
- for(const invalid of [{...data,cash:-1},{...data,items:[item,item]},{...data,purchases:[{...purchase,purchasedAt:'bad'}]},{...data,purchases:[{...purchase,paidCash:0}]},{...data,items:[{...item,canPurchase:1}]}])assert.throws(()=>validateStore(invalid))
+ assert.equal(validateStore({cash:30,purchaseOpen:false,currentRound:4,items:[],purchases:[purchase]}).purchases[0].content,purchase.content)
+ for(const invalid of [{...data,cash:-1},{...data,purchaseOpen:'yes'},{...data,currentRound:-1},{...data,items:[item,item]},{...data,purchases:[{...purchase,purchasedAt:'bad'}]},{...data,purchases:[{...purchase,paidCash:0}]},{...data,items:[{...item,canPurchase:1}]}])assert.throws(()=>validateStore(invalid))
  assert.doesNotThrow(()=>validateClues({clues:[{...clueInput(form),clueId:'1'}]}))
 })
 test('buy gate requires current state, sufficient cash, eligibility and no ownership',()=>{
  assert.equal(canBuy(data,item,options),true)
- for(const patch of [{status:'WAITING'},{status:'PAUSED'},{status:'FINISHED'},{stale:true},{busy:true}])assert.equal(canBuy(data,item,{...options,...patch}),false)
+ for(const patch of [{stale:true},{busy:true}])assert.equal(canBuy(data,item,{...options,...patch}),false)
+ assert.equal(canBuy({...data,purchaseOpen:false},item,options),false)
+ // A stale Socket status must not block a fresh, authoritative store response.
+ assert.equal(canBuy(data,item,{...options,status:'PAUSED',gameStale:true}),true)
  assert.equal(canBuy({...data,cash:9},item,options),false)
  assert.equal(canBuy({...data,purchases:[purchase]},item,options),false)
  assert.equal(canBuy(data,{...item,canPurchase:false},options),false)
@@ -60,7 +63,8 @@ test('RPG store cards expose distinct available, locked, insufficient, loading, 
  assert.equal(storeItemState({...data,cash:0},item,options),'insufficient')
  assert.equal(storeItemState(data,item,{...options,busy:true}),'loading')
  assert.equal(storeItemState({...data,purchases:[purchase]},item,options),'owned')
- assert.equal(storeItemAction('available','단서'),'단서 구매')
+ assert.equal(storeItemAction('available','단서'),'정보 구매')
+ assert.equal(storeItemAction('loading'),'구매 처리 중…')
  const cards=Array.from({length:12},(_,index)=>({...item,clueId:`clue-${index}`,title:`정보 ${index+1}`}))
  const html=renderToStaticMarkup(createElement(StoreItems,{data:{...data,items:cards},options,onReview:()=>{}}))
  assert.match(html,/intelligence-grid/)
@@ -81,7 +85,7 @@ test('purchase sends cookie and expected price only, returns authoritative balan
   globalThis.fetch=async(url,request)=>{
    assert.equal(url,'/api/intelligence/purchases');assert.equal(request.credentials,'include');assert.equal(request.cache,'no-store');assert.equal(request.headers.Authorization,undefined)
    assert.deepEqual(JSON.parse(request.body),{clueId:item.clueId,expectedPrice:10})
-   return{ok:true,status:200,json:async()=>({cash:30,items:[item],purchases:[purchase]})}
+   return{ok:true,status:200,json:async()=>({cash:30,purchaseOpen:true,currentRound:1,items:[item],purchases:[purchase]})}
   }
   assert.equal((await intelligenceRequest('/purchases',{method:'POST',body:{clueId:item.clueId,expectedPrice:10}})).cash,30)
   let calls=0;globalThis.fetch=async()=>{calls++;throw new Error('lost response')}
