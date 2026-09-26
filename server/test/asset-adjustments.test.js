@@ -46,7 +46,11 @@ test('stage 18: atomic corrections, concurrent edits, retry, audit and admin bou
     await reject({ ...first, cash: 800000 }, 'ADJUSTMENT_ID_CONFLICT')
   })
   await t.test('stale cash or holding cannot overwrite another correction', async () => {
-    await reject(body({ companyId: 'A', quantity: 8, expectedQuantity: 5 }), 'ASSET_CONFLICT')
+    await assert.rejects(change(body({ companyId: 'A', quantity: 8, expectedQuantity: 5 })), error => {
+      assert.equal(error.code, 'ASSET_CONFLICT')
+      assert.deepEqual(error.details.current, { cash: 900000, quantity: 5 })
+      return true
+    })
     await reject(body({ expectedCash: 900000, cash: 800000, companyId: 'A', quantity: 8, expectedQuantity: 0 }), 'ASSET_CONFLICT')
     const results = await Promise.allSettled([change(body({ expectedCash: 900000, cash: 800000 })), change(body({ expectedCash: 900000, cash: 700000 }))])
     assert.equal(results.filter(r => r.status === 'fulfilled').length, 1)

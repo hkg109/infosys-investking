@@ -27,6 +27,7 @@ export async function adjustmentRequest(userId, password, body) {
     if (!response.ok) {
       const data = await response.json().catch(() => ({}))
       const error = new Error(data.error || 'REQUEST_FAILED')
+      if (data.current && nonnegative(data.current.cash) && (data.current.quantity === null || nonnegative(data.current.quantity))) error.current = data.current
       error.uncertain = write && response.status >= 500
       throw error
     }

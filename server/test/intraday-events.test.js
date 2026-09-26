@@ -52,7 +52,11 @@ test('PostgreSQL multi-event schedule supports empty rounds, intraday execution 
   database = new pg.Pool({ connectionString: process.env.TEST_DATABASE_URL, options: `-c search_path=${schema}` })
   const schemaSql = await readFile(new URL('../src/schema.sql', import.meta.url), 'utf8')
   await database.query(schemaSql)
+  const legacyEventId = randomUUID()
+  await database.query("INSERT INTO events (id,title,news,result) VALUES ($1,'[장중] 기존 사건','뉴스','결과')", [legacyEventId])
   await database.query(schemaSql)
+  assert.equal((await database.query('SELECT title FROM events WHERE id=$1', [legacyEventId])).rows[0].title, '[속보] 기존 사건')
+  await database.query('DELETE FROM events WHERE id=$1', [legacyEventId])
   await loadGameState(database, { totalRounds: 2, roundDurationMs: 70_000, tradingDurationMs: 60_000 })
 
   const makeEvent = (title, rate) => createEvent(database, {
@@ -114,7 +118,20 @@ test('PostgreSQL multi-event schedule supports empty rounds, intraday execution 
     tradingDurationSeconds: 60, roundStartedAt: new Date(startedAt).toISOString(),
   } })
   assert.equal(scheduledTimers.length, 4)
-  scheduledTimers.sort((a, b) => a.delay - b.delay)[1].callback()
+  scheduledTimers.sort((a, b) => a.delay - b.delay)[0].callback()
+  await coordinator.waitForIdle()
+  const scheduled = await getGameSchedule(database)
+  const warning = emitted.find(({ name }) => name === 'market:event:warning')?.payload
+  assert.deepEqual(warning, {
+    round: 1,
+    gameEventId: scheduled[0].gameEventId,
+    title: '장중 상승',
+    triggerPhase: 'INTRADAY',
+    scheduledAt: scheduled[0].scheduledAt,
+    triggerOffsetSeconds: 10,
+    preannounceSeconds: 2,
+  })
+  scheduledTimers[1].callback()
   await coordinator.waitForIdle()
   assert.deepEqual(emitted.slice(-6).map(({ name }) => name), [
     'trading:halt', 'market:event:breaking', 'event:result', 'stock:update', 'ranking:update', 'trading:resume',

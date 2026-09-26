@@ -23,6 +23,7 @@ function eventJson(row, effects = []) {
 }
 
 function scheduleJson(row) {
+  const eventState = row.applied_at ? 'APPLIED' : row.warning_sent_at ? 'WARNING' : row.scheduled_at ? 'SCHEDULED' : 'PENDING'
   return {
     gameEventId: row.game_event_id,
     round: number(row.round_number),
@@ -37,6 +38,7 @@ function scheduleJson(row) {
     scheduledAt: date(row.scheduled_at),
     warningSentAt: date(row.warning_sent_at),
     appliedAt: date(row.applied_at),
+    eventState,
   }
 }
 
@@ -50,7 +52,7 @@ export function validateEventId(value) {
 }
 
 export function validateEventInput(body) {
-  const title = typeof body?.title === 'string' ? body.title.trim() : ''
+  const title = typeof body?.title === 'string' ? body.title.trim().replace(/^\[장중\]/, '[속보]') : ''
   const news = typeof body?.news === 'string' ? body.news.trim() : ''
   const result = typeof body?.result === 'string' ? body.result.trim() : ''
   if (!title || title.length > 100 || !news || news.length > 2_000 || !result || result.length > 2_000 || !Array.isArray(body?.effects) || body.effects.length < 1 || body.effects.length > 50) throw new EventError(400, 'INVALID_EVENT')
@@ -260,7 +262,7 @@ export function createEventCoordinator(database, io, { marketGate = null, getGam
   const applyIntraday = async (item) => {
     const haltedAt = now()
     const drained = marketGate?.halt()
-    io.emit('trading:halt', { round: item.round, gameEventId: item.gameEventId, haltedAt: new Date(haltedAt).toISOString() })
+    io.emit('trading:halt', { round: item.round, gameEventId: item.gameEventId, title: item.title, scheduledAt: item.scheduledAt, haltedAt: new Date(haltedAt).toISOString(), haltDurationSeconds: haltDurationMs / 1000 })
     try {
       await drained
       const event = await applyScheduledEvent(database, item.gameEventId)
@@ -269,7 +271,7 @@ export function createEventCoordinator(database, io, { marketGate = null, getGam
       if (remaining > 0) await wait(remaining)
     } finally {
       marketGate?.resume()
-      if (!getGameSnapshot || getGameSnapshot().tradingEnabled) io.emit('trading:resume', { round: item.round, gameEventId: item.gameEventId, serverTime: new Date(now()).toISOString() })
+      if (!getGameSnapshot || getGameSnapshot().tradingEnabled) io.emit('trading:resume', { round: item.round, gameEventId: item.gameEventId, title: item.title, serverTime: new Date(now()).toISOString() })
     }
   }
   const queue = (work) => {
@@ -277,6 +279,15 @@ export function createEventCoordinator(database, io, { marketGate = null, getGam
     processing.catch(() => {})
     return processing
   }
+  const warningPayload = (item) => ({
+    round: item.round,
+    gameEventId: item.gameEventId,
+    title: item.title,
+    triggerPhase: item.triggerPhase,
+    scheduledAt: item.scheduledAt,
+    triggerOffsetSeconds: item.triggerOffsetSeconds,
+    preannounceSeconds: item.preannounceSeconds,
+  })
   const scheduleRound = async (game) => {
     cancelTimers()
     if (game.status !== 'RUNNING' || game.phase !== 'TRADING') return
@@ -288,12 +299,12 @@ export function createEventCoordinator(database, io, { marketGate = null, getGam
       if (!item.warningSentAt && warningAt > now()) {
         const warningTimer = setTimer(() => { timers.delete(warningTimer); queue(async () => {
           const warned = await database.query('UPDATE game_events SET warning_sent_at = NOW() WHERE id = $1 AND warning_sent_at IS NULL AND applied_at IS NULL RETURNING id', [item.gameEventId])
-          if (warned.rowCount) io.emit('market:event:warning', { round: item.round, gameEventId: item.gameEventId, scheduledAt: item.scheduledAt })
+          if (warned.rowCount) io.emit('market:event:warning', warningPayload(item))
         }) }, warningAt - now())
         warningTimer?.unref?.(); timers.add(warningTimer)
       } else if (!item.warningSentAt && warningAt <= now() && eventAt > now()) {
         await database.query('UPDATE game_events SET warning_sent_at = NOW() WHERE id = $1 AND warning_sent_at IS NULL', [item.gameEventId])
-        io.emit('market:event:warning', { round: item.round, gameEventId: item.gameEventId, scheduledAt: item.scheduledAt })
+        io.emit('market:event:warning', warningPayload(item))
       }
       const eventTimer = setTimer(() => { timers.delete(eventTimer); queue(() => applyIntraday(item)) }, Math.max(0, eventAt - now()))
       eventTimer?.unref?.(); timers.add(eventTimer)

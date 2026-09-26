@@ -26,7 +26,7 @@
 
 - `requestId`: 클라이언트 UUID. 동일 요청을 재시도할 때 반드시 그대로 사용한다.
 - `expectedCash`, `expectedQuantity`: 편집을 시작할 때 조회한 값. 서버 현재 값과 다르면
-  409 `ASSET_CONFLICT`로 거절한다. 최신 값을 불러온 뒤 새 요청을 만든다.
+  409 `ASSET_CONFLICT`로 거절하고 `current:{cash,quantity}`를 반환한다. 최신 값을 불러온 뒤 새 요청을 만든다.
 - 현금만 바꿀 때 `companyId`, `quantity`, `expectedQuantity` 세 필드는 모두 생략한다.
 - 주식만 바꿀 때도 현재 현금을 `cash`와 `expectedCash`에 전달한다.
 - 성공 200: `requestId`, `userId`, `companyId`(현금만이면 null), `reason`,

@@ -15,10 +15,10 @@ try {
   ;({ ParticipantTable } = await import(pathToFileURL(join(dir, 'ParticipantPanel.mjs')).href))
   ;({ default: ResetPanel, canConfirmReset } = await import(pathToFileURL(join(dir, 'ResetPanel.mjs')).href))
 } finally { await rm(dir, { recursive: true, force: true }) }
-const person = { userId: 'u1', nickname: '<script>이름</script>', online: true, cash: 0, stockValue: 200, totalAssets: 200, holdings: [{ companyId: 'A', name: 'A 기업', quantity: 2, currentPrice: 100, marketValue: 200 }] }
+const person = { userId: 'u1', nickname: '<script>이름</script>', online: true, connected: true, cash: 0, stockValue: 200, totalAssets: 200, holdings: [{ companyId: 'A', name: 'A 기업', quantity: 2, currentPrice: 100, marketValue: 200 }] }
 test('participant validation rejects malformed totals, duplicate IDs and inconsistent presence counts', () => {
   assert.equal(validateParticipants({ participants: [person], onlineParticipants: 1 }).participants.length, 1)
-  for (const data of [{ participants: [person], onlineParticipants: 0 }, { participants: [person, person], onlineParticipants: 2 }, { participants: [{ ...person, cash: null }], onlineParticipants: 1 }, { participants: [{ ...person, holdings: null }], onlineParticipants: 1 }]) assert.throws(() => validateParticipants(data))
+  for (const data of [{ participants: [person], onlineParticipants: 0 }, { participants: [person, person], onlineParticipants: 2 }, { participants: [{ ...person, cash: null }], onlineParticipants: 1 }, { participants: [{ ...person, holdings: null }], onlineParticipants: 1 }, { participants: [{ ...person, stockValue: 199 }], onlineParticipants: 1 }, { participants: [{ ...person, totalAssets: 201 }], onlineParticipants: 1 }, { participants: [{ ...person, holdings: [person.holdings[0], person.holdings[0]] }], onlineParticipants: 1 }]) assert.throws(() => validateParticipants(data))
 })
 test('participant table shows real zero assets, holdings, safe nicknames and empty state', () => {
   const html = renderToStaticMarkup(createElement(ParticipantTable, { participants: [person] }))

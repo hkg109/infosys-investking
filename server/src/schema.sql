@@ -121,6 +121,12 @@ CREATE TABLE IF NOT EXISTS events (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- QA stage 29 standardizes the intraday headline prefix. This migration is
+-- intentionally idempotent so existing installations are repaired on start.
+UPDATE events
+SET title = regexp_replace(title, '^\[장중\]', '[속보]'), updated_at = NOW()
+WHERE title LIKE '[장중]%';
+
 CREATE TABLE IF NOT EXISTS event_effects (
   event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   company_id VARCHAR(20) NOT NULL REFERENCES companies(id),

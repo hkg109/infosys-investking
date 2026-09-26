@@ -78,7 +78,7 @@ DB 구조 변경은 없습니다. `event_schedule_states.mode`의 과거 `RANDOM
 
 ## 장중 반영과 동시성
 
-1. 예고 시각에 `market:event:warning`을 전송합니다.
+1. 예고 시각에 `market:event:warning`을 전송합니다. Payload에는 `round`, `gameEventId`, `title`, `triggerPhase`, `scheduledAt`, `triggerOffsetSeconds`, `preannounceSeconds`가 포함됩니다.
 2. 발생 시 서버가 신규 주문 접수를 즉시 막고, 이미 접수된 주문이 기존 가격으로 끝날 때까지 기다립니다.
 3. `trading:halt`를 전송하고 사건 적용과 모든 종목 가격 변경을 한 DB transaction으로 처리합니다.
 4. `market:event:breaking`, `event:result`, `stock:update`, `ranking:update` 순으로 갱신합니다.
@@ -100,6 +100,7 @@ DB 구조 변경은 없습니다. `event_schedule_states.mode`의 과거 `RANDOM
 | `trading:resume` | 장중 거래 재개 |
 
 Socket은 실시간 알림이며 재접속 복구 기준은 PostgreSQL과 `GET /api/events/current`입니다.
+일정·현재 사건 응답의 `eventState`는 `PENDING`, `SCHEDULED`, `WARNING`, `APPLIED` 중 하나입니다. 거래 정지와 재개는 각각 `trading:halt`, `trading:resume` Socket 이벤트로 전달하며 `trading:halt`에는 `haltDurationSeconds`가 포함됩니다.
 
 ## QA 4단계 Frontend 연동 보완
 
