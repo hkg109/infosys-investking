@@ -3,6 +3,21 @@ export function quantityValue(text) {
   const number = Number(text)
   return Number.isSafeInteger(number) && number >= 1 && number <= 1_000_000 ? number : null
 }
+export const MAX_ORDER_QUANTITY = 1_000_000
+export function orderPreview({ company, account, type, quantity }) {
+  const price = company?.currentPrice
+  const cash = account?.cash
+  const held = account?.holdings?.find((item) => item.companyId === company?.companyId)?.quantity ?? 0
+  if (!Number.isSafeInteger(price) || price < 1 || !Number.isSafeInteger(cash) || cash < 0 || !Number.isSafeInteger(held) || held < 0) {
+    return { held, maxBuyQuantity: null, maxBuyTotal: null, maxSellQuantity: null, estimatedTotal: null, estimatedHolding: null }
+  }
+  const maxBuyQuantity = Math.min(MAX_ORDER_QUANTITY, Math.floor(cash / price))
+  const maxSellQuantity = Math.min(MAX_ORDER_QUANTITY, held)
+  const validQuantity = Number.isSafeInteger(quantity) && quantity >= 1 && quantity <= MAX_ORDER_QUANTITY
+  const estimatedTotal = validQuantity && Number.isSafeInteger(price * quantity) ? price * quantity : null
+  const estimatedHolding = validQuantity ? held + (type === 'BUY' ? quantity : -quantity) : null
+  return { held, maxBuyQuantity, maxBuyTotal: maxBuyQuantity * price, maxSellQuantity, estimatedTotal, estimatedHolding }
+}
 export function tradingBlock(game, stale) {
   if (stale || !game) return '최신 게임·자산 정보를 확인한 후 주문할 수 있습니다.'
   if (game.status === 'PAUSED') return '일시정지 중에는 거래할 수 없습니다.'
@@ -14,9 +29,11 @@ export function tradingBlock(game, stale) {
 export function orderError({ company, quantity, type, account }) {
   if (!company) return '종목을 선택해 주세요.'
   if (quantity === null) return '수량은 1~1,000,000 사이의 정수로 입력해 주세요.'
+  const totalPrice = quantity * company.currentPrice
+  if (!Number.isSafeInteger(totalPrice)) return '주문 금액이 처리 가능한 범위를 초과합니다.'
   const holding = account?.holdings?.find((item) => item.companyId === company.companyId)
   if (type === 'SELL' && quantity > (holding?.quantity ?? 0)) return '보유한 수량보다 많이 매도할 수 없습니다.'
-  if (type === 'BUY' && quantity * company.currentPrice > account?.cash) return '주문 예상 금액보다 보유 현금이 부족합니다.'
+  if (type === 'BUY' && totalPrice > account?.cash) return '주문 예상 금액보다 보유 현금이 부족합니다.'
   return ''
 }
 export function displayAccount(account) {

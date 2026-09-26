@@ -69,4 +69,18 @@ test('investment watchlist highlights selection and portfolio shows market value
   assert.match(html, /\+20%/)
   assert.match(html, /2주 · 현재가 10,000원/)
   assert.match(html, /20,000원/)
+  assert.match(html, /추가 매수/)
+  assert.match(html, />매도</)
+})
+
+test('inactive portfolio holdings keep their value but disable quick orders', () => {
+  const html = renderToStaticMarkup(createElement(User, {
+    onOrder() {},
+    snapshot: {
+      account: { cash: 0, stockValue: 20000, totalAssets: 20000 }, stocks: [],
+      holdings: [{ companyId: 'OLD', name: '거래중단사', currentPrice: 10000, quantity: 2, marketValue: 20000 }],
+    },
+  }))
+  assert.match(html, /현재 거래가 중단된 종목/)
+  assert.equal((html.match(/disabled=""/g) || []).length, 2)
 })

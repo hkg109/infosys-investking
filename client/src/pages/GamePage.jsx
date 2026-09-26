@@ -35,6 +35,8 @@ function GamePage() {
     holdings: trading.account?.holdings.filter((item) => item.quantity > 0),
   }
   const [selectedCompanyId, setSelectedCompanyId] = useState('')
+  const [orderIntent, setOrderIntent] = useState(null)
+  const orderIntentId = useRef(0)
   const selectedInitialCompany = useRef(false)
   const [logoutError, setLogoutError] = useState('')
   const [isLoggingOut, setIsLoggingOut] = useState(false)
@@ -66,12 +68,17 @@ function GamePage() {
       setIsLoggingOut(false)
     }
   }
+  const openPortfolioOrder = (companyId, type) => {
+    setSelectedCompanyId(companyId)
+    setOrderIntent({ requestId: ++orderIntentId.current, companyId, type })
+    navigate('/game/orders')
+  }
 
   const screens = {
     market: (<UserDashboard showHoldings={false} game={gameState.game} snapshot={snapshot} selectedCompanyId={selectedCompanyId} onSelectCompany={id => { setSelectedCompanyId(id); navigate('/game/orders') }} />),
     news: (<EventNews game={gameState.game} revision={gameState.snapshot} />),
-    orders: (<><UserDashboard showMarket={false} game={gameState.game} snapshot={snapshot} selectedCompanyId={selectedCompanyId} onSelectCompany={id => { setSelectedCompanyId(id); navigate('/game/orders') }} />
-<TradingPanel game={gameState.game} stale={gameState.loading || Boolean(gameState.error)} trading={trading} selectedCompanyId={selectedCompanyId} onSelectCompany={setSelectedCompanyId} /></>),
+    orders: (<><UserDashboard showMarket={false} game={gameState.game} snapshot={snapshot} selectedCompanyId={selectedCompanyId} onSelectCompany={id => { setSelectedCompanyId(id); navigate('/game/orders') }} onOrder={openPortfolioOrder} />
+<TradingPanel game={gameState.game} stale={gameState.loading || Boolean(gameState.error)} trading={trading} selectedCompanyId={selectedCompanyId} onSelectCompany={setSelectedCompanyId} orderIntent={orderIntent} /></>),
     history: (<><label>차트 종목<select value={selectedCompanyId} onChange={e => setSelectedCompanyId(e.target.value)}><option value="">종목 선택</option>{(trading.companies || []).map(item => <option key={item.companyId} value={item.companyId}>{item.name}</option>)}</select></label><PriceHistoryPanel companyId={selectedCompanyId} revision={gameState.snapshot} /><TradeHistoryPanel totalRounds={gameState.game?.totalRounds} revision={trading.account} /></>),
     ranking: (<RankingPanel userId={user.userId} game={gameState.game} revision={gameState.snapshot} />),
     intelligence: (intelligenceEnabled && <IntelligenceStorePanel store={intelligence} /> || <p>정보 기능이 비활성화되어 있습니다.</p>),

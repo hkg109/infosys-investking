@@ -61,3 +61,14 @@ test('unresolved and pending orders disable the custom order surface', () => {
     assert.doesNotMatch(html, /입력 초기화/)
   }
 })
+test('completed order reports the authoritative post-trade holding', () => {
+  const trading = {
+    ready: true, companies: [{ companyId: 'A', name: 'A', currentPrice: 10000 }],
+    account: { cash: 70000, holdings: [{ companyId: 'A', name: 'A', quantity: 3, marketValue: 30000 }] },
+    result: { orderId: 'order', companyId: 'A', type: 'BUY', quantity: 1, price: 10000, totalPrice: 10000 },
+    refresh() {}, submit() {},
+  }
+  const html = renderToStaticMarkup(createElement(Trading, { game: { status: 'RUNNING', phase: 'TRADING', tradingEnabled: true }, trading, selectedCompanyId: 'A' }))
+  assert.match(html, /체결 후 보유량/)
+  assert.match(html, /3주/)
+})

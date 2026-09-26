@@ -6,7 +6,7 @@ const messages = {
   WAITING: '게임 시작을 기다리고 있습니다.', RUNNING: '뉴스를 확인하고 투자 상황을 살펴보세요.',
   PAUSED: '게임이 일시정지되었습니다. 재개될 때까지 거래할 수 없습니다.', FINISHED: '게임이 종료되었습니다. 자산 현황을 확인하세요.',
 }
-export default function UserDashboard({ game, snapshot, selectedCompanyId, onSelectCompany, showMarket = true, showHoldings = true }) {
+export default function UserDashboard({ game, snapshot, selectedCompanyId, onSelectCompany, onOrder, showMarket = true, showHoldings = true }) {
   const account = snapshot?.account
   const stocks = snapshot?.stocks
   const holdings = snapshot?.holdings
@@ -35,10 +35,15 @@ export default function UserDashboard({ game, snapshot, selectedCompanyId, onSel
         </table></div>}
       </Panel>}
       {showHoldings && <Panel title="내 포트폴리오">
-        {!Array.isArray(holdings) ? <p className="empty-state">보유 주식 정보를 기다리고 있습니다.</p> : holdings.length === 0 ? <p className="empty-state">아직 보유한 주식이 없습니다.</p> : <ul className="holdings-list portfolio-holdings">{holdings.map((item) => <li key={item.companyId}>
-          <div><strong>{item.name}</strong><span>{Number.isInteger(item.quantity) && item.quantity >= 0 ? `${item.quantity.toLocaleString('ko-KR')}주 · 현재가 ${money(item.currentPrice)}` : '—'}</span></div>
-          <strong>{money(item.marketValue)}</strong>
-        </li>)}</ul>}
+        {!Array.isArray(holdings) ? <p className="empty-state">보유 주식 정보를 기다리고 있습니다.</p> : holdings.length === 0 ? <p className="empty-state">아직 보유한 주식이 없습니다.</p> : <ul className="holdings-list portfolio-holdings">{holdings.map((item) => {
+          const tradable = Array.isArray(stocks) && stocks.some(stock => stock.id === item.companyId)
+          return <li key={item.companyId}>
+            <div className="holding-description"><strong>{item.name}</strong><span>{Number.isInteger(item.quantity) && item.quantity >= 0 ? `${item.quantity.toLocaleString('ko-KR')}주 · 현재가 ${money(item.currentPrice)}` : '—'}</span></div>
+            <strong className="holding-value">{money(item.marketValue)}</strong>
+            <div className="holding-actions"><button type="button" className="secondary-button" disabled={!tradable} onClick={() => onOrder?.(item.companyId, 'BUY')}>추가 매수</button><button type="button" className="secondary-button" disabled={!tradable} onClick={() => onOrder?.(item.companyId, 'SELL')}>매도</button></div>
+            {!tradable && <span className="trading-help">현재 거래가 중단된 종목입니다.</span>}
+          </li>
+        })}</ul>}
       </Panel>}
     </div>
   </>
