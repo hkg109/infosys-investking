@@ -71,6 +71,17 @@ export function validatePriceHistory(data) {
   return data
 }
 
+export function validateAllPriceHistories(data) {
+  if (!data || !Array.isArray(data.companies) || data.companies.length === 0) throw new TradingError('INVALID_RESPONSE')
+  const ids = new Set()
+  for (const item of data.companies) {
+    validatePriceHistory(item)
+    if (!item.company.active || ids.has(item.company.companyId)) throw new TradingError('INVALID_RESPONSE')
+    ids.add(item.company.companyId)
+  }
+  return data
+}
+
 export async function getTradeHistory(round = null, signal) {
   const query = round === null ? '' : `?round=${encodeURIComponent(round)}`
   return validateTradeHistory(await historyRequest(`/history${query}`, signal))
@@ -79,6 +90,10 @@ export async function getTradeHistory(round = null, signal) {
 export async function getPriceHistory(companyId, signal) {
   if (typeof companyId !== 'string' || !companyId) throw new TradingError('INVALID_INPUT')
   return validatePriceHistory(await historyRequest(`/companies/${encodeURIComponent(companyId)}/history`, signal))
+}
+
+export async function getAllPriceHistories(signal) {
+  return validateAllPriceHistories(await historyRequest('/companies/history', signal))
 }
 
 export function historyError(error) {

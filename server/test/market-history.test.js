@@ -9,7 +9,7 @@ import '../src/config.js'
 import { createAdminRouter } from '../src/admin-routes.js'
 import { applyScheduledEvent, createEvent, saveGameSchedule } from '../src/events.js'
 import { ACTIVE_GAME_ID, loadGameState } from '../src/game-store.js'
-import { getCompanyPriceHistory, getTradeHistory, recordRoundClose, recordRoundOpen } from '../src/market-history.js'
+import { getAllCompanyPriceHistories, getCompanyPriceHistory, getTradeHistory, recordRoundClose, recordRoundOpen } from '../src/market-history.js'
 import { digestSessionToken, SESSION_COOKIE_NAME } from '../src/session-auth.js'
 import { createTradingRouter } from '../src/trading.js'
 
@@ -82,6 +82,7 @@ test('PostgreSQL market history: private monthly trades, admin access, FIFO prof
   await once(server, 'listening')
   const base = `http://127.0.0.1:${server.address().port}`
   assert.equal((await fetch(`${base}/api/trading/history?round=1`)).status, 401)
+  assert.equal((await fetch(`${base}/api/trading/companies/history`)).status, 401)
   const own = await fetch(`${base}/api/trading/history?round=1`, { headers: { Cookie: user.cookie, Origin: clientUrl } })
   assert.equal(own.status, 200)
   assert.equal((await own.json()).trades.length, 3)
@@ -117,7 +118,15 @@ test('PostgreSQL market history: private monthly trades, admin access, FIFO prof
   const count = await database.query('SELECT COUNT(*)::int AS count FROM stock_price_history WHERE round_number = 1')
   assert.equal(count.rows[0].count, 21)
 
+  const allHistory = await getAllCompanyPriceHistories(database)
+  assert.equal(allHistory.companies.length, 7)
+  assert.deepEqual(allHistory.companies.map(item => item.company.companyId), ['A', 'B', 'C', 'D', 'E', 'F', 'G'])
+  assert.equal(allHistory.companies.every(item => item.history[0].snapshots.length === 3), true)
+
   const chart = await fetch(`${base}/api/trading/companies/A/history`, { headers: { Cookie: user.cookie } })
   assert.equal(chart.status, 200)
   assert.equal((await chart.json()).history[0].snapshots.length, 3)
+  const allChart = await fetch(`${base}/api/trading/companies/history`, { headers: { Cookie: user.cookie } })
+  assert.equal(allChart.status, 200)
+  assert.equal((await allChart.json()).companies.length, 7)
 })
