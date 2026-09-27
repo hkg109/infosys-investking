@@ -22,6 +22,8 @@ import PriceHistoryPanel from '../trading/PriceHistoryPanel'
 import TradeHistoryPanel from '../trading/TradeHistoryPanel'
 import CompanySelectMenu from '../components/CompanySelectMenu'
 import MarketEventNotifications from '../components/MarketEventNotifications'
+import useEventNews from '../events/useEventNews'
+import WaitingGameNotice from '../components/WaitingGameNotice'
 
 function GamePage() {
   const navigate = useNavigate()
@@ -31,6 +33,7 @@ function GamePage() {
   const newsFocusSequence = useRef(0)
   const { logout, user, checkSession } = useSession()
   const gameState = useGame('', checkSession)
+  const newsFeed = useEventNews({ game: gameState.game, revision: gameState.snapshot })
   const trading = useTrading(user.userId)
   const intelligence = useIntelligenceStore({ userId: user.userId, game: gameState.game, revision: gameState.snapshot, stale: gameState.loading || Boolean(gameState.error), onPurchased: trading.refresh, enabled: intelligenceEnabled })
   useEffect(() => { trading.refresh() }, [gameState.snapshot, trading.refresh])
@@ -87,7 +90,7 @@ function GamePage() {
 
   const screens = {
     market: (<UserDashboard showHoldings={false} game={gameState.game} snapshot={snapshot} selectedCompanyId={selectedCompanyId} onSelectCompany={id => { setSelectedCompanyId(id); navigate('/game/orders') }} />),
-    news: (<EventNews game={gameState.game} revision={gameState.snapshot} focusRequest={newsFocus} />),
+    news: (<EventNews game={gameState.game} revision={gameState.snapshot} focusRequest={newsFocus} feed={newsFeed} onOpenFloating={() => setFloatingNews(true)} />),
     orders: (<><div className="game-context-actions"><button type="button" className="secondary-button" aria-pressed={floatingNews} onClick={() => setFloatingNews(value => !value)}>{floatingNews ? '뉴스 창 닫기' : '뉴스 창 열기'}</button></div><UserDashboard showMarket={false} game={gameState.game} snapshot={snapshot} selectedCompanyId={selectedCompanyId} onSelectCompany={id => { setSelectedCompanyId(id); navigate('/game/orders') }} onOrder={openPortfolioOrder} />
 <TradingPanel game={gameState.game} stale={gameState.loading || Boolean(gameState.error)} trading={trading} selectedCompanyId={selectedCompanyId} onSelectCompany={setSelectedCompanyId} orderIntent={orderIntent} /></>),
     history: (<><CompanySelectMenu companies={trading.companies || []} value={selectedCompanyId} onChange={setSelectedCompanyId} /><PriceHistoryPanel companyId={selectedCompanyId} revision={gameState.snapshot} /><TradeHistoryPanel totalRounds={gameState.game?.totalRounds} revision={trading.account} /></>),
@@ -109,13 +112,12 @@ function GamePage() {
       {logoutError && <p className="page-error" role="alert">{logoutError}</p>}
       <div className="game-clock-bar"><button type="button" className="secondary-button" onClick={() => setFloatingClock(value => !value)}>{floatingClock ? '타이머 본문에 고정' : '타이머 띄우기'}</button><FloatingGameTimer game={gameState.game} docked={!floatingClock} /></div>
       <Outlet context={screens} />
-      {floatingNews && <FloatingNews game={gameState.game} revision={gameState.snapshot} onClose={closeFloatingNews} onOpenFull={openNewsTab} />}
+      {floatingNews && <FloatingNews game={gameState.game} revision={gameState.snapshot} feed={newsFeed} focusRequest={newsFocus} onClose={closeFloatingNews} onOpenFull={openNewsTab} />}
     </PageShell>
-    <MarketEventNotifications notices={gameState.marketNotices} onDismiss={gameState.dismissMarketNotice} onOpen={notice => {
-      gameState.dismissMarketNotice(notice.gameEventId)
-      setFloatingNews(false)
+    <WaitingGameNotice waiting={gameState.game?.status === 'WAITING'} />
+    <MarketEventNotifications notices={gameState.marketNotices} serverOffsetMs={gameState.serverOffsetMs} onDismiss={gameState.dismissMarketNotice} onOpen={notice => {
+      setFloatingNews(true)
       setNewsFocus({ gameEventId: notice.gameEventId, requestId: ++newsFocusSequence.current })
-      navigate('/game/news')
     }} />
   </NavigationGuard>
 }

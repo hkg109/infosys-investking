@@ -2,9 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { io } from 'socket.io-client'
 import { controlGame, gameError, getGame } from './api'
 import { allowedControl, remainingSeconds } from './model'
-import { appendMarketNotice } from './marketNotice'
+import { mergeMarketNotice } from './marketNotice'
 
-const events = ['game:state', 'game:start', 'game:pause', 'game:resume', 'game:end', 'round:start', 'round:end', 'trading:open', 'trading:close', 'stock:update', 'news:publish', 'event:result', 'ranking:update', 'participants:presence', 'market:event:warning', 'trading:halt', 'trading:resume']
+const events = ['game:state', 'game:start', 'game:pause', 'game:resume', 'game:end', 'round:start', 'round:end', 'trading:open', 'trading:close', 'stock:update', 'news:publish', 'event:result', 'ranking:update', 'participants:presence']
 export function useGame(adminPassword = '', onSessionCheck) {
   const [snapshot, setSnapshot] = useState(null)
   const [error, setError] = useState('')
@@ -19,8 +19,11 @@ export function useGame(adminPassword = '', onSessionCheck) {
   const snapshotRef = useRef(null)
   const fresh = useRef(false)
   const fetching = useRef(0)
+  const serverOffsetMs = useRef(0)
 
   const apply = useCallback((next) => {
+    const serverTime = Date.parse(next?.game?.serverTime)
+    if (Number.isFinite(serverTime)) serverOffsetMs.current = serverTime - Date.now()
     snapshotRef.current = next
     receivedAt.current = performance.now()
     fresh.current = true
@@ -57,10 +60,14 @@ export function useGame(adminPassword = '', onSessionCheck) {
     socket.on('disconnect', disconnect)
     socket.on('connect_error', disconnect)
     socket.on('game:reset', () => { setMarketNotices([]); onSessionCheck?.(); refresh() })
-    socket.on('market:event:breaking', (payload) => {
-      setMarketNotices(current => appendMarketNotice(current, payload))
+    const marketEvent = state => payload => {
+      setMarketNotices(current => mergeMarketNotice(current, payload, state, Date.now() + serverOffsetMs.current))
       refresh()
-    })
+    }
+    socket.on('market:event:warning', marketEvent('WARNING'))
+    socket.on('trading:halt', marketEvent('HALTED'))
+    socket.on('market:event:breaking', marketEvent('APPLYING'))
+    socket.on('trading:resume', marketEvent('CLOSED'))
     // Legacy game:start is only a notification; never treat it as a state transition.
     events.forEach((event) => socket.on(event, refresh))
     const poll = setInterval(refresh, 5000)
@@ -103,7 +110,7 @@ export function useGame(adminPassword = '', onSessionCheck) {
   return {
     snapshot,
     game: snapshot?.game ? { ...snapshot.game, remainingSeconds: error ? null : remainingSeconds(snapshot.game, elapsed) } : null,
-    loading, error, connected, pending, refresh, control, marketNotices, dismissMarketNotice,
+    loading, error, connected, pending, refresh, control, marketNotices, dismissMarketNotice, serverOffsetMs: serverOffsetMs.current,
     canControl: !error && !loading && Boolean(adminPassword),
   }
 }

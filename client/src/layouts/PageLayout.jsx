@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom'
 
-function PageLayout({ actions, area = 'public', children, title, subtitle, wide = false, headingRef }) {
+function PageLayout({ actions, area = 'public', children, title, subtitle, wide = false, headingRef, headerStatus }) {
   return (
     <div className={`app-shell app-shell--${area}`}>
       <header className="site-header">
-        <Link className="brand" to="/"><span>INFOSYS</span> InvestKing</Link>
+        <div className="site-header__brand"><Link className="brand" to="/"><span>INFOSYS</span> InvestKing</Link>{headerStatus}</div>
         <nav aria-label="주요 메뉴">
           <Link to="/game">게임</Link>
           <Link to="/admin">관리자</Link>

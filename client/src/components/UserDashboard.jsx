@@ -14,11 +14,11 @@ export default function UserDashboard({ game, snapshot, selectedCompanyId, onSel
   const stocks = snapshot?.stocks
   const holdings = snapshot?.holdings
   return <>
-    <section className="game-summary" aria-label="게임 진행 상태">
+    {game?.status !== 'WAITING' && <section className="game-summary" aria-label="게임 진행 상태">
       <strong>{statusLabels[game?.status] || '확인 전'}</strong>
       <p>{messages[game?.status] || '게임 정보를 확인하면 투자 현황이 표시됩니다.'}</p>
       {game?.status === 'RUNNING' && <span>{game.tradingEnabled === true ? '거래 가능' : game.tradingEnabled === false ? '거래 마감 · 사건 결과를 확인하세요.' : '거래 상태 확인 전'}</span>}
-    </section>
+    </section>}
     <div className="stats-grid">
       <StatCard label="현재 월" value={Number.isInteger(game?.currentRound) && game.currentRound > 0 ? `${game.currentRound}월` : '—'} tone="accent" />
       <StatCard label="보유 현금" value={money(account?.cash)} />
