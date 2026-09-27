@@ -12,6 +12,7 @@ import './styles/stage25.css'
 import './styles/company-select.css'
 import './styles/stage27.css'
 import './styles/stage30.css'
+import './styles/stage31.css'
 
 const router = createBrowserRouter([{ path: '*', element: <SessionProvider><App /></SessionProvider> }])
 

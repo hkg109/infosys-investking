@@ -17,7 +17,7 @@ function amount(value, field) {
 export async function listParticipants(database, presence, initialCash = 1_000_000) {
   const result = await database.query(`SELECT u.id AS user_id, u.nickname, u.created_at,
       COALESCE(w.cash, $2)::numeric AS cash,
-      p.company_id, c.name AS company_name, p.quantity, c.current_price
+      p.company_id, c.name AS company_name, p.quantity, c.current_price, c.is_active
     FROM users u
     LEFT JOIN wallets w ON w.game_id = $1 AND w.user_id = u.id
     LEFT JOIN portfolios p ON p.game_id = $1 AND p.user_id = u.id AND p.quantity > 0
@@ -57,6 +57,7 @@ export async function listParticipants(database, presence, initialCash = 1_000_0
     participant.holdings.push({
       companyId: row.company_id,
       name: row.company_name,
+      active: row.is_active,
       quantity,
       currentPrice,
       marketValue,

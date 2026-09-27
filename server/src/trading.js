@@ -118,8 +118,13 @@ export function createTradingRouter(database, engine, {
 
   router.get('/market', async (_request, response, next) => {
     try {
-      const result = await database.query(`SELECT id, name, description, current_price, initial_price
-        FROM companies WHERE is_active = TRUE ORDER BY id`)
+      const currentRound = engine.getSnapshot()?.currentRound || 0
+      const result = await database.query(`SELECT c.id, c.name, c.description, c.current_price, c.initial_price,
+          h.opening_price
+        FROM companies c
+        LEFT JOIN stock_price_history h ON h.game_id = $1 AND h.round_number = $2
+          AND h.company_id = c.id AND h.snapshot_type = 'OPEN'
+        WHERE c.is_active = TRUE ORDER BY c.id`, [ACTIVE_GAME_ID, currentRound])
       response.json({ companies: result.rows.map((row) => ({
         companyId: row.id,
         name: row.name,
@@ -127,6 +132,9 @@ export function createTradingRouter(database, engine, {
         currentPrice: number(row.current_price),
         initialPrice: number(row.initial_price),
         changeRate: Math.round((number(row.current_price) / number(row.initial_price) - 1) * 10000) / 100,
+        monthlyChangeRate: row.opening_price === null
+          ? null
+          : Math.round((number(row.current_price) / number(row.opening_price) - 1) * 10000) / 100,
       })) })
     } catch (error) {
       next(error)

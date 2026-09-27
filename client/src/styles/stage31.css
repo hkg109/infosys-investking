@@ -1,0 +1,46 @@
+.participant-table .numeric-cell { font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }
+.participant-table .participant-total { color: var(--color-accent-strong); font-weight: 900; }
+.participant-table .participant-name { min-width: 8rem; max-width: 13rem; white-space: normal; overflow-wrap: anywhere; }
+.presence-badge { display: inline-flex; align-items: center; gap: .35rem; border-radius: 999px; padding: .3rem .55rem; font-size: var(--text-xs); font-weight: 800; white-space: nowrap; }
+.presence-badge::before { width: .5rem; height: .5rem; border-radius: 50%; background: currentColor; content: ''; }
+.presence-badge--online { color: var(--color-success); background: color-mix(in oklch, var(--color-success) 12%, var(--color-paper)); }
+.presence-badge--offline { color: var(--color-muted); background: var(--color-paper-2); }
+.holdings-toggle { border: 1px solid var(--color-rule-2); border-radius: var(--radius-input); padding: .55rem .7rem; color: var(--color-ink); background: var(--color-paper); font-weight: 800; cursor: pointer; }
+.holdings-toggle[aria-expanded='true'] { border-color: var(--color-accent); color: var(--color-accent-strong); background: var(--color-accent-soft); }
+.participant-holdings-row > td { padding: 0; background: var(--color-paper-2); }
+.participant-holdings-row section { padding: 1rem clamp(.75rem, 2vw, 1.5rem) 1.35rem; }
+.holdings-detail-table { background: var(--color-paper); }
+.holdings-detail-table th:first-child { min-width: 10rem; white-space: normal; overflow-wrap: anywhere; }
+.asset-edit-block, .asset-conflict { border-left: .3rem solid var(--color-danger); padding: 1rem; color: var(--color-danger); background: color-mix(in oklch, var(--color-danger) 8%, var(--color-paper)); }
+.asset-conflict h3 { margin-top: 0; }
+.asset-preview dl { display: grid; margin: 0; border-block: 1px solid var(--color-rule); }
+.asset-preview dl > div { display: grid; grid-template-columns: minmax(7rem, .8fr) minmax(0, 1.2fr); gap: 1rem; padding: .75rem 0; border-bottom: 1px solid var(--color-rule); }
+.asset-preview dl > div:last-child { border-bottom: 0; }
+.asset-preview dt { color: var(--color-muted); }
+.asset-preview dd { margin: 0; overflow-wrap: anywhere; font-family: var(--font-mono); text-align: right; }
+.asset-change { color: var(--color-accent-strong); background: linear-gradient(90deg, transparent, color-mix(in oklch, var(--color-accent) 9%, transparent)); }
+.asset-total-preview { font-size: var(--text-lg); }
+
+.company-info-popover { width: min(22rem, calc(100vw - 1.5rem)); max-width: 22rem; max-height: min(30rem, calc(100dvh - 1.5rem)); overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
+.company-info-popover__industry { margin-top: .3rem !important; color: var(--color-accent-strong) !important; font-size: var(--text-xs); font-weight: 800; }
+.company-info-popover__description { min-width: 0; border-block: 1px solid var(--color-rule); padding-block: .75rem; }
+.company-info-popover__description > strong { display: block; margin-bottom: .35rem; font-size: var(--text-xs); letter-spacing: .06em; }
+.company-info-popover__description p { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
+.company-info-popover dl { border-block: 0; }
+
+@media (max-width: 40rem) {
+  .participant-table > thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .participant-table, .participant-table > tbody { display: block; }
+  .participant-table > tbody > .participant-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .7rem 1rem; margin-bottom: .8rem; border: 1px solid var(--color-rule); border-radius: var(--radius-card); padding: 1rem; }
+  .participant-table > tbody > .participant-row > * { display: grid; min-width: 0; border: 0; padding: 0; white-space: normal; }
+  .participant-table > tbody > .participant-row > .participant-name { grid-column: 1 / -1; max-width: none; color: var(--color-ink); font-size: var(--text-lg); }
+  .participant-table > tbody > .participant-row > td::before { color: var(--color-muted); font-size: var(--text-xs); font-weight: 700; content: attr(data-label); }
+  .participant-table > tbody > .participant-row .numeric-cell { text-align: left; }
+  .participant-table > tbody > .participant-row button { width: 100%; margin-top: .25rem; }
+  .participant-holdings-row { display: block; margin: -.8rem 0 .8rem; }
+  .participant-holdings-row > td { display: block; border: 1px solid var(--color-rule); border-top: 0; border-radius: 0 0 var(--radius-card) var(--radius-card); }
+  .holdings-detail-table { min-width: 34rem; }
+  .asset-preview dl > div { grid-template-columns: 1fr; gap: .25rem; }
+  .asset-preview dd { text-align: left; }
+  .company-info-popover { width: calc(100vw - 1.5rem) !important; max-width: none; max-height: min(72dvh, 32rem); border-radius: 1rem 1rem .4rem .4rem; }
+}

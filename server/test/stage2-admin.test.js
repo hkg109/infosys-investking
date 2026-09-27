@@ -156,6 +156,7 @@ test('PostgreSQL stage 2: participant assets, multi-tab presence, reconnect, and
   assert.deepEqual({ online: alice.online, cash: alice.cash, stockValue: alice.stockValue, totalAssets: alice.totalAssets },
     { online: true, cash: 700000, stockValue: 50000, totalAssets: 750000 })
   assert.deepEqual(alice.holdings.map(({ companyId, quantity }) => ({ companyId, quantity })), [{ companyId: 'A', quantity: 5 }])
+  assert.equal(alice.holdings[0].active, true)
   assert.deepEqual({ online: bobAccount.online, cash: bobAccount.cash, totalAssets: bobAccount.totalAssets },
     { online: true, cash: 1000000, totalAssets: 1000000 })
 

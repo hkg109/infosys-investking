@@ -63,8 +63,8 @@ export default function IntelligenceManager({ password, game, stale, onBusy }) {
     {clues && !fresh && <p>마지막 확인 정보입니다. 재조회 후 편집할 수 있습니다.</p>}
     {clues && <>
       {!clues.length ? <p>등록된 단서가 없습니다.</p> : <ul className="mission-list">{clues.map(item => <li key={item.clueId}><h3>{item.title}</h3><p>{item.summary}</p><details><summary>구매자에게 공개할 본문</summary><p className="intelligence-content">{item.content}</p></details><p>{item.price.toLocaleString('ko-KR')}원 · {item.availableRound}월부터 · {item.isActive ? '활성' : '비활성'}</p><div className="event-actions">
-        <button type="button" className="secondary-button" disabled={!editable} onClick={() => { setEditing(item.clueId); setForm({ ...item, price: String(item.price), availableRound: String(item.availableRound) }); setEditorOpen(true); setReview(null) }}>{item.title} 수정</button>
-        {item.isActive && <button type="button" className="secondary-button" disabled={!editable} onClick={() => setReview(item)}>{item.title} 비활성화</button>}
+        <button type="button" className="secondary-button" disabled={!editable} aria-label={`${item.title} 정보 수정`} onClick={() => { setEditing(item.clueId); setForm({ ...item, price: String(item.price), availableRound: String(item.availableRound) }); setEditorOpen(true); setReview(null) }}>정보 수정</button>
+        {item.isActive && <button type="button" className="secondary-button" disabled={!editable} aria-label={`${item.title} 정보 삭제`} onClick={() => setReview(item)}>정보 삭제</button>}
       </div></li>)}</ul>}
       <div className="list-toolbar"><p>본문은 구매자에게만 공개됩니다.</p><button type="button" className="primary-button" disabled={!editable} onClick={() => { setEditing(null); setForm(blank()); setEditorOpen(true) }}>새 단서 등록</button></div>
       <ActionDialog open={editorOpen} title={editing ? '단서 수정' : '새 단서 등록'} eyebrow="INTELLIGENCE" onClose={() => { setEditorOpen(false); setEditing(null); setForm(blank()) }} busy={busy} dirty={draftDirty}>
@@ -78,7 +78,7 @@ export default function IntelligenceManager({ password, game, stale, onBusy }) {
         <div className="dialog-actions"><button className="secondary-button" type="button" onClick={requestDialogClose}>취소</button><button className="primary-button" type="submit">{editing ? '단서 수정 저장' : '단서 등록'}</button></div>
       </fieldset></form>
       </ActionDialog>
-      <ConfirmDialog open={Boolean(review)} title="단서 판매 중단" onCancel={() => setReview(null)} onConfirm={deactivate} busy={busy} confirmDisabled={!editable} confirmLabel="판매 중단 확정" danger><p>{review?.title} 판매를 중단할까요? 기존 구매자는 보관함에서 계속 볼 수 있습니다.</p></ConfirmDialog>
+      <ConfirmDialog open={Boolean(review)} title="정보 삭제" onCancel={() => setReview(null)} onConfirm={deactivate} busy={busy} confirmDisabled={!editable} confirmLabel="정보 삭제" danger><p>{review?.title} 판매를 중단할까요? 기존 구매자는 보관함에서 계속 볼 수 있습니다.</p></ConfirmDialog>
     </>}
   </Panel>
 }
