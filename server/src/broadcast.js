@@ -48,15 +48,14 @@ export async function readBroadcast(database, { now = Date.now, isHalted = () =>
       CASE WHEN ge.applied_at IS NOT NULL THEN e.result END AS result
       FROM game_events ge JOIN events e ON e.id=ge.event_id
       WHERE ge.game_id=$1 AND ge.round_number=$2 AND $2>0
-        AND (ge.trigger_phase='CLOSE' OR ge.applied_at IS NOT NULL OR ge.warning_sent_at IS NOT NULL)
+        AND (ge.applied_at IS NOT NULL OR ge.warning_sent_at IS NOT NULL)
       ORDER BY ge.display_order`, [ACTIVE_GAME_ID, row.current_round])
     const news = [], warnings = [], results = []
     for (const event of events) {
+      news.push({ gameEventId: event.id, title: event.title, news: event.news, triggerPhase: event.trigger_phase })
       if (event.trigger_phase === 'INTRADAY' && !event.applied_at) {
         warnings.push({ gameEventId: event.id, scheduledAt: event.scheduled_at })
-        continue
       }
-      news.push({ gameEventId: event.id, title: event.title, news: event.news, triggerPhase: event.trigger_phase })
       if (!event.applied_at) continue
       const { rows: changes } = await client.query(`SELECT company_id, previous_price, new_price, change_rate
         FROM stock_price_changes WHERE game_event_id=$1 ORDER BY company_id`, [event.id])

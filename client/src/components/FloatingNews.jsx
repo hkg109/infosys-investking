@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { EventArticle } from '../events/EventNews'
 import useEventNews from '../events/useEventNews'
 import { clampNewsRect, defaultNewsRect, loadNewsRect, newsViewportSize, saveNewsRect } from '../game/floatingNews'
+import RefreshIconButton from './RefreshIconButton'
 
 function browserStorage() {
   try { return window.localStorage } catch { return null }
@@ -23,7 +24,7 @@ export function FloatingNewsFeed({ game, events, error, loading, onRetry, onOpen
     </div>
     {error && <p role="alert" className="form-error">{error}</p>}
     {!events.length ? <p className="floating-news__empty">{game?.status === 'WAITING' ? '게임 시작 후 뉴스가 공개됩니다.' : loading ? '이번 달 뉴스를 확인하고 있습니다.' : '이번 달에 공개된 뉴스가 없습니다.'}</p> : events.map(event => <EventArticle key={event.gameEventId || event.eventId} event={event} highlighted={focusRequest?.gameEventId === event.gameEventId} articleRef={node => { if (node) articles.current.set(event.gameEventId, node); else articles.current.delete(event.gameEventId) }} />)}
-    <button type="button" className="floating-news__refresh" disabled={loading} onClick={onRetry}>{loading ? '확인 중…' : '뉴스 업데이트'}</button>
+    <RefreshIconButton label="뉴스 업데이트" loading={loading} className="floating-news__refresh" disabled={loading} onClick={onRetry} />
   </div>
 }
 

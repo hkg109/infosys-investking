@@ -143,6 +143,7 @@ CREATE TABLE IF NOT EXISTS game_events (
   trigger_phase TEXT NOT NULL DEFAULT 'CLOSE' CHECK (trigger_phase IN ('INTRADAY', 'CLOSE')),
   trigger_offset_ms INTEGER,
   preannounce_ms INTEGER NOT NULL DEFAULT 0 CHECK (preannounce_ms >= 0),
+  news_reveal_offset_ms INTEGER NOT NULL DEFAULT 0 CHECK (news_reveal_offset_ms >= 0),
   scheduled_at TIMESTAMPTZ,
   warning_sent_at TIMESTAMPTZ,
   applied_at TIMESTAMPTZ,
@@ -179,21 +180,28 @@ ALTER TABLE game_events ADD COLUMN IF NOT EXISTS display_order INTEGER;
 ALTER TABLE game_events ADD COLUMN IF NOT EXISTS trigger_phase TEXT;
 ALTER TABLE game_events ADD COLUMN IF NOT EXISTS trigger_offset_ms INTEGER;
 ALTER TABLE game_events ADD COLUMN IF NOT EXISTS preannounce_ms INTEGER;
+ALTER TABLE game_events ADD COLUMN IF NOT EXISTS news_reveal_offset_ms INTEGER;
 ALTER TABLE game_events ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMPTZ;
 ALTER TABLE game_events ADD COLUMN IF NOT EXISTS warning_sent_at TIMESTAMPTZ;
 UPDATE game_events SET
   id = COALESCE(id, md5(game_id::text || ':' || round_number::text || ':' || event_id::text)::uuid),
   display_order = COALESCE(display_order, 1),
   trigger_phase = COALESCE(trigger_phase, 'CLOSE'),
-  preannounce_ms = COALESCE(preannounce_ms, 0);
+  preannounce_ms = COALESCE(preannounce_ms, 0),
+  news_reveal_offset_ms = COALESCE(news_reveal_offset_ms,
+    CASE WHEN trigger_phase = 'INTRADAY'
+      THEN GREATEST(0, trigger_offset_ms - GREATEST(COALESCE(preannounce_ms, 0), 1000))
+      ELSE 0 END);
 ALTER TABLE game_events ALTER COLUMN id SET NOT NULL;
 ALTER TABLE game_events ALTER COLUMN display_order SET NOT NULL;
 ALTER TABLE game_events ALTER COLUMN trigger_phase SET NOT NULL;
 ALTER TABLE game_events ALTER COLUMN preannounce_ms SET NOT NULL;
+ALTER TABLE game_events ALTER COLUMN news_reveal_offset_ms SET NOT NULL;
 ALTER TABLE game_events ALTER COLUMN id SET DEFAULT gen_random_uuid();
 ALTER TABLE game_events ALTER COLUMN display_order SET DEFAULT 1;
 ALTER TABLE game_events ALTER COLUMN trigger_phase SET DEFAULT 'CLOSE';
 ALTER TABLE game_events ALTER COLUMN preannounce_ms SET DEFAULT 0;
+ALTER TABLE game_events ALTER COLUMN news_reveal_offset_ms SET DEFAULT 0;
 ALTER TABLE stock_price_changes DROP CONSTRAINT IF EXISTS stock_price_changes_game_event_id_fkey;
 ALTER TABLE stock_price_changes DROP CONSTRAINT IF EXISTS stock_price_changes_game_event_fkey;
 ALTER TABLE stock_price_changes DROP CONSTRAINT IF EXISTS stock_price_changes_game_id_round_number_fkey;
@@ -357,12 +365,15 @@ CREATE TABLE IF NOT EXISTS intelligence_clues (
   content TEXT NOT NULL CHECK (length(trim(content)) BETWEEN 1 AND 5000),
   price INTEGER NOT NULL CHECK (price BETWEEN 1 AND 1000000),
   available_round INTEGER NOT NULL CHECK (available_round BETWEEN 1 AND 1000),
+  event_id UUID REFERENCES events(id) ON DELETE SET NULL,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS intelligence_clues_catalog_idx
   ON intelligence_clues(is_active, available_round, created_at, id);
+ALTER TABLE intelligence_clues ADD COLUMN IF NOT EXISTS event_id UUID REFERENCES events(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS intelligence_clues_event_idx ON intelligence_clues(event_id);
 CREATE TABLE IF NOT EXISTS intelligence_purchases (
   game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -406,6 +417,54 @@ CREATE TABLE IF NOT EXISTS app_schema_migrations (
   migration_key TEXT PRIMARY KEY,
   applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM app_schema_migrations
+    WHERE migration_key = '2026-09-27-link-intelligence-events'
+  ) THEN
+    UPDATE intelligence_clues clue SET event_id = event.id, updated_at = NOW()
+    FROM (VALUES
+      ('지난해 겨울방학 대학생 소비·학습 패턴 보고서','겨울 계절학기와 자격증 준비 열풍'),
+      ('신입생 OT 기간 대학가 소비 기록서','신입생 OT와 새터 시즌'),
+      ('지난해 개강 시즌 대학가 소비 분석 보고서','새 학기의 시작'),
+      ('대학가 도로 공사 상권 영향 보고서','대학가 상권을 덮친 대규모 도로 공사'),
+      ('지난해 대학 축제 소비·e스포츠 이용 분석 보고서','대학 축제와 e스포츠 대회의 열기'),
+      ('지난해 기말고사 기간 대학생 스트레스 소비 분석 보고서','기말고사 기간'),
+      ('지난해 장마 기간 대학가 소비 기록서','장마와 함께 찾아온 폭우'),
+      ('지난해 폭염 기간 대학생 실내 소비 분석서','기록적인 폭염과 실내 피서 열풍'),
+      ('두리안 막걸리 사전 시음·소비자 행동 평가서','대학가 이색 신제품, 두리안 막걸리 출시'),
+      ('모빌리티 배터리 안전점검 보고서','배터리 안전사고 이후 강화된 규제'),
+      ('대학가 결제 환경 변화에 따른 소비자 행동 보고서','대학가 QR결제 시스템의 도입'),
+      ('지난해 겨울 한파 소비 패턴 보고서','갑작스러운 한파와 첫눈'),
+      ('중앙도서관 난방설비 비공개 점검표','[속보] 심야 학습공간 운영안 긴급 변경'),
+      ('웰컴키트 최종 검수 메모','[속보] 신입생 웰컴키트 공급 계약 재검토'),
+      ('학생증 앱 모의해킹 요약본','[속보] 학생증 앱 보안 점검 결과 발표'),
+      ('도로 지하관로 압력 이상 보고','[속보] 대학가 도로 공정 긴급 브리핑'),
+      ('축제 협찬계약 비공개 부속조항','[속보] 축제 핵심 협찬 계약 조건 공개'),
+      ('시험기간 변압기 부하 측정치','[속보] 시험기간 24시간 운영 계획 변경'),
+      ('QR결제 API 이상 트래픽 보고서','[속보] QR결제 수수료 협상 결과 발표'),
+      ('태양광 인버터 긴급 리콜 명단','[속보] 폭염 전력 수급 대책 최종 발표'),
+      ('개강 셔틀 노사협상 회의록','[속보] 개강 셔틀 운행안 최종 조정'),
+      ('배터리·충전기 인증 사전 판정표','[속보] 모빌리티 안전 인증 결과 공개'),
+      ('e스포츠 결승장 소방점검 기록','[속보] e스포츠 결승 운영 심사 결과'),
+      ('연말 물류창고 보험사 긴급점검서','[속보] 연말 공동배송 계약 긴급 점검')
+    ) mapping(clue_title,event_title)
+    JOIN events event ON event.title = mapping.event_title
+    WHERE clue.title = mapping.clue_title AND clue.event_id IS NULL;
+    INSERT INTO app_schema_migrations(migration_key)
+    VALUES ('2026-09-27-link-intelligence-events');
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'game_events'::regclass AND conname = 'game_events_news_reveal_policy_check') THEN
+    ALTER TABLE game_events ADD CONSTRAINT game_events_news_reveal_policy_check CHECK (
+      news_reveal_offset_ms >= 0 AND (
+        (trigger_phase = 'INTRADAY' AND news_reveal_offset_ms < trigger_offset_ms)
+        OR (trigger_phase = 'CLOSE' AND trigger_offset_ms IS NULL)
+      )
+    );
+  END IF;
+END $$;
 DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM app_schema_migrations

@@ -48,7 +48,7 @@
           "displayOrder": 1,
           "triggerPhase": "INTRADAY",
           "triggerOffsetSeconds": 180,
-          "preannounceSeconds": 30
+          "newsRevealOffsetSeconds": 90
         },
         {
           "eventId": "22222222-2222-4222-8222-222222222222",
@@ -62,7 +62,7 @@
 }
 ```
 
-`triggerOffsetSeconds`와 `preannounceSeconds`는 서버의 라운드 시작 시각을 기준으로 계산합니다. 장중 사건은 거래 종료 및 다른 사건의 예고·거래정지 구간과 겹칠 수 없습니다. `CLOSE` 사건에는 두 시간 필드를 지정하지 않습니다.
+`newsRevealOffsetSeconds`는 월 시작 후 뉴스가 공개되는 초, `triggerOffsetSeconds`는 실제 주가가 변동되는 초입니다. 장중 사건은 `뉴스 공개 < 주가 변동 < 거래 종료`여야 하고 다른 사건의 뉴스 공개·거래정지 구간과 겹칠 수 없습니다. `CLOSE` 사건은 `triggerOffsetSeconds`를 보내지 않으며 거래 마감에 주가가 변동합니다. 마감 뉴스의 공개 시각은 `newsRevealOffsetSeconds`로 지정합니다. 서버는 구형 클라이언트의 `preannounceSeconds`도 읽지만 신규 화면과 요청에서는 사용하지 않습니다.
 
 19단계부터 사건은 수동으로만 배정합니다. 게임 시작과 서버 재시작은 저장된 배정을
 조회·실행할 뿐 새 사건을 고르거나 빈 달을 채우지 않습니다. 배정을 한 번도 저장하지
@@ -78,7 +78,7 @@ DB 구조 변경은 없습니다. `event_schedule_states.mode`의 과거 `RANDOM
 
 ## 장중 반영과 동시성
 
-1. 예고 시각에 `market:event:warning`을 전송합니다. Payload에는 `round`, `gameEventId`, `title`, `triggerPhase`, `scheduledAt`, `triggerOffsetSeconds`, `preannounceSeconds`가 포함됩니다.
+1. 뉴스 공개 시각에 결과와 등락률을 제외한 사전 기사로 `news:publish`를 전송합니다. 장중 사건은 같은 시점에 `market:event:warning`을 전송하며 Payload에는 `round`, `gameEventId`, `title`, `triggerPhase`, `scheduledAt`, `triggerOffsetSeconds`, `newsRevealOffsetSeconds`가 포함됩니다.
 2. 발생 시 서버가 신규 주문 접수를 즉시 막고, 이미 접수된 주문이 기존 가격으로 끝날 때까지 기다립니다.
 3. `trading:halt`를 전송하고 사건 적용과 모든 종목 가격 변경을 한 DB transaction으로 처리합니다.
 4. `market:event:breaking`, `event:result`, `stock:update`, `ranking:update` 순으로 갱신합니다.
@@ -90,8 +90,8 @@ DB 구조 변경은 없습니다. `event_schedule_states.mode`의 과거 `RANDOM
 
 | 이벤트 | 시점 |
 |---|---|
-| `news:publish` | 라운드 시작, 해당 라운드 사건 뉴스 공개 |
-| `market:event:warning` | 장중 사건 사전 예고 |
+| `news:publish` | 사건별 `newsRevealOffsetSeconds` 도달 시 사전 뉴스 공개 |
+| `market:event:warning` | 장중 뉴스 공개와 동시에 속보 알림 시작 |
 | `trading:halt` | 신규 주문 접수 중단 및 기존 주문 drain 완료 |
 | `market:event:breaking` | 장중 사건 DB 반영 완료 |
 | `event:result` | 사건 결과 공개(기존 Frontend 호환 포함) |
@@ -116,9 +116,9 @@ Socket은 실시간 알림이며 재접속 복구 기준은 PostgreSQL과 `GET /
 }
 ```
 
-- 발생 초는 월 시작 기준이며, `preannounceSeconds`는 **발생 몇 초 전**을 뜻합니다. 예고 시각은 `triggerOffsetSeconds - preannounceSeconds`입니다.
-- 장중 발생은 1초 이상, 예고 초는 0 이상이며 발생 초보다 작아야 합니다. 발생 시각 + 최소 거래정지 시간이 거래 종료보다 엄격히 작아야 합니다.
-- 같은 달의 `[예고 시작, 거래정지 종료)` 구간이 겹치면 거부합니다. 앞 구간 종료와 다음 구간 시작이 정확히 같은 경우는 허용합니다.
+- 뉴스 공개 초와 주가 변동 초는 모두 월 시작 기준 절대 초입니다.
+- 장중 주가 변동은 1초 이상이고 뉴스 공개보다 늦어야 합니다. 주가 변동 시각 + 최소 거래정지 시간이 거래 종료보다 엄격히 작아야 합니다.
+- 같은 달의 `[뉴스 공개, 거래정지 종료)` 구간이 겹치면 거부합니다. 앞 구간 종료와 다음 구간 시작이 정확히 같은 경우는 허용합니다.
 - 월별 최대 10개, `displayOrder`는 월 안에서 서로 다른 양의 정수입니다. 장중 실행 시각과 표시 순서는 별도입니다.
-- `CLOSE`에는 발생 초와 예고 초를 보내지 않습니다. 빈 `rounds` 저장은 사건 없는 게임을 명시적으로 설정합니다. 배정을 한 번도 설정하지 않아도 사건 없이 시작합니다.
+- `CLOSE`에는 주가 변동 초를 보내지 않고 뉴스 공개 초만 보냅니다. 빈 `rounds` 저장은 사건 없는 게임을 명시적으로 설정합니다. 배정을 한 번도 설정하지 않아도 사건 없이 시작합니다.
 - 프론트엔드 검사는 입력 안내이며 최종 유효성·동시 변경 판정은 서버가 수행합니다. 통신 실패 시 자동 재전송 없이 목록 재조회 후 초안과 비교합니다.

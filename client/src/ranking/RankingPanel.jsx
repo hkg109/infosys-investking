@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Panel from '../components/Panel'
 import { money } from '../game/model'
 import { getRanking, rankingFailure } from './api'
+import RefreshIconButton from '../components/RefreshIconButton'
 
 export default function RankingPanel({ userId, game, revision }) {
   const [state, setState] = useState({ userId, data: null, error: '' })
@@ -21,7 +22,7 @@ export default function RankingPanel({ userId, game, revision }) {
   return <Panel title={current.data?.ranking.final ? '최종 투자 결과' : '투자 순위'}>
     {current.error && <p className="form-error" role="alert">{current.error}</p>}
     {current.error && !current.data ? <p className="empty-state">아직 확인된 순위가 없습니다. 다시 확인해 주세요.</p> : <RankingResults data={current.data} finished={game?.status === 'FINISHED'} />}
-    <button type="button" className="secondary-button" onClick={() => setRetry(value => value + 1)}>순위 업데이트</button>
+    <RefreshIconButton label="순위 업데이트" onClick={() => setRetry(value => value + 1)} />
   </Panel>
 }
 

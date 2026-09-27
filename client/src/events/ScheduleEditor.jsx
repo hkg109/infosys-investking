@@ -25,7 +25,7 @@ export default function ScheduleEditor({ events, companies, schedule, constraint
     <h3>월별 사건 배정</h3>
     <p>한 달에 0~10개를 배정할 수 있습니다. 같은 사건은 전체 게임에서 한 번만 사용합니다. 배정되지 않은 달에는 사건이 없습니다. 게임 시작·서버 재시작 시 사건을 자동으로 추가하지 않습니다.</p>
     <p>배정 가능 사건 {eligible.length}개 / 전체 {events.length}개. 비활성 종목을 포함한 사건은 배정할 수 없습니다.</p>
-    <p>거래 시간 {constraints.tradingDurationMs / 1000}초 · 장중 사건 최소 거래정지 {constraints.haltDurationMs / 1000}초. 예고 시작부터 거래정지 종료까지 다른 사건과 겹치면 안 됩니다.</p>
+    <p>거래 시간 {constraints.tradingDurationMs / 1000}초 · 장중 사건 최소 거래정지 {constraints.haltDurationMs / 1000}초. 뉴스 공개부터 거래정지 종료까지 다른 사건과 겹치면 안 됩니다.</p>
     <fieldset disabled={!canEdit}>
       <legend>수동 배정 초안</legend>
       <p>목록을 다시 조회해도 초안은 유지됩니다. 아래 버튼으로 조회한 서버 배정을 초안에 불러올 수 있습니다.</p>
@@ -34,13 +34,16 @@ export default function ScheduleEditor({ events, companies, schedule, constraint
         <h4>배정 {index + 1}</h4>
         <label>월 {index + 1}<select value={row.round} onChange={e => update(index, 'round', e.target.value)}>{Array.from({length: constraints.totalRounds}, (_,i) => <option key={i+1} value={i+1}>{i+1}월</option>)}</select></label>
         <label>사건 {index + 1}<select value={row.eventId} onChange={e => update(index, 'eventId', e.target.value)}><option value="">사건 선택</option>{events.map(event => <option key={event.eventId} value={event.eventId} disabled={!eligible.some(e => e.eventId === event.eventId)}>{event.title}{!eligible.some(e => e.eventId === event.eventId) ? ' (비활성 종목 포함)' : ''}</option>)}</select></label>
-        <label>발생 구분 {index + 1}<select value={row.triggerPhase} onChange={e => update(index, 'triggerPhase', e.target.value)}><option value="CLOSE">마감 후</option><option value="INTRADAY">거래 중</option></select></label>
+        <label>주가 변동 구분 {index + 1}<select value={row.triggerPhase} onChange={e => update(index, 'triggerPhase', e.target.value)}><option value="CLOSE">거래 마감</option><option value="INTRADAY">거래 중</option></select></label>
         <label>표시·마감 처리 순서 {index + 1}<input inputMode="numeric" value={row.displayOrder} onChange={e => update(index, 'displayOrder', e.target.value)} /></label>
-        {row.triggerPhase === 'INTRADAY' && <><label>월 시작 후 발생 초 {index + 1}<input inputMode="numeric" value={row.triggerOffsetSeconds} onChange={e => update(index, 'triggerOffsetSeconds', e.target.value)} /></label><label>발생 몇 초 전 예고 {index + 1}<input inputMode="numeric" value={row.preannounceSeconds} onChange={e => update(index, 'preannounceSeconds', e.target.value)} /></label><p>예고: 월 시작 {Number(row.triggerOffsetSeconds) - Number(row.preannounceSeconds)}초 후 / 발생: {row.triggerOffsetSeconds || '—'}초 후</p></>}
+        <label>월 시작 후 뉴스 공개 초 {index + 1}<input inputMode="numeric" value={row.newsRevealOffsetSeconds} onChange={e => update(index, 'newsRevealOffsetSeconds', e.target.value)} /></label>
+        {row.triggerPhase === 'INTRADAY'
+          ? <label>월 시작 후 주가 변동 초 {index + 1}<input inputMode="numeric" value={row.triggerOffsetSeconds} onChange={e => update(index, 'triggerOffsetSeconds', e.target.value)} /></label>
+          : <p><strong>주가 변동:</strong> 거래 마감</p>}
         <button className="secondary-button" type="button" onClick={() => { setRows(list => list.filter((_,i) => i !== index)); setReview(null) }}>배정 {index + 1} 제거</button>
       </div>)}
       {!rows.length && <p>초안에 배정된 사건이 없습니다. 이 상태로 저장하면 전체 월을 사건 없이 진행합니다.</p>}
-      <button className="secondary-button" type="button" disabled={rows.length >= eligible.length} onClick={() => { setRows(list => [...list, { round: '1', eventId: '', displayOrder: String(Math.max(0,...list.filter(r=>r.round === '1').map(r=>Number(r.displayOrder)||0))+1), triggerPhase: 'CLOSE', triggerOffsetSeconds: '', preannounceSeconds: '0' }]); setReview(null) }}>배정 행 추가</button>
+      <button className="secondary-button" type="button" disabled={rows.length >= eligible.length} onClick={() => { setRows(list => [...list, { round: '1', eventId: '', displayOrder: String(Math.max(0,...list.filter(r=>r.round === '1').map(r=>Number(r.displayOrder)||0))+1), triggerPhase: 'CLOSE', triggerOffsetSeconds: '', newsRevealOffsetSeconds: '0' }]); setReview(null) }}>배정 행 추가</button>
       <button className="primary-button" type="button" onClick={() => prepare()}>수동 배정 검토</button>
     </fieldset>
     {error && <p className="form-error" role="alert">{error}</p>}

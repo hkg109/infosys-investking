@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import Panel from '../components/Panel'
 import { money } from '../game/model'
 import useEventNews, { currentEvents } from './useEventNews'
+import RefreshIconButton from '../components/RefreshIconButton'
 
 export { currentEvents } from './useEventNews'
 
@@ -26,7 +27,7 @@ export default function EventNews({ game, revision, focusRequest, feed: provided
     </header>
     {error && <p role="alert" className="form-error">{error}</p>}
     {!events.length ? <p className="empty-state">{game?.status === 'WAITING' ? '게임 시작 후 이번 달 뉴스가 공개됩니다.' : loading ? '이번 달 뉴스를 확인하고 있습니다.' : '이번 달에 배정된 사건이 없습니다.'}</p> : events.map(event => <EventArticle key={event.gameEventId || event.eventId} event={event} highlighted={focusRequest?.gameEventId === event.gameEventId} articleRef={node => { if (node) articles.current.set(event.gameEventId, node); else articles.current.delete(event.gameEventId) }} />)}
-    <button type="button" className="secondary-button newsroom-refresh" disabled={loading} onClick={refresh}>{loading ? '뉴스 업데이트 중…' : '뉴스 업데이트'}</button>
+    <RefreshIconButton label="뉴스 업데이트" loading={loading} className="newsroom-refresh" disabled={loading} onClick={refresh} />
   </Panel>
 }
 

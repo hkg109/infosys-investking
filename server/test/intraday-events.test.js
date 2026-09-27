@@ -129,7 +129,7 @@ test('PostgreSQL multi-event schedule supports empty rounds, intraday execution 
     triggerPhase: 'INTRADAY',
     scheduledAt: scheduled[0].scheduledAt,
     triggerOffsetSeconds: 10,
-    preannounceSeconds: 2,
+    newsRevealOffsetSeconds: 8,
   })
   scheduledTimers[1].callback()
   await coordinator.waitForIdle()

@@ -36,7 +36,7 @@ export function createEventRouter(database, engine, { adminPassword, clientUrl, 
   router.get('/current', async (_request, response, next) => {
     try {
       const game = engine.getSnapshot()
-      const events = await getRoundEvents(database, game.currentRound)
+      const events = await getRoundEvents(database, game.currentRound, undefined, { publishedOnly: true })
       response.json({ game, events, event: events[0] || null })
     } catch (error) {
       next(error)

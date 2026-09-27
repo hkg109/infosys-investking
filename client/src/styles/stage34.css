@@ -1,0 +1,73 @@
+.refresh-icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 9px;
+  border: 1px solid #b8c7dc;
+  border-radius: 10px;
+  color: #173b70;
+  background: #fff;
+  box-shadow: 0 5px 14px rgba(16, 45, 86, .08);
+  cursor: pointer;
+}
+.refresh-icon-button img { width: 22px; height: 22px; }
+.refresh-icon-button:hover:not(:disabled) { border-color: #315fd4; background: #edf3ff; transform: translateY(-1px); }
+.refresh-icon-button:focus-visible { outline: 3px solid #d99018; outline-offset: 2px; }
+.refresh-icon-button:disabled { cursor: not-allowed; opacity: .55; }
+.refresh-icon-button.is-loading img { animation: refresh-spin .8s linear infinite; }
+@keyframes refresh-spin { to { transform: rotate(360deg); } }
+
+.asset-status-bar {
+  position: sticky;
+  top: 0;
+  z-index: 105;
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  margin: 0 0 18px;
+  padding: 9px;
+  border: 1px solid #b8c7dc;
+  border-radius: 14px;
+  color: #fff;
+  background: linear-gradient(120deg, #0c1830, #173b70);
+  box-shadow: 0 12px 30px rgba(10, 24, 48, .2);
+}
+.asset-status-bar dl { display: grid; grid-template-columns: repeat(4, minmax(110px, 1fr)); flex: 1; margin: 0; }
+.asset-status-bar dl > div { min-width: 0; padding: 8px 14px; border-right: 1px solid rgba(255,255,255,.13); }
+.asset-status-bar dt { color: #abc2e8; font-size: .72rem; font-weight: 800; }
+.asset-status-bar dd { margin: 3px 0 0; overflow: hidden; font-weight: 850; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
+.sound-toggle { flex: 0 0 auto; min-height: 44px; border: 1px solid rgba(255,255,255,.25); border-radius: 9px; padding: 8px 12px; color: #fff; background: rgba(255,255,255,.09); font-weight: 800; cursor: pointer; }
+
+.order-launch-button { min-height: 54px; padding-inline: clamp(28px, 8vw, 76px); font-size: 1.05rem; box-shadow: 0 12px 28px rgba(35, 82, 190, .24); }
+.action-dialog-backdrop--centered { align-items: center; justify-content: center; padding: 24px; }
+.action-dialog--centered { width: min(1120px, 96vw); height: min(820px, 92dvh); border-radius: 18px; box-shadow: 0 28px 90px rgba(6, 18, 40, .42); animation: order-workspace-in .2s ease; }
+.order-workspace-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(280px, .85fr); gap: 22px; min-height: 100%; }
+.order-workspace-grid .order-form { min-width: 0; }
+.order-portfolio { min-width: 0; padding: 18px; border: 1px solid #cbd7e8; border-radius: 14px; background: #f5f8fd; }
+.order-portfolio h3 { margin: 2px 0 6px; }
+.order-portfolio ul { display: grid; gap: 8px; margin: 16px 0; padding: 0; list-style: none; }
+.order-portfolio li button { display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%; min-height: 62px; border: 1px solid #c7d3e5; border-radius: 10px; padding: 10px 12px; color: #15243c; background: #fff; text-align: left; cursor: pointer; }
+.order-portfolio li button[aria-pressed='true'] { border-color: #315fd4; box-shadow: 0 0 0 3px rgba(49,95,212,.14); }
+.order-portfolio li button > span { display: grid; gap: 2px; }
+.order-portfolio li button > span:last-child { text-align: right; }
+.order-portfolio small { color: #60708a; }
+.order-portfolio__cash { display: flex; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 14px; border-top: 1px solid #cbd7e8; }
+@keyframes order-workspace-in { from { opacity: 0; transform: translateY(14px) scale(.985); } }
+
+@media (max-width: 760px) {
+  .asset-status-bar { top: 0; overflow-x: auto; border-radius: 10px; }
+  .asset-status-bar dl { grid-template-columns: repeat(4, minmax(120px, 1fr)); }
+  .asset-status-bar dl > div { padding-inline: 10px; }
+  .sound-toggle { position: sticky; right: 0; background: #173b70; }
+  .action-dialog-backdrop--centered { align-items: flex-end; padding: 0; }
+  .action-dialog--centered { width: 100%; height: min(94dvh, 900px); border-radius: 20px 20px 0 0; }
+  .order-workspace-grid { grid-template-columns: 1fr; }
+  .order-portfolio { order: 2; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .refresh-icon-button.is-loading img { animation: none; }
+  .action-dialog--centered { animation: none; }
+}

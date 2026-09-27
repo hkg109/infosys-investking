@@ -8,7 +8,7 @@ const row = { eventId:'a', round:'1', displayOrder:'1', triggerPhase:'INTRADAY',
 test('manual schedule handles multiple events and empty rounds without sending close timing', () => {
   const body = scheduleInput([row, {...row,eventId:'b',displayOrder:'2',triggerPhase:'CLOSE'}], limits, events)
   assert.equal(body.rounds[0].events.length, 2)
-  assert.deepEqual(body.rounds[0].events[1], {eventId:'b',displayOrder:2,triggerPhase:'CLOSE'})
+  assert.deepEqual(body.rounds[0].events[1], {eventId:'b',displayOrder:2,triggerPhase:'CLOSE',newsRevealOffsetSeconds:0})
   assert.deepEqual(scheduleInput([],limits,events), {rounds:[]})
   assert.equal(scheduleDraft([{...row,triggerOffsetSeconds:null}])[0].triggerOffsetSeconds,'')
 })

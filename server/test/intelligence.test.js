@@ -8,7 +8,7 @@ import pg from 'pg'
 import '../src/config.js'
 import { ACTIVE_GAME_ID, loadGameState } from '../src/game-store.js'
 import { createIntelligenceRouter } from '../src/intelligence-routes.js'
-import { validateClue, saveClue, purchaseClue, getIntelligence } from '../src/intelligence.js'
+import { validateClue, saveClue, purchaseClue, getIntelligence, listClues } from '../src/intelligence.js'
 import { digestSessionToken, SESSION_COOKIE_NAME } from '../src/session-auth.js'
 import { createGameResetCoordinator } from '../src/game-reset.js'
 const dbOptions = { skip: !process.env.TEST_DATABASE_URL && 'Set TEST_DATABASE_URL for PostgreSQL integration tests', timeout: 30000 }
@@ -88,6 +88,25 @@ test('intelligence concurrent duplicate/different purchases serialize cash walle
   const mine=await getIntelligence(c.database,c.engine,other.id,100);assert.equal(mine.purchases.length,1);assert.ok([5,10].includes(mine.cash))
   await c.state('FINISHED')
   const retry=await c.buy(who,clue,999);assert.equal(retry.cash,10);assert.equal(retry.purchases.length,1)
+})
+test('event-linked intelligence disappears after its event while unrelated and purchased information remains safe',dbOptions,async t=>{
+  const c=await setup(t), who=await c.user(40), eventId=randomUUID(), gameEventId=randomUUID()
+  await c.database.query("INSERT INTO events(id,title,news,result) VALUES($1,'연동 사건','사전 뉴스','사건 결과')",[eventId])
+  await c.database.query(`INSERT INTO game_events(id,game_id,event_id,round_number,display_order,trigger_phase)
+    VALUES($1,$2,$3,1,1,'CLOSE')`,[gameEventId,ACTIVE_GAME_ID,eventId])
+  const linked=await c.create({title:'연동 정보',eventId})
+  const unrelated=await c.create({title:'가짜 정보',eventId:null})
+  const admin=(await listClues(c.database)).clues
+  assert.equal(admin.find(item=>item.clueId===linked.clueId).eventState,'UPCOMING')
+  assert.equal(admin.find(item=>item.clueId===unrelated.clueId).eventState,'UNRELATED')
+  await c.state('RUNNING')
+  assert.deepEqual((await getIntelligence(c.database,c.engine,who.id,100)).items.map(item=>item.clueId).sort(),[linked.clueId,unrelated.clueId].sort())
+  await c.buy(who,linked)
+  await c.database.query('UPDATE game_events SET applied_at=NOW() WHERE id=$1',[gameEventId])
+  const after=await getIntelligence(c.database,c.engine,who.id,100)
+  assert.deepEqual(after.items.map(item=>item.clueId),[unrelated.clueId])
+  assert.equal(after.purchases[0].clueId,linked.clueId)
+  await assert.rejects(c.buy(await c.user(40),linked),/CLUE_UNAVAILABLE/)
 })
 test('intelligence purchase rejects unavailable/changed/closed conditions without changing cash',dbOptions,async t=>{
   const c=await setup(t), who=await c.user(40), clue=await c.create(), future=await c.create({availableRound:2}), inactive=await c.create({isActive:false})

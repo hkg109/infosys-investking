@@ -4,6 +4,7 @@ import Panel from './Panel'
 import ActionDialog from './ActionDialog'
 import { money } from '../game/model'
 import { newOrderId, orderError, orderPreview, quantityValue, tradingBlock } from '../trading/model'
+import RefreshIconButton from './RefreshIconButton'
 
 export default function TradingPanel({ game, stale, trading, selectedCompanyId, onSelectCompany, orderIntent }) {
   const [localCompanyId, setLocalCompanyId] = useState('')
@@ -65,8 +66,9 @@ export default function TradingPanel({ game, stale, trading, selectedCompanyId, 
     </header>
     {blocked && <p className="trading-help" role="status">{blocked}</p>}
     {trading.error && <p className="form-error" role="alert">{trading.error}</p>}
-    <button className="primary-button" type="button" disabled={Boolean(blocked) || frozen} onClick={() => setOrderOpen(true)}>매수·매도 주문 열기</button>
-    <ActionDialog open={orderOpen} title="주식 주문" eyebrow="ORDER TICKET" onClose={() => { setOrderOpen(false); resetForm() }} busy={trading.pending} dirty={touched}>
+    <button className="primary-button order-launch-button" type="button" disabled={Boolean(blocked) || frozen} onClick={() => setOrderOpen(true)}>주문하기</button>
+    <ActionDialog open={orderOpen} title="주식 주문" eyebrow="ORDER WORKSPACE" onClose={() => { setOrderOpen(false); resetForm() }} busy={trading.pending} dirty={touched} centered width="large">
+    <div className="order-workspace-grid">
     <form onChange={() => setTouched(true)} className="order-form" onSubmit={submit} noValidate aria-busy={trading.pending}>
       <fieldset disabled={frozen || Boolean(blocked)}>
         <legend className="sr-only">주문 입력</legend>
@@ -103,6 +105,16 @@ export default function TradingPanel({ game, stale, trading, selectedCompanyId, 
         <button className="secondary-button" type="button" onClick={resetForm}>입력 초기화</button>
       </fieldset>
     </form>
+    <aside className="order-portfolio" aria-label="주문 연동 포트폴리오">
+      <header><p className="eyebrow">PORTFOLIO</p><h3>내 보유 종목</h3><p>종목을 선택하면 주문창에 바로 반영됩니다.</p></header>
+      {!trading.account?.holdings?.length ? <p className="empty-state">아직 보유한 주식이 없습니다.</p> : <ul>{trading.account.holdings.filter(item => item.quantity > 0).map(item => <li key={item.companyId}>
+        <button type="button" aria-pressed={companyId === item.companyId} onClick={() => { setCompanyId(item.companyId); setType('SELL'); setQuantityText('1'); setValidation('') }}>
+          <span><strong>{item.name}</strong><small>{item.companyId}</small></span><span>{item.quantity.toLocaleString('ko-KR')}주<strong>{money(item.marketValue)}</strong></span>
+        </button>
+      </li>)}</ul>}
+      <div className="order-portfolio__cash"><span>주문 가능 현금</span><strong>{money(trading.account?.cash)}</strong></div>
+    </aside>
+    </div>
     </ActionDialog>
     {trading.unresolved && <div className="order-unresolved" role="status">
       <p>{trading.unresolved.companyId} · {trading.unresolved.type === 'BUY' ? '매수' : '매도'} {trading.unresolved.quantity}주 주문을 확인 중입니다.</p>
@@ -117,6 +129,6 @@ export default function TradingPanel({ game, stale, trading, selectedCompanyId, 
       {Number.isInteger(resultHolding) && <p>체결 후 보유량 <strong>{resultHolding.toLocaleString('ko-KR')}주</strong></p>}
     </div>}
     {trading.recovery?.history?.length > 0 && <details className="order-history"><summary>최근 거래 내역 (최대 20건)</summary><ul>{trading.recovery.history.map(tx => <li key={tx.orderId}>{tx.companyId} · {tx.type === 'BUY' ? '매수' : '매도'} {tx.quantity}주 · {money(tx.totalPrice)}<br /><small>{new Date(tx.createdAt).toLocaleString('ko-KR')}</small></li>)}</ul></details>}
-    <button className="secondary-button trading-refresh" type="button" disabled={trading.pending} onClick={trading.refresh}>자산·종목 업데이트</button>
+    <RefreshIconButton label="자산·종목 업데이트" loading={trading.pending} className="trading-refresh" disabled={trading.pending} onClick={trading.refresh} />
   </Panel>
 }
