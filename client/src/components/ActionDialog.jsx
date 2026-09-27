@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 
-export default function ActionDialog({ open, title, eyebrow, children, onClose, busy = false, dirty = false, tone = 'default', width = 'medium' }) {
+export default function ActionDialog({ open, title, eyebrow, children, onClose, busy = false, dirty = false, tone = 'default', width = 'medium', hideClose = false }) {
   const titleId = useId()
   const dialogRef = useRef(null)
   const returnFocus = useRef(null)
@@ -53,7 +53,7 @@ export default function ActionDialog({ open, title, eyebrow, children, onClose, 
     <section ref={dialogRef} className={`action-dialog action-dialog--${width} action-dialog--${tone}`} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-busy={busy}>
       <header className="action-dialog__header">
         <div>{eyebrow && <p className="eyebrow">{eyebrow}</p>}<h2 id={titleId}>{title}</h2></div>
-        <button type="button" className="icon-button" data-dialog-close aria-label={`${title} 닫기`} disabled={busy} onClick={requestClose}><span aria-hidden="true">×</span></button>
+        {!hideClose && <button type="button" className="icon-button" data-dialog-close aria-label={`${title} 닫기`} disabled={busy} onClick={requestClose}><span aria-hidden="true">×</span></button>}
       </header>
       <div className="action-dialog__body">{children}</div>
       {confirmClose && <div className="action-dialog__guard" role="alertdialog" aria-label="작성 중인 내용 닫기 확인">
@@ -68,9 +68,9 @@ export function requestDialogClose(event) {
   event.currentTarget.closest('[role="dialog"]')?.querySelector('[data-dialog-close]')?.click()
 }
 
-export function ConfirmDialog({ open, title, children, onCancel, onConfirm, busy = false, confirmDisabled = false, confirmLabel = '확인', danger = false }) {
-  return <ActionDialog open={open} title={title} eyebrow="CONFIRM" onClose={onCancel} busy={busy} tone={danger ? 'danger' : 'default'} width="small">
+export function ConfirmDialog({ open, title, children, onCancel, onConfirm, busy = false, confirmDisabled = false, confirmLabel = '확인', cancelLabel = '취소', danger = false, hideClose = false }) {
+  return <ActionDialog open={open} title={title} eyebrow="CONFIRM" onClose={onCancel} busy={busy} tone={danger ? 'danger' : 'default'} width="small" hideClose={hideClose}>
     <div className="confirm-dialog__content">{children}</div>
-    <div className="dialog-actions"><button type="button" className="secondary-button" disabled={busy} onClick={onCancel}>취소</button><button type="button" className={danger ? 'danger-button' : 'primary-button'} disabled={busy || confirmDisabled} onClick={onConfirm}>{busy ? '처리 중...' : confirmLabel}</button></div>
+    <div className="dialog-actions"><button type="button" className="secondary-button" data-autofocus disabled={busy} onClick={onCancel}>{cancelLabel}</button><button type="button" className={danger ? 'danger-button' : 'primary-button'} disabled={busy || confirmDisabled} onClick={onConfirm}>{busy ? '처리 중...' : confirmLabel}</button></div>
   </ActionDialog>
 }

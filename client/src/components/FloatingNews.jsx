@@ -7,25 +7,34 @@ function browserStorage() {
   try { return window.localStorage } catch { return null }
 }
 
-export function FloatingNewsFeed({ game, events, error, loading, onRetry, onOpenFull }) {
+export function FloatingNewsFeed({ game, events, error, loading, onRetry, onOpenFull, focusRequest }) {
+  const articles = useRef(new Map())
+  useEffect(() => {
+    if (!focusRequest?.gameEventId) return
+    const article = articles.current.get(focusRequest.gameEventId)
+    if (!article) return
+    article.focus({ preventScroll: true })
+    article.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [events, focusRequest])
   return <div className="floating-news__feed">
     <div className="floating-news__summary">
       <div><span>MARKET WIRE</span><strong>{game?.currentRound > 0 ? `${game.currentRound}월 속보` : '시장 대기'}</strong></div>
       <button type="button" onClick={onOpenFull}>뉴스 탭 열기</button>
     </div>
     {error && <p role="alert" className="form-error">{error}</p>}
-    {!events.length ? <p className="floating-news__empty">{game?.status === 'WAITING' ? '게임 시작 후 뉴스가 공개됩니다.' : loading ? '이번 달 뉴스를 확인하고 있습니다.' : '이번 달에 공개된 뉴스가 없습니다.'}</p> : events.map(event => <EventArticle key={event.gameEventId || event.eventId} event={event} />)}
+    {!events.length ? <p className="floating-news__empty">{game?.status === 'WAITING' ? '게임 시작 후 뉴스가 공개됩니다.' : loading ? '이번 달 뉴스를 확인하고 있습니다.' : '이번 달에 공개된 뉴스가 없습니다.'}</p> : events.map(event => <EventArticle key={event.gameEventId || event.eventId} event={event} highlighted={focusRequest?.gameEventId === event.gameEventId} articleRef={node => { if (node) articles.current.set(event.gameEventId, node); else articles.current.delete(event.gameEventId) }} />)}
     <button type="button" className="floating-news__refresh" disabled={loading} onClick={onRetry}>{loading ? '확인 중…' : '뉴스 업데이트'}</button>
   </div>
 }
 
-export default function FloatingNews({ game, revision, onClose, onOpenFull }) {
+export default function FloatingNews({ game, revision, onClose, onOpenFull, feed: providedFeed, focusRequest }) {
   const initial = () => typeof window === 'undefined' ? defaultNewsRect() : loadNewsRect(browserStorage(), newsViewportSize(window))
   const [rect, setRect] = useState(initial)
   const [minimized, setMinimized] = useState(false)
   const rectRef = useRef(rect)
   const interaction = useRef(null)
-  const feed = useEventNews({ game, revision })
+  const fallbackFeed = useEventNews({ game, revision, enabled: !providedFeed })
+  const feed = providedFeed || fallbackFeed
 
   const updateRect = (next) => {
     const safe = clampNewsRect(next, typeof window === 'undefined' ? undefined : newsViewportSize(window))
@@ -102,7 +111,7 @@ export default function FloatingNews({ game, revision, onClose, onOpenFull }) {
         <button type="button" onClick={onClose}>닫기</button>
       </div>
     </header>
-    {!minimized && <FloatingNewsFeed game={game} events={feed.events} error={feed.error} loading={feed.loading} onRetry={feed.refresh} onOpenFull={onOpenFull} />}
+    {!minimized && <FloatingNewsFeed game={game} events={feed.events} error={feed.error} loading={feed.loading} onRetry={feed.refresh} onOpenFull={onOpenFull} focusRequest={focusRequest} />}
     {!minimized && <div className="floating-news__resize" role="separator" tabIndex="0" aria-label="뉴스 창 크기 조절 손잡이" title="드래그하거나 방향키로 뉴스 창 크기 조절" onPointerDown={event => begin('resize', event)} onPointerMove={move} onPointerUp={finish} onPointerCancel={finish} onKeyDown={event => keyboardAdjust('resize', event)} />}
   </aside>
 }

@@ -5,8 +5,9 @@ import useEventNews, { currentEvents } from './useEventNews'
 
 export { currentEvents } from './useEventNews'
 
-export default function EventNews({ game, revision, focusRequest }) {
-  const { events, error, loading, refresh } = useEventNews({ game, revision })
+export default function EventNews({ game, revision, focusRequest, feed: providedFeed, onOpenFloating }) {
+  const fallbackFeed = useEventNews({ game, revision, enabled: !providedFeed })
+  const { events, error, loading, refresh } = providedFeed || fallbackFeed
   const articles = useRef(new Map())
   useEffect(() => {
     if (!focusRequest?.gameEventId) return
@@ -21,7 +22,7 @@ export default function EventNews({ game, revision, focusRequest }) {
         <p className="newsroom-header__brand">INVESTKING MARKET</p>
         <p>{Number.isInteger(game?.currentRound) && game.currentRound > 0 ? `${game.currentRound}월 시장 브리핑` : '실시간 시장 브리핑'}</p>
       </div>
-      <span>LIVE NEWS</span>
+      <div className="newsroom-header__actions"><span>LIVE NEWS</span>{onOpenFloating && <button type="button" className="secondary-button" onClick={onOpenFloating}>뉴스 창으로 보기</button>}</div>
     </header>
     {error && <p role="alert" className="form-error">{error}</p>}
     {!events.length ? <p className="empty-state">{game?.status === 'WAITING' ? '게임 시작 후 이번 달 뉴스가 공개됩니다.' : loading ? '이번 달 뉴스를 확인하고 있습니다.' : '이번 달에 배정된 사건이 없습니다.'}</p> : events.map(event => <EventArticle key={event.gameEventId || event.eventId} event={event} highlighted={focusRequest?.gameEventId === event.gameEventId} articleRef={node => { if (node) articles.current.set(event.gameEventId, node); else articles.current.delete(event.gameEventId) }} />)}

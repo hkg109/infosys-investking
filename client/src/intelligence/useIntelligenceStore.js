@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { canBuy, intelligenceRequest, privateStoreFailure } from './api'
+import { intelligenceError } from './api'
 
 export default function useIntelligenceStore({ userId, game, revision, stale, onPurchased, enabled = true }) {
   const [state, setState] = useState({ userId, data: null, error: '', fresh: false })
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
+  const [purchaseError, setPurchaseError] = useState('')
   const [refreshVersion, setRefreshVersion] = useState(0)
   const lock = useRef(false), generation = useRef(0), sequence = useRef(0)
 
@@ -12,6 +14,7 @@ export default function useIntelligenceStore({ userId, game, revision, stale, on
     ++generation.current
     setState({ userId, data: null, error: '', fresh: false })
     setMessage('')
+    setPurchaseError('')
     setBusy(false)
     return () => { ++generation.current }
   }, [userId])
@@ -36,6 +39,7 @@ export default function useIntelligenceStore({ userId, game, revision, stale, on
   // working cash purchase while the realtime connection is reconnecting.
   const options = { status: game?.status, stale: !current.fresh, gameStale: stale, busy }
   const refresh = useCallback(() => setRefreshVersion(value => value + 1), [])
+  const clearPurchaseError = useCallback(() => setPurchaseError(''), [])
 
   const purchase = async item => {
     if (lock.current || !canBuy(current.data, item, options)) return false
@@ -44,6 +48,7 @@ export default function useIntelligenceStore({ userId, game, revision, stale, on
     ++sequence.current
     const owner = generation.current
     setMessage('')
+    setPurchaseError('')
     setState(previous => ({ ...previous, fresh: false, error: '' }))
     try {
       const data = await intelligenceRequest('/purchases', { method: 'POST', body: { clueId: item.clueId, expectedPrice: item.price } })
@@ -54,6 +59,7 @@ export default function useIntelligenceStore({ userId, game, revision, stale, on
       return true
     } catch (error) {
       if (owner === generation.current) {
+        setPurchaseError(intelligenceError(error))
         setState(previous => privateStoreFailure(previous, userId, error))
         setRefreshVersion(value => value + 1)
       }
@@ -64,5 +70,5 @@ export default function useIntelligenceStore({ userId, game, revision, stale, on
     }
   }
 
-  return { ...current, busy, message, options, purchase, refresh }
+  return { ...current, busy, message, purchaseError, options, purchase, refresh, clearPurchaseError }
 }

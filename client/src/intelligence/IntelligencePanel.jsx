@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useDraftGuard } from '../navigation/NavigationGuard'
 import Panel from '../components/Panel'
+import { ConfirmDialog } from '../components/ActionDialog'
 import { canBuy } from './api'
 import useIntelligenceStore from './useIntelligenceStore'
 
@@ -14,8 +15,15 @@ export function IntelligenceStorePanel({ store }) {
   const item = store.data?.items.find(candidate => candidate.clueId === review?.clueId)
   const priceChanged = Boolean(review && item?.price !== review.price)
   const confirmPurchase = async () => {
-    if (!item || priceChanged) { setReview(null); return }
+    if (!item || priceChanged) return
     if (await store.purchase(item)) setReview(null)
+  }
+  const openReview = selected => {
+    store.clearPurchaseError?.()
+    setReview({ clueId: selected.clueId, price: selected.price, title: selected.title })
+  }
+  const closeReview = () => {
+    if (!store.busy) { store.clearPurchaseError?.(); setReview(null) }
   }
   return <Panel title="정보 상점" className="intelligence-shop">
     <div className="intelligence-shop__intro">
@@ -28,14 +36,24 @@ export function IntelligenceStorePanel({ store }) {
     <button type="button" className="secondary-button intelligence-shop__refresh" disabled={store.busy} onClick={store.refresh}>{store.busy ? '구매 확인 중…' : '정보 상점 업데이트'}</button>
     {store.data ? <>
       {!store.data.purchaseOpen && <p>게임 진행 중에만 구매할 수 있습니다.</p>}
-      <StoreItems data={store.data} options={store.options} onReview={selected => setReview({ clueId: selected.clueId, price: selected.price, title: selected.title })} />
-      {review && <section className="end-confirmation" aria-label="정보 구매 확인"><h3>정보 구매 확인</h3><p>{review.title} · {review.price.toLocaleString('ko-KR')}원을 사용합니다. 구매한 정보는 보관함에 남습니다.</p>
-        {priceChanged && <p>가격이 변경되었습니다. 취소 후 다시 선택하세요.</p>}
-        <button type="button" className="secondary-button" disabled={store.busy} onClick={() => setReview(null)}>구매 취소</button>
-        <button type="button" className="primary-button" disabled={!canBuy(store.data, item, store.options) || priceChanged} onClick={confirmPurchase}>현금으로 구매 확정</button>
-      </section>}
+      <StoreItems data={store.data} options={store.options} onReview={openReview} />
+      <PurchaseDialog review={review} item={item} store={store} priceChanged={priceChanged} onCancel={closeReview} onConfirm={confirmPurchase} />
     </> : <p>{store.error ? '확인된 상점 정보가 없습니다.' : '정보 상점을 불러오고 있습니다.'}</p>}
   </Panel>
+}
+
+export function PurchaseDialog({ review, item, store, priceChanged = false, onCancel, onConfirm }) {
+  return <ConfirmDialog open={Boolean(review)} title="정보 구매" onCancel={onCancel} onConfirm={onConfirm} busy={store.busy} confirmDisabled={!canBuy(store.data, item, store.options) || priceChanged} confirmLabel="구매" hideClose>
+    <dl className="purchase-review">
+      <div><dt>정보</dt><dd>{review?.title}</dd></div>
+      <div><dt>구매 가격</dt><dd>{review?.price.toLocaleString('ko-KR')}원</dd></div>
+      <div><dt>현재 현금</dt><dd>{store.data.cash.toLocaleString('ko-KR')}원</dd></div>
+      <div><dt>구매 후 현금</dt><dd>{Math.max(0, store.data.cash - (review?.price || 0)).toLocaleString('ko-KR')}원</dd></div>
+    </dl>
+    <p>구매한 정보는 내 정보 보관함에 저장됩니다.</p>
+    {priceChanged && <p role="alert" className="form-error">가격이 변경되었습니다. 취소 후 최신 가격으로 다시 선택하세요.</p>}
+    {store.purchaseError && <p role="alert" className="form-error">{store.purchaseError} 자동으로 다시 구매하지 않았습니다.</p>}
+  </ConfirmDialog>
 }
 
 export function IntelligenceLibraryPanel({ store }) {
