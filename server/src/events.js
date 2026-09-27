@@ -19,7 +19,7 @@ const number = (value) => value === null || value === undefined ? null : Number(
 const date = (value) => value ? new Date(value).toISOString() : null
 
 function eventJson(row, effects = []) {
-  return { eventId: row.id, title: row.title, news: row.news, result: row.result, effects, createdAt: row.created_at, updatedAt: row.updated_at }
+  return { eventId: row.id, eventType: row.event_type || null, title: row.title, news: row.news, result: row.result, effects, createdAt: row.created_at, updatedAt: row.updated_at }
 }
 
 function scheduleJson(row) {
@@ -64,7 +64,9 @@ export function validateEventInput(body) {
     seen.add(companyId)
     return { companyId, changeRate: effect.changeRate }
   })
-  return { title, news, result, effects }
+  const eventType = body.eventType ?? null
+  if (eventType !== null && !['INTRADAY','CLOSE'].includes(eventType)) throw new EventError(400,'INVALID_EVENT')
+  return { title, news, result, effects, eventType }
 }
 
 async function withTransaction(database, work) {
@@ -106,7 +108,7 @@ export async function createEvent(database, input) {
   const event = validateEventInput(input)
   return withTransaction(database, async (client) => {
     const id = randomUUID()
-    await client.query('INSERT INTO events (id, title, news, result) VALUES ($1, $2, $3, $4)', [id, event.title, event.news, event.result])
+    await client.query('INSERT INTO events (id, title, news, result, event_type) VALUES ($1, $2, $3, $4, $5)', [id, event.title, event.news, event.result, event.eventType])
     await replaceEffects(client, id, event.effects)
     return eventJson((await client.query('SELECT * FROM events WHERE id = $1', [id])).rows[0], event.effects)
   })
@@ -116,7 +118,15 @@ export async function updateEvent(database, eventId, input) {
   const id = validateEventId(eventId)
   const event = validateEventInput(input)
   return withTransaction(database, async (client) => {
-    const updated = await client.query('UPDATE events SET title = $2, news = $3, result = $4, updated_at = NOW() WHERE id = $1 RETURNING *', [id, event.title, event.news, event.result])
+    await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [`event-schedule:${ACTIVE_GAME_ID}`])
+    const previous=(await client.query('SELECT event_type FROM events WHERE id=$1',[id])).rows[0]
+    if(previous?.event_type && event.eventType && previous.event_type!==event.eventType) throw new EventError(409,'EVENT_TYPE_MISMATCH')
+    const assigned = (await client.query('SELECT round_number,trigger_phase FROM game_events WHERE event_id=$1',[id])).rows
+    for (const row of assigned) {
+      validateMonthlyEffects(event.effects,row.round_number)
+      if(event.eventType && event.eventType!==row.trigger_phase) throw new EventError(409,'EVENT_TYPE_MISMATCH')
+    }
+    const updated = await client.query('UPDATE events SET title = $2, news = $3, result = $4, event_type=COALESCE($5,event_type), updated_at = NOW() WHERE id = $1 RETURNING *', [id, event.title, event.news, event.result,event.eventType])
     if (!updated.rows[0]) throw new EventError(404, 'EVENT_NOT_FOUND')
     await replaceEffects(client, id, event.effects)
     return eventJson(updated.rows[0], event.effects)
@@ -133,7 +143,7 @@ export async function deleteEvent(database, eventId) {
   }
 }
 
-function validateSchedule(input, { totalRounds, tradingDurationMs, haltDurationMs = DEFAULT_HALT_MS }) {
+export function validateSchedule(input, { totalRounds, tradingDurationMs, haltDurationMs = DEFAULT_HALT_MS }) {
   if (!Array.isArray(input?.rounds)) throw new EventError(400, 'INVALID_EVENT_SCHEDULE')
   const rounds = new Set()
   const events = new Set()
@@ -141,6 +151,7 @@ function validateSchedule(input, { totalRounds, tradingDurationMs, haltDurationM
   for (const group of input.rounds) {
     if (!Number.isInteger(group?.round) || group.round < 1 || group.round > totalRounds || rounds.has(group.round) || !Array.isArray(group.events) || group.events.length > 10) throw new EventError(400, 'INVALID_EVENT_SCHEDULE')
     rounds.add(group.round)
+    if(group.events.filter(e=>e?.triggerPhase==='INTRADAY').length>4) throw new EventError(400,'INTRADAY_COUNT_REQUIRED',{round:group.round})
     const orders = new Set()
     const windows = []
     for (let index = 0; index < group.events.length; index += 1) {
@@ -160,8 +171,11 @@ function validateSchedule(input, { totalRounds, tradingDurationMs, haltDurationM
       if (triggerPhase === 'INTRADAY') {
         if (!Number.isInteger(offset) || offset < 1 || offset * 1000 + haltDurationMs >= tradingDurationMs || newsReveal >= offset ||
             (item.newsRevealOffsetSeconds === undefined && item.preannounceSeconds !== undefined && (!Number.isInteger(item.preannounceSeconds) || item.preannounceSeconds < 1 || item.preannounceSeconds >= offset))) throw new EventError(400, 'INVALID_EVENT_SCHEDULE')
-        const window = { start: newsReveal * 1000, end: offset * 1000 + haltDurationMs }
-        if (windows.some((existing) => window.start < existing.end && window.end > existing.start)) throw new EventError(409, 'EVENT_SCHEDULE_CONFLICT', { round: group.round })
+        const window = { start: newsReveal * 1000, trigger: offset * 1000, end: offset * 1000 + haltDurationMs }
+        // A shared news release is safe when the actual trading halts remain separate.
+        if (windows.some((existing) => window.start === existing.start
+          ? window.trigger < existing.end && window.end > existing.trigger
+          : window.start < existing.end && window.end > existing.start)) throw new EventError(409, 'EVENT_SCHEDULE_CONFLICT', { round: group.round })
         windows.push(window)
       } else if (triggerPhase !== 'CLOSE' || (offset !== undefined && offset !== null) || newsReveal * 1000 >= tradingDurationMs) throw new EventError(400, 'INVALID_EVENT_SCHEDULE')
       rows.push({ round: group.round, eventId, displayOrder, triggerPhase, triggerOffsetMs: triggerPhase === 'INTRADAY' ? offset * 1000 : null,
@@ -169,6 +183,31 @@ function validateSchedule(input, { totalRounds, tradingDurationMs, haltDurationM
     }
   }
   return rows.sort((a, b) => a.round - b.round || a.displayOrder - b.displayOrder)
+}
+
+export function validateMonthlyEffects(effects, round) {
+  const limit = round <= 6 ? 30 : 50
+  if(effects.some(e=>Math.abs(Number(e.changeRate))>limit)) throw new EventError(400,'EVENT_RATE_LIMIT',{round,limit})
+}
+
+async function validateScheduledContent(client, rows) {
+  for(const row of rows) {
+    const event=(await client.query('SELECT event_type FROM events WHERE id=$1',[row.eventId])).rows[0]
+    if(event?.event_type && event.event_type!==row.triggerPhase) throw new EventError(409,'EVENT_TYPE_MISMATCH')
+    const effects=(await client.query('SELECT change_rate AS "changeRate" FROM event_effects WHERE event_id=$1',[row.eventId])).rows
+    validateMonthlyEffects(effects,row.round)
+  }
+}
+
+export function validateCompleteSchedule(rows,totalRounds) {
+  for(let round=1;round<=totalRounds;round++) {
+    const events=rows.filter(e=>e.round===round && e.triggerPhase==='INTRADAY').sort((a,b)=>a.triggerOffsetSeconds-b.triggerOffsetSeconds)
+    if(events.length<2||events.length>4) throw new EventError(400,'INTRADAY_COUNT_REQUIRED',{round})
+    for(let i=1;i<events.length;i++) for(const key of ['triggerOffsetSeconds','newsRevealOffsetSeconds']) {
+      const gap=events[i][key]-events[i-1][key]
+      if(gap<30||gap>80) throw new EventError(400,'EVENT_SPACING_INVALID',{round})
+    }
+  }
 }
 
 async function replaceSchedule(client, rows, gameId, mode) {
@@ -181,6 +220,7 @@ async function replaceSchedule(client, rows, gameId, mode) {
     const missing = ids.filter((id) => !foundIds.has(id))
     if (missing.length) throw new EventError(400, 'EVENT_NOT_FOUND', { eventIds: missing })
   }
+  await validateScheduledContent(client,rows)
   await client.query('DELETE FROM game_events WHERE game_id = $1', [gameId])
   for (const row of rows) await client.query(`INSERT INTO game_events
     (id, game_id, event_id, round_number, display_order, trigger_phase, trigger_offset_ms, preannounce_ms, news_reveal_offset_ms)
@@ -344,7 +384,14 @@ export function createEventCoordinator(database, io, { marketGate = null, getGam
     for (const item of items) await emitResult(await applyScheduledEvent(database, item.gameEventId), item.triggerPhase === 'INTRADAY')
   }
   return {
-    async prepareGameStart() { if (database) await getGameSchedule(database) },
+    async prepareGameStart() { if (database) {
+      const rows=await getGameSchedule(database)
+      const game=(await database.query('SELECT total_rounds,trading_duration_ms FROM games WHERE id=$1',[ACTIVE_GAME_ID])).rows[0]
+      validateCompleteSchedule(rows,game.total_rounds)
+      const groups=Array.from({length:game.total_rounds},(_,i)=>({round:i+1,events:rows.filter(r=>r.round===i+1)}))
+      validateSchedule({rounds:groups},{totalRounds:game.total_rounds,tradingDurationMs:game.trading_duration_ms,haltDurationMs})
+      await validateScheduledContent(database,rows)
+    } },
     async handleGameEvent({ name, payload }) {
       if (!database) return
       if (name === 'game:pause') cancelTimers()

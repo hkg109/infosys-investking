@@ -108,3 +108,13 @@ test('admin uses bearer and rejects malformed create/delete responses',async()=>
   await assert.rejects(intelligenceRequest('/admin',{method:'POST',password:'qa'}),/INVALID_RESPONSE/)
  }finally{globalThis.fetch=original}
 })
+
+test('expired library cards keep payment history but remove reading interaction',()=>{
+ const html=renderToStaticMarkup(createElement(IntelligenceLibrary,{purchases:[{...purchase,expired:true}]}))
+ assert.match(html,/지난 정보/)
+ assert.match(html,/intelligence-library__card--expired/)
+ assert.doesNotMatch(html,/<button/)
+ assert.doesNotMatch(html,/구매자 전용/)
+ const active=renderToStaticMarkup(createElement(IntelligenceLibrary,{purchases:[{...purchase,expired:false}]}))
+ assert.match(active,/정보 읽기/)
+})

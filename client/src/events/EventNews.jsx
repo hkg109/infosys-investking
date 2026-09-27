@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react'
+import { eventCountdown } from './countdown'
+import { useEffect, useRef, useMemo, useState } from 'react'
 import Panel from '../components/Panel'
 import { money } from '../game/model'
 import useEventNews, { currentEvents } from './useEventNews'
@@ -26,20 +27,23 @@ export default function EventNews({ game, revision, focusRequest, feed: provided
       <div className="newsroom-header__actions"><span>LIVE NEWS</span>{onOpenFloating && <button type="button" className="secondary-button" onClick={onOpenFloating}>뉴스 창으로 보기</button>}</div>
     </header>
     {error && <p role="alert" className="form-error">{error}</p>}
-    {!events.length ? <p className="empty-state">{game?.status === 'WAITING' ? '게임 시작 후 이번 달 뉴스가 공개됩니다.' : loading ? '이번 달 뉴스를 확인하고 있습니다.' : '이번 달에 배정된 사건이 없습니다.'}</p> : events.map(event => <EventArticle key={event.gameEventId || event.eventId} event={event} highlighted={focusRequest?.gameEventId === event.gameEventId} articleRef={node => { if (node) articles.current.set(event.gameEventId, node); else articles.current.delete(event.gameEventId) }} />)}
+    {!events.length ? <p className="empty-state">{game?.status === 'WAITING' ? '게임 시작 후 이번 달 뉴스가 공개됩니다.' : loading ? '이번 달 뉴스를 확인하고 있습니다.' : '이번 달에 배정된 사건이 없습니다.'}</p> : events.map(event => <EventArticle key={event.gameEventId || event.eventId} event={event} game={game} highlighted={focusRequest?.gameEventId === event.gameEventId} articleRef={node => { if (node) articles.current.set(event.gameEventId, node); else articles.current.delete(event.gameEventId) }} />)}
     <RefreshIconButton label="뉴스 업데이트" loading={loading} className="newsroom-refresh" disabled={loading} onClick={refresh} />
   </Panel>
 }
 
-export function EventArticle({ event, highlighted = false, articleRef }) {
+export function EventArticle({ event, game, highlighted = false, articleRef }) {
   const intraday = event.triggerPhase === 'INTRADAY'
-  const publication = publicationTime(event)
+  const [now, setNow] = useState(Date.now)
+  const receivedAt = useMemo(() => Date.now(), [game?.serverTime, game?.remainingSeconds, game?.status])
+  useEffect(() => { const timer=setInterval(()=>setNow(Date.now()),1000); return ()=>clearInterval(timer) }, [])
+  const countdown = eventCountdown(event,game,Math.max(0,(now-receivedAt)/1000))
   const changes = Array.isArray(event.changes) ? event.changes : []
   return <article ref={articleRef} tabIndex={highlighted ? -1 : undefined} className={`event-news market-article${intraday ? ' market-article--breaking' : ''}${highlighted ? ' market-article--focused' : ''}`}>
       <div className="market-article__meta">
         <span className={intraday ? 'news-badge news-badge--breaking' : 'news-badge'}>{intraday ? '장중 속보' : '마감 뉴스'}</span>
         <span>{event.round}월</span>
-        <time dateTime={publication.dateTime}>{publication.label}</time>
+        <span className="event-countdown">{countdown}</span>
         <span>{event.applied ? '결과 공개' : '결과 대기'}</span>
       </div>
       <h3>{event.title}</h3>

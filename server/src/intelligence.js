@@ -95,8 +95,12 @@ async function readStore(client, userId, engine, initialCash = 1_000_000) {
   const game = (await client.query('SELECT status,current_round FROM games WHERE id=$1', [ACTIVE_GAME_ID])).rows[0]
   if (!game) fail(503, 'GAME_UNAVAILABLE')
   const wallet = (await client.query('SELECT cash FROM wallets WHERE game_id=$1 AND user_id=$2', [ACTIVE_GAME_ID, userId])).rows[0]
-  const purchases = (await client.query(`SELECT * FROM intelligence_purchases WHERE game_id=$1 AND user_id=$2 ORDER BY purchased_at,clue_id`, [ACTIVE_GAME_ID, userId])).rows.map(row => ({
-    ...metadata(row), content: row.content, paidCash: Number(row.paid_cash), purchasedAt: new Date(row.purchased_at).toISOString(),
+  const purchases = (await client.query(`SELECT p.*, (g.status='FINISHED' OR (ge.id IS NOT NULL AND (ge.applied_at IS NOT NULL OR ge.round_number < g.current_round))) AS expired
+    FROM intelligence_purchases p JOIN games g ON g.id=p.game_id
+    LEFT JOIN intelligence_clues clue ON clue.id=p.clue_id
+    LEFT JOIN game_events ge ON ge.game_id=p.game_id AND ge.event_id=clue.event_id
+    WHERE p.game_id=$1 AND p.user_id=$2 ORDER BY p.purchased_at,p.clue_id`, [ACTIVE_GAME_ID, userId])).rows.map(row => ({
+    ...metadata(row), expired: Boolean(row.expired), content: row.content, paidCash: Number(row.paid_cash), purchasedAt: new Date(row.purchased_at).toISOString(),
   }))
   if (purchases.some(item => !integer(item.paidCash, 1, 1000000))) fail(503, 'INTELLIGENCE_DATA_OUT_OF_RANGE')
   const live = engine.getSnapshot(), round = Math.min(game.current_round, live.currentRound)
@@ -115,7 +119,7 @@ async function readStore(client, userId, engine, initialCash = 1_000_000) {
     cash,
     purchaseOpen,
     currentRound: Number(round),
-    items: rows.map(row => ({ ...metadata(row), relatedEvent: Boolean(row.event_id), canPurchase: purchaseOpen })),
+    items: rows.map(row => ({ ...metadata(row), title: `비공개 … ${['보고서','기록서','평가서','점검표','회의록'].find(suffix => row.title.endsWith(suffix)) || '자료'}`, summary: '구매 후 전체 제목과 내용을 확인할 수 있습니다.', relatedEvent: Boolean(row.event_id), canPurchase: purchaseOpen })),
     purchases,
   }
 }

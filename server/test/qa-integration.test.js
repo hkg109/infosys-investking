@@ -138,7 +138,7 @@ test('stage 11: concurrent HTTP orders, process crash recovery, events and final
   }
   assert.equal((await request('/events/admin/schedule', {admin:true,method:'PUT',body:{rounds:[{round:1,events:[
     {eventId:events[0],triggerPhase:'INTRADAY',triggerOffsetSeconds:10},
-    {eventId:events[1],triggerPhase:'INTRADAY',triggerOffsetSeconds:20},
+    {eventId:events[1],triggerPhase:'INTRADAY',triggerOffsetSeconds:42},
     {eventId:events[2],triggerPhase:'CLOSE'},
   ]}]}})).status,200)
   assert.equal((await control('start')).status,200)
@@ -188,7 +188,7 @@ test('stage 11: concurrent HTTP orders, process crash recovery, events and final
   assert.equal((await state)[0].status,'PAUSED'); socket.disconnect()
   assert.equal((await control('resume')).status,200); await feed(); await stop()
   // Simulate downtime with both intraday deadlines elapsed, while trading remains open.
-  await database.query("UPDATE games SET round_started_at=NOW()-INTERVAL '25 seconds',phase_ends_at=NOW()+INTERVAL '35 seconds'")
+  await database.query("UPDATE games SET round_started_at=NOW()-INTERVAL '47 seconds',phase_ends_at=NOW()+INTERVAL '13 seconds'")
   await start()
   assert.equal((await feed()).market[0].currentPrice,9900)
   const replay = await request('/trading/orders',{cookie:participants[0].cookie,body:orders[0]})
@@ -215,7 +215,7 @@ test('stage 11: concurrent HTTP orders, process crash recovery, events and final
   const nextUser = await request('/users/join',{body:{nickname:'next-game',pin:'1234'}})
   assert.equal((await request('/events/admin/schedule',{admin:true,method:'PUT',body:{rounds:[{round:1,events:[
     {eventId:events[0],triggerPhase:'INTRADAY',triggerOffsetSeconds:2},
-    {eventId:events[1],triggerPhase:'CLOSE'}, {eventId:events[2],triggerPhase:'CLOSE'},
+    {eventId:events[1],triggerPhase:'INTRADAY',triggerOffsetSeconds:34}, {eventId:events[2],triggerPhase:'CLOSE'},
   ]}]}})).status,200)
   const live = io(base,{path:'/api/socket.io',autoConnect:false,reconnection:false})
   sockets.push(live)

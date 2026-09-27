@@ -492,3 +492,11 @@ CREATE TABLE IF NOT EXISTS asset_adjustments (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS asset_adjustments_user_idx ON asset_adjustments(game_id,user_id,created_at DESC);
+
+-- Event identity is independent of the phase chosen by the schedule editor.
+ALTER TABLE events ADD COLUMN IF NOT EXISTS event_type TEXT;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='events'::regclass AND conname='events_event_type_check') THEN
+    ALTER TABLE events ADD CONSTRAINT events_event_type_check CHECK (event_type IS NULL OR event_type IN ('INTRADAY','CLOSE'));
+  END IF;
+END $$;

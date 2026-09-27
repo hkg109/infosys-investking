@@ -103,12 +103,12 @@ export function storeItemAction(state) {
 
 export function IntelligenceLibrary({ purchases }) {
   const [selected, setSelected] = useState(null)
-  const current = purchases.find(item => item.clueId === selected)
+  const current = purchases.find(item => item.clueId === selected && !item.expired)
   useEffect(() => { if (selected && !current) setSelected(null) }, [selected, current])
-  return <section className="intelligence-library" aria-label="구매한 정보">{purchases.length ? <ul className="intelligence-library__grid">{purchases.map((item, index) => <li key={item.clueId} className="intelligence-library__card">
-    <div className="intelligence-card__topline"><span className="intelligence-card__slot">ARCHIVE {String(index + 1).padStart(2, '0')}</span><span className="intelligence-card__state">수집 완료</span></div>
+  return <section className="intelligence-library" aria-label="구매한 정보">{purchases.length ? <ul className="intelligence-library__grid">{purchases.map((item, index) => <li key={item.clueId} className={`intelligence-library__card${item.expired ? " intelligence-library__card--expired" : ""}`}>
+    <div className="intelligence-card__topline"><span className="intelligence-card__slot">ARCHIVE {String(index + 1).padStart(2, '0')}</span><span className="intelligence-card__state">{item.expired ? "지난 정보" : "수집 완료"}</span></div>
     <h3>{item.title}</h3><dl><div><dt>구매 월</dt><dd>{item.availableRound}월 공개 정보</dd></div><div><dt>결제</dt><dd>{item.paidCash.toLocaleString('ko-KR')}원</dd></div></dl>
-    <button type="button" className="intelligence-card__action" onClick={() => setSelected(item.clueId)}>정보 읽기</button>
+    {!item.expired && <button type="button" className="intelligence-card__action" onClick={() => setSelected(item.clueId)}>정보 읽기</button>}
   </li>)}</ul> : <p>아직 구매한 정보가 없습니다.</p>}
   <ActionDialog open={Boolean(current)} title={current?.title || '구매 정보'} eyebrow="INTELLIGENCE ARCHIVE" onClose={() => setSelected(null)} width="medium">
     {current && <IntelligenceLibraryDetail item={current} />}

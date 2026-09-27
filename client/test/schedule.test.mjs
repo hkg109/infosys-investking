@@ -36,3 +36,12 @@ test('schedule API sends authenticated full replacement and rejects malformed su
     await assert.rejects(eventRequest('/admin/schedule'), /INVALID_RESPONSE/)
   } finally { globalThis.fetch=before }
 })
+
+test('three events share the 30-seconds-before-close release without overlapping halts', () => {
+  const constraints = { totalRounds: 12, tradingDurationMs: 270000, haltDurationMs: 3000 }
+  const rows = [250,258,266].map((offset,index) => ({ eventId: events[index].eventId, round:'3', displayOrder:String(index+1), triggerPhase:'INTRADAY', triggerOffsetSeconds:String(offset), newsRevealOffsetSeconds:'240' }))
+  const result = scheduleInput(rows,constraints,events)
+  assert.deepEqual(result.rounds[0].events.map(e=>e.newsRevealOffsetSeconds),[240,240,240])
+  assert.throws(()=>scheduleInput(rows.map((r,i)=>i===1?{...r,triggerOffsetSeconds:'252'}:r),constraints,events), /EVENT_SCHEDULE_CONFLICT/)
+  assert.throws(()=>scheduleInput(rows.map((r,i)=>i===2?{...r,triggerOffsetSeconds:'267'}:r),constraints,events), /INVALID_EVENT_SCHEDULE/)
+})

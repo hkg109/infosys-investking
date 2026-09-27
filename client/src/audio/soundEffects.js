@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 const STORAGE_KEY = 'investking:sound-muted'
 const patterns = {
   notification: [[660, .05], [880, .09]],
-  breaking: [[440, .07], [660, .07], [990, .14]],
+  breaking: [[1046, .36], [1046, .36], [1046, .36]],
   orderSuccess: [[520, .06], [780, .12]],
   purchaseSuccess: [[590, .06], [740, .06], [990, .13]],
   error: [[240, .09], [180, .16]],
@@ -31,14 +31,14 @@ export function playSound(name, muted = false) {
   pattern.forEach(([frequency, duration], index) => {
     const oscillator = audio.createOscillator()
     const gain = audio.createGain()
-    oscillator.type = index % 2 ? 'sine' : 'triangle'
+    oscillator.type = name === 'breaking' ? 'sine' : index % 2 ? 'sine' : 'triangle'
     oscillator.frequency.setValueAtTime(frequency, at)
     gain.gain.setValueAtTime(.0001, at)
     gain.gain.exponentialRampToValueAtTime(.055, at + .012)
     gain.gain.exponentialRampToValueAtTime(.0001, at + duration)
     oscillator.connect(gain).connect(audio.destination)
     oscillator.start(at); oscillator.stop(at + duration + .02)
-    at += duration
+    at += duration + (name === 'breaking' ? .15 : 0)
   })
 }
 
@@ -52,10 +52,16 @@ export function useSoundEffects({ game, notices = [], orderResult, purchases = [
     return () => { window.removeEventListener('pointerdown', unlock); window.removeEventListener('keydown', unlock) }
   }, [])
   useEffect(() => {
-    const fresh = notices.find(item => !previous.current.noticeIds.has(item.gameEventId) && item.state === 'WARNING')
-    if (fresh) playSound('breaking', muted)
-    previous.current.noticeIds = new Set(notices.map(item => item.gameEventId))
-  }, [notices, muted])
+    for (const notice of notices) {
+      if (notice.state !== 'WARNING') continue
+      const key = `${game?.startedAt || 'game'}:${notice.gameEventId}`
+      if (previous.current.noticeIds.has(key)) continue
+      previous.current.noticeIds.add(key)
+      let heard = false
+      try { heard = sessionStorage.getItem(`investking:heard:${key}`) === '1'; sessionStorage.setItem(`investking:heard:${key}`, '1') } catch {}
+      if (!heard) playSound('breaking', muted)
+    }
+  }, [notices, muted, game?.startedAt])
   useEffect(() => {
     if (orderResult?.orderId && previous.current.orderId !== orderResult.orderId) playSound('orderSuccess', muted)
     previous.current.orderId = orderResult?.orderId || null
