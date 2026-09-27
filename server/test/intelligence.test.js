@@ -193,7 +193,7 @@ test('real PostgreSQL HTTP responses expose cash and recover a lost purchase res
   const purchased=await c.request('/purchases',{method:'POST',who,body:{clueId:created.clueId,expectedPrice:10}})
   assert.equal(purchased.status,200)
   const recovered=await (await c.request('/me',{who})).json()
-  assert.equal(recovered.cash,30);assert.equal(recovered.purchases[0].content,input.content)
+  assert.equal(recovered.cash,30);assert.equal(recovered.items.length,0);assert.equal(recovered.purchases[0].content,input.content)
   assert.equal(recovered.purchases[0].paidCash,10)
   const separate=await (await c.request('/me',{who:other})).json()
   assert.equal(separate.cash,0);assert.deepEqual(separate.purchases,[])

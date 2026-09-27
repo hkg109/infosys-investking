@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useDraftGuard } from '../navigation/NavigationGuard'
 import Panel from '../components/Panel'
-import { ConfirmDialog } from '../components/ActionDialog'
+import ActionDialog, { ConfirmDialog } from '../components/ActionDialog'
 import { canBuy } from './api'
 import useIntelligenceStore from './useIntelligenceStore'
 import RefreshIconButton from '../components/RefreshIconButton'
@@ -26,6 +26,9 @@ export function IntelligenceStorePanel({ store }) {
   const closeReview = () => {
     if (!store.busy) { store.clearPurchaseError?.(); setReview(null) }
   }
+  useEffect(() => {
+    if (review && store.data && !item && !store.busy) setReview(null)
+  }, [review, item, store.data, store.busy])
   return <Panel title="정보 상점" className="intelligence-shop">
     <div className="intelligence-shop__intro">
       <p>시장에 공개되기 전 단서를 골라 현금으로 구매하세요.</p>
@@ -76,7 +79,7 @@ export function StoreItems({ data, options, onReview }) {
       }
       return <li key={item.clueId} className="intelligence-card" data-state={state}>
         <div className="intelligence-card__topline"><span className="intelligence-card__slot">SLOT {String(index + 1).padStart(2, '0')}</span><span className="intelligence-card__state">{labels[state]}</span></div>
-        <div className="intelligence-card__body"><h4>{item.title}</h4><p>{item.summary}</p></div>
+        <div className="intelligence-card__body"><h4>{item.title}</h4><p>{item.summary}</p>{item.relatedEvent && <span className="intelligence-card__link">미발생 사건 관련 정보</span>}</div>
         <dl className="intelligence-card__meta"><div><dt>가격</dt><dd>{item.price.toLocaleString('ko-KR')}원</dd></div><div><dt>공개</dt><dd>{item.availableRound}월</dd></div></dl>
         <button type="button" className="intelligence-card__action" disabled={!canBuy(data, item, options)} onClick={() => onReview(item)}>{storeItemAction(state)}</button>
       </li>
@@ -99,5 +102,20 @@ export function storeItemAction(state) {
 }
 
 export function IntelligenceLibrary({ purchases }) {
-  return <section aria-label="구매한 정보">{purchases.length ? <ul className="mission-list">{purchases.map(item => <li key={item.clueId}><h3>{item.title}</h3><p className="intelligence-content">{item.content}</p><p>{item.paidCash.toLocaleString('ko-KR')}원 사용 · <time dateTime={item.purchasedAt}>{new Date(item.purchasedAt).toLocaleString('ko-KR')}</time></p></li>)}</ul> : <p>아직 구매한 정보가 없습니다.</p>}</section>
+  const [selected, setSelected] = useState(null)
+  const current = purchases.find(item => item.clueId === selected)
+  useEffect(() => { if (selected && !current) setSelected(null) }, [selected, current])
+  return <section className="intelligence-library" aria-label="구매한 정보">{purchases.length ? <ul className="intelligence-library__grid">{purchases.map((item, index) => <li key={item.clueId} className="intelligence-library__card">
+    <div className="intelligence-card__topline"><span className="intelligence-card__slot">ARCHIVE {String(index + 1).padStart(2, '0')}</span><span className="intelligence-card__state">수집 완료</span></div>
+    <h3>{item.title}</h3><dl><div><dt>구매 월</dt><dd>{item.availableRound}월 공개 정보</dd></div><div><dt>결제</dt><dd>{item.paidCash.toLocaleString('ko-KR')}원</dd></div></dl>
+    <button type="button" className="intelligence-card__action" onClick={() => setSelected(item.clueId)}>정보 읽기</button>
+  </li>)}</ul> : <p>아직 구매한 정보가 없습니다.</p>}
+  <ActionDialog open={Boolean(current)} title={current?.title || '구매 정보'} eyebrow="INTELLIGENCE ARCHIVE" onClose={() => setSelected(null)} width="medium">
+    {current && <IntelligenceLibraryDetail item={current} />}
+  </ActionDialog>
+  </section>
+}
+
+export function IntelligenceLibraryDetail({ item }) {
+  return <article className="intelligence-library__detail"><p className="intelligence-library__summary">{item.summary}</p><div className="intelligence-content">{item.content}</div><footer>{item.paidCash.toLocaleString('ko-KR')}원 사용 · <time dateTime={item.purchasedAt}>{new Date(item.purchasedAt).toLocaleString('ko-KR')}</time></footer></article>
 }

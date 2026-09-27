@@ -26,12 +26,12 @@
   "cash":999990,
   "purchaseOpen":true,
   "currentRound":1,
-  "items":[{"clueId":"uuid","title":"수요 단서","summary":"공개 요약","price":10,"availableRound":1,"canPurchase":false}],
+  "items":[{"clueId":"uuid","title":"수요 단서","summary":"공개 요약","price":10,"availableRound":1,"canPurchase":true,"relatedEvent":true}],
   "purchases":[{"clueId":"uuid","title":"수요 단서","summary":"공개 요약","price":10,"availableRound":1,"content":"구매자 전용 본문","paidCash":10,"purchasedAt":"2026-09-19T00:00:00.000Z"}]
 }
 ```
 
-`items`에는 본문이 없으며 SQL에서도 본문을 선택하지 않습니다. `purchaseOpen`은 DB와 실행 중 게임 엔진이 모두 `RUNNING`일 때만 `true`이고, `currentRound`는 두 상태에서 확인된 안전한 현재 월입니다. `canPurchase`는 이 구매 가능 상태와 기존 구매 여부를 반영합니다. Frontend는 실시간 Socket이 재연결 중이더라도 새로 받은 이 응답을 구매 가능 여부의 기준으로 사용하며, 서버는 POST에서 모든 조건을 다시 검증합니다. 잔액 부족 여부는 `cash`와 `price`로 표시할 수 있습니다. 본문은 `purchases`에만 포함됩니다. 판매 중단된 구매도 보관함에 남습니다.
+`items`에는 본문과 이미 구매한 단서가 없으며 SQL에서도 본문을 선택하지 않습니다. 구매 성공 직후 해당 카드는 공개 상점에서 사라지고 `purchases`에만 남습니다. `relatedEvent`는 실제 사건에 연결된 정보인지 여부만 알리며 사건명·결과·상태는 공개하지 않습니다. `purchaseOpen`은 DB와 실행 중 게임 엔진이 모두 `RUNNING`일 때만 `true`이고, `currentRound`는 두 상태에서 확인된 안전한 현재 월입니다. `canPurchase`는 이 구매 가능 상태를 반영합니다. Frontend는 실시간 Socket이 재연결 중이더라도 새로 받은 이 응답을 구매 가능 여부의 기준으로 사용하며, 서버는 POST에서 모든 조건을 다시 검증합니다. 잔액 부족 여부는 `cash`와 `price`로 표시할 수 있습니다. 본문은 `purchases`에만 포함됩니다. 판매 중단된 구매도 보관함에 남습니다.
 
 ### POST `/api/intelligence/purchases`
 

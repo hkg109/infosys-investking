@@ -13,10 +13,10 @@ const data = { cash: 40, purchaseOpen: true, currentRound: 1, items: [item], pur
 const options = { status: 'RUNNING', stale: false, busy: false }
 const form = { title: ' 단서 ', summary: '요약', content: '본문\n두번째 줄', price: '10', availableRound: '1', isActive: true }
 const dir = await mkdtemp(join(process.cwd(), '.intelligence-test-'))
-let StoreItems, IntelligenceLibrary, IntelligenceStorePanel, IntelligenceLibraryPanel, storeItemState, storeItemAction
+let StoreItems, IntelligenceLibrary, IntelligenceLibraryDetail, IntelligenceStorePanel, IntelligenceLibraryPanel, storeItemState, storeItemAction
 try {
  await build({entryPoints:['src/intelligence/IntelligencePanel.jsx'],outfile:join(dir,'panel.mjs'),bundle:true,platform:'node',format:'esm',packages:'external',jsx:'automatic'})
- ;({StoreItems,IntelligenceLibrary,IntelligenceStorePanel,IntelligenceLibraryPanel,storeItemState,storeItemAction}=await import(pathToFileURL(join(dir,'panel.mjs')).href))
+ ;({StoreItems,IntelligenceLibrary,IntelligenceLibraryDetail,IntelligenceStorePanel,IntelligenceLibraryPanel,storeItemState,storeItemAction}=await import(pathToFileURL(join(dir,'panel.mjs')).href))
 } finally { await rm(dir,{recursive:true,force:true}) }
 test('intelligence is enabled after backend contract integration',()=>assert.equal(intelligenceEnabled,true))
 test('new intelligence uses the event cash price',()=>assert.equal(DEFAULT_INTELLIGENCE_PRICE,100000))
@@ -53,7 +53,9 @@ test('catalog never renders secret content and library escapes HTML',()=>{
  const html=renderToStaticMarkup(createElement(StoreItems,{data:{...data,items:[{...item,content:'HIDDEN'}]},options}))
  assert.doesNotMatch(html,/HIDDEN/)
  const library=renderToStaticMarkup(createElement(IntelligenceLibrary,{purchases:[purchase]}))
- assert.match(library,/&lt;script&gt;/);assert.doesNotMatch(library,/<script>/)
+ assert.match(library,/정보 읽기/);assert.doesNotMatch(library,/비밀|&lt;script&gt;/)
+ const detail=renderToStaticMarkup(createElement(IntelligenceLibraryDetail,{item:purchase}))
+ assert.match(detail,/&lt;script&gt;/);assert.doesNotMatch(detail,/<script>/)
  assert.match(renderToStaticMarkup(createElement(StoreItems,{data:{...data,cash:0},options})),/현금 부족/)
  assert.match(renderToStaticMarkup(createElement(StoreItems,{data:{...data,purchases:[purchase]},options})),/보관함에 있음/)
 })
@@ -77,7 +79,7 @@ test('store and purchased information render as separate route panels',()=>{
  const shop=renderToStaticMarkup(createElement(IntelligenceStorePanel,{store}))
  const library=renderToStaticMarkup(createElement(IntelligenceLibraryPanel,{store}))
  assert.match(shop,/정보 상점 업데이트/);assert.doesNotMatch(shop,/&lt;script&gt;/)
- assert.match(library,/보관함 업데이트/);assert.match(library,/&lt;script&gt;/)
+ assert.match(library,/보관함 업데이트/);assert.match(library,/정보 읽기/);assert.doesNotMatch(library,/&lt;script&gt;/)
 })
 test('purchase sends cookie and expected price only, returns authoritative balance and never retries',async()=>{
  const original=globalThis.fetch
