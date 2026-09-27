@@ -3,6 +3,7 @@ import Panel from '../components/Panel'
 import { money } from '../game/model'
 import { getAllPriceHistories, historyError } from './historyApi'
 import { chartGeometry, multiChartGeometry, multiPriceSeries, priceSeries } from './marketHistoryModel'
+import RefreshIconButton from '../components/RefreshIconButton'
 
 export function PriceChart({ series, companyName }) {
   const graph = chartGeometry(series)
@@ -112,6 +113,6 @@ export default function PriceHistoryPanel({ companyId = '', onCompanyChange = ()
     {state.loading && !state.data && <p role="status">전체 주가 이력을 불러오고 있습니다.</p>}
     {state.error && <p className="form-error" role="alert">{state.error}</p>}
     {state.data && <MultiPriceChart companies={groups} selectedCompanyId={companyId} />}
-    {state.error && <button type="button" className="secondary-button" onClick={() => setRetry(value => value + 1)}>주가 이력 업데이트</button>}
+    {state.error && <RefreshIconButton label="주가 이력 업데이트" onClick={() => setRetry(value => value + 1)} />}
   </Panel>
 }

@@ -40,17 +40,17 @@ test('admin controls require fresh permission and are disabled during a request'
   assert.equal((render({ canControl: false }).match(/disabled=""/g) || []).length, 4)
   assert.equal((render({ pending: true }).match(/disabled=""/g) || []).length, 4)
 })
-test('missing account data is distinct from a real zero balance and empty holdings', () => {
+test('dashboard keeps account totals out of the portfolio after moving them to the fixed asset bar', () => {
   const missing = renderToStaticMarkup(createElement(User, {}))
   assert.match(missing, /보유 주식 정보를 기다리고/)
   assert.doesNotMatch(missing, /1,000,000원|1위/)
   const zero = renderToStaticMarkup(createElement(User, { snapshot: { account: { cash: 0 }, holdings: [], news: [], stocks: [] } }))
-  assert.match(zero, /0원/)
+  assert.doesNotMatch(zero, /보유 현금|총자산|0원/)
   assert.match(zero, /아직 보유한 주식이 없습니다/)
 })
-test('server text is escaped and game end does not invent final rankings', () => {
+test('server text is escaped and the market does not duplicate game status or rankings', () => {
   const html = renderToStaticMarkup(createElement(User, { game: { status: 'FINISHED' }, snapshot: { stocks: [{ id: 'A', name: '<script>alert(1)</script>', currentPrice: 10000 }] } }))
-  assert.match(html, /게임이 종료되었습니다/)
+  assert.doesNotMatch(html, /게임이 종료되었습니다/)
   assert.match(html, /&lt;script&gt;/)
   assert.doesNotMatch(html, /<script>|1위/)
 })

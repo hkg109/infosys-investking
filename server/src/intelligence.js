@@ -13,17 +13,19 @@ export function validateClue(input, totalRounds) {
   const clean = value => typeof value === 'string' ? value.trim().normalize('NFC') : ''
   const title = clean(input?.title), summary = clean(input?.summary), content = clean(input?.content)
   const price = input?.price, availableRound = input?.availableRound, isActive = input?.isActive
+  const eventId = input?.eventId === null || input?.eventId === '' || input?.eventId === undefined ? null : clueId(input.eventId)
   if (!title || title.length > 100 || !summary || summary.length > 500 || !content || content.length > 5000 ||
       /[\p{Cc}\p{Cf}]/u.test(title + summary + content.replace(/\n/g, '')) ||
       !integer(price, 1, 1000000) || !integer(availableRound, 1, Math.min(totalRounds, 1000)) || typeof isActive !== 'boolean') fail(400, 'INVALID_CLUE')
-  return { title, summary, content, price, availableRound, isActive }
+  return { title, summary, content, price, availableRound, isActive, eventId }
 }
 function metadata(row) {
   const price = Number(row.price), availableRound = Number(row.available_round)
   if (!integer(price, 1, 1000000) || !integer(availableRound, 1, 1000)) fail(503, 'INTELLIGENCE_DATA_OUT_OF_RANGE')
   return { clueId: row.clue_id || row.id, title: row.title, summary: row.summary, price, availableRound }
 }
-const adminClue = row => ({ ...metadata(row), content: row.content, isActive: row.is_active })
+const adminClue = row => ({ ...metadata(row), content: row.content, isActive: row.is_active,
+  eventId: row.event_id || null, eventTitle: row.event_title || null, eventState: row.event_state || (row.event_id ? 'UNASSIGNED' : 'UNRELATED') })
 async function transaction(database, work, { readOnly = false } = {}) {
   const client = await database.connect()
   try {
@@ -48,7 +50,12 @@ function requireRunning(game) {
   if (game.row.status !== 'RUNNING' || game.live.status !== 'RUNNING') fail(409, 'PURCHASE_CLOSED')
 }
 export async function listClues(database) {
-  return { clues: (await database.query('SELECT * FROM intelligence_clues ORDER BY created_at, id')).rows.map(adminClue) }
+  return { clues: (await database.query(`SELECT clue.*, event.title AS event_title,
+    CASE WHEN clue.event_id IS NULL THEN 'UNRELATED' WHEN ge.applied_at IS NOT NULL THEN 'APPLIED'
+      WHEN ge.id IS NULL THEN 'UNASSIGNED' ELSE 'UPCOMING' END AS event_state
+    FROM intelligence_clues clue LEFT JOIN events event ON event.id=clue.event_id
+    LEFT JOIN game_events ge ON ge.event_id=clue.event_id AND ge.game_id=$1
+    ORDER BY clue.created_at,clue.id`, [ACTIVE_GAME_ID])).rows.map(adminClue) }
 }
 export async function saveClue(database, engine, id, input) {
   const selectedId = id === null ? null : clueId(id)
@@ -56,12 +63,13 @@ export async function saveClue(database, engine, id, input) {
     const game = await lockedGame(client, engine, true)
     requireWaiting(game)
     const clue = validateClue(input, Math.min(game.row.total_rounds, game.live.totalRounds))
-    const values = [clue.title, clue.summary, clue.content, clue.price, clue.availableRound, clue.isActive]
+    if (clue.eventId && !(await client.query('SELECT id FROM events WHERE id=$1', [clue.eventId])).rowCount) fail(400, 'EVENT_NOT_FOUND')
+    const values = [clue.title, clue.summary, clue.content, clue.price, clue.availableRound, clue.isActive, clue.eventId]
     const result = selectedId === null
-      ? await client.query(`INSERT INTO intelligence_clues(title,summary,content,price,available_round,is_active)
-          VALUES($1,$2,$3,$4,$5,$6) RETURNING *`, values)
-      : await client.query(`UPDATE intelligence_clues SET title=$1,summary=$2,content=$3,price=$4,available_round=$5,is_active=$6,updated_at=NOW()
-          WHERE id=$7 RETURNING *`, [...values, selectedId])
+      ? await client.query(`INSERT INTO intelligence_clues(title,summary,content,price,available_round,is_active,event_id)
+          VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *`, values)
+      : await client.query(`UPDATE intelligence_clues SET title=$1,summary=$2,content=$3,price=$4,available_round=$5,is_active=$6,event_id=$7,updated_at=NOW()
+          WHERE id=$8 RETURNING *`, [...values, selectedId])
     if (!result.rowCount) fail(404, 'CLUE_NOT_FOUND')
     requireWaiting({ ...game, live: engine.getSnapshot() })
     return { clue: adminClue(result.rows[0]) }
@@ -89,8 +97,11 @@ async function readStore(client, userId, engine, initialCash = 1_000_000) {
   const live = engine.getSnapshot(), round = Math.min(game.current_round, live.currentRound)
   const purchaseOpen = game.status === 'RUNNING' && live.status === 'RUNNING'
   // Query only public fields: unpurchased content is never loaded into catalog rows.
-  const rows = (await client.query(`SELECT id,title,summary,price,available_round FROM intelligence_clues
-    WHERE is_active AND available_round <= $1 ORDER BY available_round,created_at,id`, [round])).rows
+  const rows = (await client.query(`SELECT clue.id,clue.title,clue.summary,clue.price,clue.available_round FROM intelligence_clues clue
+    LEFT JOIN game_events ge ON ge.game_id=$2 AND ge.event_id=clue.event_id
+    WHERE clue.is_active AND clue.available_round <= $1 AND (
+      clue.event_id IS NULL OR ge.id IS NULL OR (ge.applied_at IS NULL AND ge.round_number >= $1)
+    ) ORDER BY clue.available_round,clue.created_at,clue.id`, [round, ACTIVE_GAME_ID])).rows
   const owned = new Set(purchases.map(p => p.clueId))
   const cash = Number(wallet?.cash ?? initialCash)
   if (!Number.isSafeInteger(cash) || cash < 0) fail(503, 'CASH_OUT_OF_RANGE')
@@ -124,8 +135,11 @@ export async function purchaseClue(database, engine, userId, input, initialCash 
     const existing = await client.query('SELECT clue_id FROM intelligence_purchases WHERE game_id=$1 AND user_id=$2 AND clue_id=$3', [ACTIVE_GAME_ID,userId,id])
     if (existing.rowCount) return readStore(client, userId, engine, initialCash)
     requireRunning({ ...game, live: engine.getSnapshot() })
-    const clue = (await client.query('SELECT * FROM intelligence_clues WHERE id=$1 FOR SHARE', [id])).rows[0]
+    const clue = (await client.query(`SELECT clue.*,ge.round_number AS event_round,ge.applied_at AS event_applied_at
+      FROM intelligence_clues clue LEFT JOIN game_events ge ON ge.game_id=$2 AND ge.event_id=clue.event_id
+      WHERE clue.id=$1 FOR SHARE OF clue`, [id, ACTIVE_GAME_ID])).rows[0]
     if (!clue || !clue.is_active || clue.available_round > Math.min(game.row.current_round, engine.getSnapshot().currentRound)) fail(409, 'CLUE_UNAVAILABLE')
+    if (clue.event_id && (clue.event_applied_at || (clue.event_round && clue.event_round < Math.min(game.row.current_round, engine.getSnapshot().currentRound)))) fail(409, 'CLUE_UNAVAILABLE')
     if (Number(clue.price) !== input.expectedPrice) fail(409, 'PRICE_CHANGED')
     if (BigInt(wallet.cash) < BigInt(clue.price)) fail(409, 'INSUFFICIENT_CASH')
     await client.query('UPDATE wallets SET cash=cash-$3,updated_at=NOW() WHERE game_id=$1 AND user_id=$2', [ACTIVE_GAME_ID,userId,clue.price])

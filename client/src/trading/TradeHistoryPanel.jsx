@@ -4,6 +4,7 @@ import ActionDialog from '../components/ActionDialog'
 import { money } from '../game/model'
 import { getTradeHistory, historyError } from './historyApi'
 import { signedMoney } from './marketHistoryModel'
+import RefreshIconButton from '../components/RefreshIconButton'
 
 export default function TradeHistoryPanel({ totalRounds = 12, revision }) {
   const [round, setRound] = useState(null)
@@ -30,7 +31,7 @@ export default function TradeHistoryPanel({ totalRounds = 12, revision }) {
         <option value="">전체 기간</option>
         {Array.from({ length: Math.max(1, totalRounds) }, (_, index) => <option key={index + 1} value={index + 1}>{index + 1}월</option>)}
       </select>
-      <button type="button" className="secondary-button" onClick={() => setRetry(value => value + 1)}>거래 내역 업데이트</button>
+      <RefreshIconButton label="거래 내역 업데이트" onClick={() => setRetry(value => value + 1)} />
     </div>
     {current.loading && !current.data && <p role="status">거래 내역을 불러오고 있습니다.</p>}
     {current.error && <p className="form-error" role="alert">{current.error}</p>}

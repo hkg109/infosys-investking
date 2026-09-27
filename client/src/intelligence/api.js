@@ -10,7 +10,9 @@ export function clueInput(form) {
   const content = form.content.trim().normalize('NFC')
   const price = Number(form.price), availableRound = Number(form.availableRound)
   if (!text(title, 100) || !text(summary, 500) || !text(content, 5000) || /[\p{Cc}\p{Cf}]/u.test(title + summary + content.replace(/\n/g, '')) || !/^\d+$/.test(String(form.price)) || !integer(price, 1, 1000000) || !/^\d+$/.test(String(form.availableRound)) || !integer(availableRound, 1, 1000) || typeof form.isActive !== 'boolean') throw new Error('INVALID_CLUE')
-  return { title, summary, content, price, availableRound, isActive: form.isActive }
+  const eventId = form.eventId || null
+  if (eventId !== null && (typeof eventId !== 'string' || !/^[0-9a-f-]{36}$/i.test(eventId))) throw new Error('INVALID_CLUE')
+  return { title, summary, content, price, availableRound, isActive: form.isActive, eventId }
 }
 function metadata(item) {
   if (!item || !text(item.clueId, 100) || !text(item.title, 100) || !text(item.summary, 500) || !integer(item.price, 1, 1000000) || !integer(item.availableRound, 1, 1000)) throw new Error('INVALID_RESPONSE')
@@ -38,7 +40,13 @@ export function validateClues(data) {
   if (!Array.isArray(data?.clues)) throw new Error('INVALID_RESPONSE')
   return { clues: unique(data.clues.map(item => {
     if (!item || !text(item.content, 5000) || typeof item.isActive !== 'boolean') throw new Error('INVALID_RESPONSE')
-    return { ...metadata(item), content: item.content, isActive: item.isActive }
+    const eventId = item.eventId ?? null
+    const eventTitle = item.eventTitle ?? null
+    const eventState = item.eventState ?? (eventId ? 'UNASSIGNED' : 'UNRELATED')
+    if (eventId !== null && typeof eventId !== 'string') throw new Error('INVALID_RESPONSE')
+    if (eventTitle !== null && typeof eventTitle !== 'string') throw new Error('INVALID_RESPONSE')
+    if (!['UNRELATED', 'UNASSIGNED', 'UPCOMING', 'APPLIED'].includes(eventState)) throw new Error('INVALID_RESPONSE')
+    return { ...metadata(item), content: item.content, isActive: item.isActive, eventId, eventTitle, eventState }
   })) }
 }
 export function canBuy(data, item, { stale, busy }) {

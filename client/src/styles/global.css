@@ -380,9 +380,6 @@ summary { cursor: pointer; min-height: 44px; padding: 12px 0; }
 .navigation-confirm { position: sticky; top: 0; z-index: 100; padding: 16px; border: 2px solid #bf7915; background: #fff6dd; color: #18233a; }
 .navigation-confirm button { margin: 4px; width: auto; }
 .page-heading h1:focus { outline: none; }
-.floating-timer--docked { position: relative; z-index: auto; width: 100%; min-height: 115px; touch-action: auto; box-shadow: none; }
-.game-clock-bar { display: grid; gap: 8px; }
-.game-clock-bar > button { justify-self: end; width: auto; }
 .section-navigation { position: relative; z-index: 90; background: #fff; }
 
 /* QA stage 13: one custom interaction language for every native control and action surface. */

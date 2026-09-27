@@ -46,7 +46,7 @@ test('broadcast HTTP is anonymous, uncached, origin restricted and read only', o
   assert.equal((await c.request({ method: 'POST' })).status, 404)
   assert.equal((await c.database.query('SELECT count(*)::int AS n FROM ranking_states')).rows[0].n, 0)
 })
-test('broadcast omits identities, future news, untriggered intraday content and unapplied effects', options, async t => {
+test('broadcast omits identities, future news, unrevealed intraday content and unapplied effects', options, async t => {
   const c = await setup(t), uid = randomUUID()
   await c.database.query("INSERT INTO users(id,nickname,pin_hash) VALUES($1,'PRIVATE_NICKNAME','PRIVATE_PIN')", [uid])
   await refreshRankings(c.database)
@@ -58,12 +58,14 @@ test('broadcast omits identities, future news, untriggered intraday content and 
     await c.database.query(`INSERT INTO game_events(id,game_id,event_id,round_number,display_order,trigger_phase,trigger_offset_ms)
       VALUES($1,$2,$3,$4,$5,$6,$7)`, [gid,ACTIVE_GAME_ID,eid,round,order,trigger,trigger==='INTRADAY'?30000:null])
   }
+  await c.database.query('UPDATE game_events SET warning_sent_at=NOW() WHERE id=$1', [ids[0]])
   let feed = await c.feed(), text = JSON.stringify(feed)
   for (const secret of [uid,'PRIVATE_NICKNAME','PRIVATE_PIN','HIDDEN_INTRADAY','FUTURE_NEWS','SECRET_RESULT','userId','nickname','cash','stockValue']) assert.equal(text.includes(secret), false, secret)
   assert.equal(feed.news[0].title, 'PUBLIC_NEWS'); assert.equal(feed.game.remainingSeconds, 13)
   assert.equal(feed.ranking.rankings[0].totalAssets, 1000000)
   await c.database.query('UPDATE game_events SET warning_sent_at=NOW() WHERE id=$1', [ids[1]])
-  feed = await c.feed(); assert.equal(feed.warnings.length, 1); assert.equal(JSON.stringify(feed).includes('HIDDEN_INTRADAY'), false)
+  feed = await c.feed(); assert.equal(feed.warnings.length, 1); assert.equal(feed.news.some(item => item.title === 'HIDDEN_INTRADAY'), true)
+  assert.equal(JSON.stringify(feed).includes('SECRET_RESULT_2_1'), false)
   await c.database.query('UPDATE game_events SET applied_at=NOW() WHERE id=$1', [ids[1]])
   await c.database.query(`INSERT INTO stock_price_changes(game_event_id,game_id,round_number,event_id,company_id,previous_price,new_price,change_rate)
     SELECT id,game_id,round_number,event_id,'A',10000,11000,10 FROM game_events WHERE id=$1`, [ids[1]])

@@ -2,6 +2,7 @@ import { Fragment, useState } from 'react'
 import Panel from '../components/Panel'
 import AssetEditor from './AssetEditor'
 import { money } from '../game/model'
+import RefreshIconButton from '../components/RefreshIconButton'
 export default function ParticipantPanel({ data, error, loading, updatedAt, refresh, stale, password, game, onBusy }) {
   const [selected, setSelected] = useState(null)
   return <Panel title="참가자 현황">
@@ -14,7 +15,7 @@ export default function ParticipantPanel({ data, error, loading, updatedAt, refr
       <ParticipantTable participants={data.participants} onSelect={setSelected} />
     </>}
     {!loading && !data && <p>확인된 참가자 정보가 없습니다.</p>}
-    <button className="secondary-button" type="button" onClick={refresh}>참가자 업데이트</button>
+    <RefreshIconButton label="참가자 업데이트" loading={loading} onClick={refresh} />
     {selected && <AssetEditor key={selected.userId} participant={selected} password={password} game={game} stale={stale} onBusy={onBusy} onChanged={refresh} onClose={() => setSelected(null)} />}
   </Panel>
 }

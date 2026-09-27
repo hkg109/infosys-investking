@@ -34,6 +34,7 @@ function scheduleJson(row) {
     displayOrder: number(row.display_order),
     triggerPhase: row.trigger_phase,
     triggerOffsetSeconds: row.trigger_offset_ms === null ? null : number(row.trigger_offset_ms) / 1000,
+    newsRevealOffsetSeconds: number(row.news_reveal_offset_ms) / 1000,
     preannounceSeconds: number(row.preannounce_ms) / 1000,
     scheduledAt: date(row.scheduled_at),
     warningSentAt: date(row.warning_sent_at),
@@ -150,16 +151,21 @@ function validateSchedule(input, { totalRounds, tradingDurationMs, haltDurationM
       const displayOrder = item.displayOrder ?? index + 1
       const triggerPhase = item.triggerPhase || 'CLOSE'
       const offset = item.triggerOffsetSeconds
-      const warning = item.preannounceSeconds ?? 0
-      if (!Number.isInteger(displayOrder) || displayOrder < 1 || orders.has(displayOrder) || !Number.isInteger(warning) || warning < 0) throw new EventError(400, 'INVALID_EVENT_SCHEDULE')
+      const legacyWarning = Number.isInteger(item.preannounceSeconds) ? item.preannounceSeconds : 1
+      const newsReveal = item.newsRevealOffsetSeconds ?? (triggerPhase === 'INTRADAY' && Number.isInteger(offset)
+        ? Math.max(0, offset - Math.max(1, legacyWarning))
+        : 0)
+      if (!Number.isInteger(displayOrder) || displayOrder < 1 || orders.has(displayOrder) || !Number.isInteger(newsReveal) || newsReveal < 0) throw new EventError(400, 'INVALID_EVENT_SCHEDULE')
       orders.add(displayOrder)
       if (triggerPhase === 'INTRADAY') {
-        if (!Number.isInteger(offset) || offset < 1 || offset * 1000 + haltDurationMs >= tradingDurationMs || warning >= offset) throw new EventError(400, 'INVALID_EVENT_SCHEDULE')
-        const window = { start: (offset - warning) * 1000, end: offset * 1000 + haltDurationMs }
+        if (!Number.isInteger(offset) || offset < 1 || offset * 1000 + haltDurationMs >= tradingDurationMs || newsReveal >= offset ||
+            (item.newsRevealOffsetSeconds === undefined && item.preannounceSeconds !== undefined && (!Number.isInteger(item.preannounceSeconds) || item.preannounceSeconds < 1 || item.preannounceSeconds >= offset))) throw new EventError(400, 'INVALID_EVENT_SCHEDULE')
+        const window = { start: newsReveal * 1000, end: offset * 1000 + haltDurationMs }
         if (windows.some((existing) => window.start < existing.end && window.end > existing.start)) throw new EventError(409, 'EVENT_SCHEDULE_CONFLICT', { round: group.round })
         windows.push(window)
-      } else if (triggerPhase !== 'CLOSE' || (offset !== undefined && offset !== null) || warning !== 0) throw new EventError(400, 'INVALID_EVENT_SCHEDULE')
-      rows.push({ round: group.round, eventId, displayOrder, triggerPhase, triggerOffsetMs: triggerPhase === 'INTRADAY' ? offset * 1000 : null, preannounceMs: warning * 1000 })
+      } else if (triggerPhase !== 'CLOSE' || (offset !== undefined && offset !== null) || newsReveal * 1000 >= tradingDurationMs) throw new EventError(400, 'INVALID_EVENT_SCHEDULE')
+      rows.push({ round: group.round, eventId, displayOrder, triggerPhase, triggerOffsetMs: triggerPhase === 'INTRADAY' ? offset * 1000 : null,
+        newsRevealOffsetMs: newsReveal * 1000, preannounceMs: triggerPhase === 'INTRADAY' ? (offset - newsReveal) * 1000 : 0 })
     }
   }
   return rows.sort((a, b) => a.round - b.round || a.displayOrder - b.displayOrder)
@@ -177,8 +183,8 @@ async function replaceSchedule(client, rows, gameId, mode) {
   }
   await client.query('DELETE FROM game_events WHERE game_id = $1', [gameId])
   for (const row of rows) await client.query(`INSERT INTO game_events
-    (id, game_id, event_id, round_number, display_order, trigger_phase, trigger_offset_ms, preannounce_ms)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, [randomUUID(), gameId, row.eventId, row.round, row.displayOrder, row.triggerPhase, row.triggerOffsetMs, row.preannounceMs])
+    (id, game_id, event_id, round_number, display_order, trigger_phase, trigger_offset_ms, preannounce_ms, news_reveal_offset_ms)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`, [randomUUID(), gameId, row.eventId, row.round, row.displayOrder, row.triggerPhase, row.triggerOffsetMs, row.preannounceMs, row.newsRevealOffsetMs])
   await client.query(`INSERT INTO event_schedule_states (game_id, mode, configured_at) VALUES ($1,$2,NOW())
     ON CONFLICT (game_id) DO UPDATE SET mode = EXCLUDED.mode, configured_at = NOW()`, [gameId, mode])
 }
@@ -195,10 +201,12 @@ export async function getGameSchedule(database, gameId = ACTIVE_GAME_ID) {
   return result.rows.map(scheduleJson)
 }
 
-export async function getRoundEvents(database, round, gameId = ACTIVE_GAME_ID) {
+export async function getRoundEvents(database, round, gameId = ACTIVE_GAME_ID, { publishedOnly = false } = {}) {
   if (!Number.isInteger(round) || round < 1) return []
   const schedule = await database.query(`SELECT ge.id AS game_event_id, ge.*, e.id AS event_id, e.title, e.news, e.result
-    FROM game_events ge JOIN events e ON e.id = ge.event_id WHERE ge.game_id = $1 AND ge.round_number = $2 ORDER BY ge.display_order`, [gameId, round])
+    FROM game_events ge JOIN events e ON e.id = ge.event_id WHERE ge.game_id = $1 AND ge.round_number = $2
+      AND ($3::boolean=FALSE OR ge.warning_sent_at IS NOT NULL OR ge.applied_at IS NOT NULL)
+    ORDER BY ge.display_order`, [gameId, round, publishedOnly])
   const output = []
   for (const row of schedule.rows) {
     const item = { ...scheduleJson(row), applied: Boolean(row.applied_at) }
@@ -286,28 +294,49 @@ export function createEventCoordinator(database, io, { marketGate = null, getGam
     triggerPhase: item.triggerPhase,
     scheduledAt: item.scheduledAt,
     triggerOffsetSeconds: item.triggerOffsetSeconds,
-    preannounceSeconds: item.preannounceSeconds,
+    newsRevealOffsetSeconds: item.newsRevealOffsetSeconds,
+  })
+  const newsPayload = (item) => ({
+    gameEventId: item.gameEventId,
+    round: item.round,
+    eventId: item.eventId,
+    title: item.title,
+    news: item.news,
+    displayOrder: item.displayOrder,
+    triggerPhase: item.triggerPhase,
+    triggerOffsetSeconds: item.triggerOffsetSeconds,
+    newsRevealOffsetSeconds: item.newsRevealOffsetSeconds,
+    scheduledAt: item.scheduledAt,
+    warningSentAt: new Date(now()).toISOString(),
   })
   const scheduleRound = async (game) => {
     cancelTimers()
     if (game.status !== 'RUNNING' || game.phase !== 'TRADING') return
     await setRoundTimes(database, game)
-    const items = (await getGameSchedule(database)).filter((item) => item.round === game.currentRound && item.triggerPhase === 'INTRADAY' && !item.appliedAt)
+    const items = (await getGameSchedule(database)).filter((item) => item.round === game.currentRound && !item.appliedAt)
+    const parsedRoundStartedAt = new Date(game.roundStartedAt).getTime()
+    const roundStartedAt = Number.isFinite(parsedRoundStartedAt) ? parsedRoundStartedAt : now()
     for (const item of items) {
       const eventAt = new Date(item.scheduledAt).getTime()
-      const warningAt = eventAt - item.preannounceSeconds * 1000
+      const warningAt = roundStartedAt + item.newsRevealOffsetSeconds * 1000
       if (!item.warningSentAt && warningAt > now()) {
         const warningTimer = setTimer(() => { timers.delete(warningTimer); queue(async () => {
           const warned = await database.query('UPDATE game_events SET warning_sent_at = NOW() WHERE id = $1 AND warning_sent_at IS NULL AND applied_at IS NULL RETURNING id', [item.gameEventId])
-          if (warned.rowCount) io.emit('market:event:warning', warningPayload(item))
+          if (warned.rowCount) {
+            io.emit('news:publish', newsPayload(item))
+            if (item.triggerPhase === 'INTRADAY') io.emit('market:event:warning', warningPayload(item))
+          }
         }) }, warningAt - now())
         warningTimer?.unref?.(); timers.add(warningTimer)
-      } else if (!item.warningSentAt && warningAt <= now() && eventAt > now()) {
+      } else if (!item.warningSentAt && warningAt <= now()) {
         await database.query('UPDATE game_events SET warning_sent_at = NOW() WHERE id = $1 AND warning_sent_at IS NULL', [item.gameEventId])
-        io.emit('market:event:warning', warningPayload(item))
+        io.emit('news:publish', newsPayload(item))
+        if (item.triggerPhase === 'INTRADAY' && eventAt > now()) io.emit('market:event:warning', warningPayload(item))
       }
-      const eventTimer = setTimer(() => { timers.delete(eventTimer); queue(() => applyIntraday(item)) }, Math.max(0, eventAt - now()))
-      eventTimer?.unref?.(); timers.add(eventTimer)
+      if (item.triggerPhase === 'INTRADAY') {
+        const eventTimer = setTimer(() => { timers.delete(eventTimer); queue(() => applyIntraday(item)) }, Math.max(0, eventAt - now()))
+        eventTimer?.unref?.(); timers.add(eventTimer)
+      }
     }
   }
   const applyClosing = async (round) => {
@@ -320,7 +349,6 @@ export function createEventCoordinator(database, io, { marketGate = null, getGam
       if (!database) return
       if (name === 'game:pause') cancelTimers()
       if (name === 'round:start' || name === 'game:resume') {
-        for (const event of await getRoundEvents(database, payload.currentRound)) io.emit('news:publish', event)
         await scheduleRound(payload)
       }
       if (name === 'trading:close') { cancelTimers(); await processing; await applyClosing(payload.currentRound) }

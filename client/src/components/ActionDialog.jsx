@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 
-export default function ActionDialog({ open, title, eyebrow, children, onClose, busy = false, dirty = false, tone = 'default', width = 'medium', hideClose = false }) {
+export default function ActionDialog({ open, title, eyebrow, children, onClose, busy = false, dirty = false, tone = 'default', width = 'medium', hideClose = false, centered = false }) {
   const titleId = useId()
   const dialogRef = useRef(null)
   const returnFocus = useRef(null)
@@ -49,8 +49,8 @@ export default function ActionDialog({ open, title, eyebrow, children, onClose, 
     if (dirtyRef.current) setConfirmClose(true)
     else closeRef.current()
   }
-  return <div className="action-dialog-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) requestClose() }}>
-    <section ref={dialogRef} className={`action-dialog action-dialog--${width} action-dialog--${tone}`} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-busy={busy}>
+  return <div className={`action-dialog-backdrop${centered ? ' action-dialog-backdrop--centered' : ''}`} onMouseDown={event => { if (event.target === event.currentTarget) requestClose() }}>
+    <section ref={dialogRef} className={`action-dialog action-dialog--${width} action-dialog--${tone}${centered ? ' action-dialog--centered' : ''}`} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-busy={busy}>
       <header className="action-dialog__header">
         <div>{eyebrow && <p className="eyebrow">{eyebrow}</p>}<h2 id={titleId}>{title}</h2></div>
         {!hideClose && <button type="button" className="icon-button" data-dialog-close aria-label={`${title} 닫기`} disabled={busy} onClick={requestClose}><span aria-hidden="true">×</span></button>}

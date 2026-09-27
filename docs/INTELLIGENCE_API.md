@@ -10,6 +10,7 @@
 - 관리자 생성·수정·비활성화는 WAITING에서만 가능합니다. 게임 DB 상태와 서버 엔진 상태를 모두 검사합니다.
 - 신규 구매는 RUNNING 상태에서만 가능합니다. TRADING/RESULT 단계 모두 허용하며 PAUSED/FINISHED/WAITING은 거부합니다. 주식 거래 마감 여부와 정보 구매 가능 여부는 별개입니다.
 - 활성 단서 중 현재 월 이하의 단서만 상점에 보입니다. 미래 단서는 제목·요약도 노출하지 않습니다.
+- `eventId`로 실제 사건에 연결된 단서는 해당 사건이 적용됐거나 배정 월이 지난 뒤 공개 상점에서 제외됩니다. `eventId=null`은 `연관없음` 가짜 정보이며 사건 상태와 무관하게 공개 월·활성 상태만 따릅니다.
 - 비활성화는 신규 판매 중단입니다. 구매 시 제목·요약·본문·가격을 복사해 보관하므로 원본 변경·비활성화 후에도 기존 구매 내용이 유지됩니다.
 
 ## 사용자 API
@@ -56,10 +57,10 @@
 생성·수정 요청:
 
 ```json
-{"title":"수요 단서","summary":"공개 요약","content":"구매자 전용 본문","price":10,"availableRound":1,"isActive":true}
+{"title":"수요 단서","summary":"공개 요약","content":"구매자 전용 본문","price":10,"availableRound":1,"isActive":true,"eventId":"11111111-1111-4111-8111-111111111111"}
 ```
 
-관리자 단서 응답은 요청 필드에 `clueId`를 추가한 형식입니다. DELETE로 비활성화한 단서는 PUT의 `isActive: true`로 재활성화합니다.
+`eventId`는 실제 사건 UUID 또는 `null`입니다. 관리자 단서 응답에는 `clueId`와 함께 `eventTitle`, `eventState`가 추가됩니다. `eventState`는 `UNRELATED`, `UNASSIGNED`, `UPCOMING`, `APPLIED` 중 하나입니다. DELETE로 비활성화한 단서는 PUT의 `isActive: true`로 재활성화합니다.
 
 ## 오류
 
@@ -81,6 +82,7 @@
 ## DB·동시성·복구
 
 - `intelligence_purchases.paid_cash`를 추가합니다. 기존 `paid_points` 구매는 가격을 현금 지불 기록으로 이관하며 원본 열은 호환성을 위해 nullable로 보존합니다. `npm --prefix server run db:migrate`를 실행해야 합니다.
+- `intelligence_clues.event_id` nullable FK를 추가합니다. 사건 삭제 시 단서는 보존되고 `event_id`만 `NULL`로 바뀝니다. 기존 행사 단서는 제목 기반의 1회성 idempotent migration으로 현재 사건과 연결합니다.
 - 22단계 가격 이관은 구매 이력이 없는 활성 단서만 한 번 100,000원으로 변경합니다. 구매 스냅샷은 변경하지 않으며, 이후 관리자가 수정한 가격도 반복 실행되는 스키마가 덮어쓰지 않습니다.
 - 구매 기본키 `(game_id,user_id,clue_id)`, 사용자 주문 advisory lock, 현금 지갑 행 잠금으로 같은 단서 중복 차감과 주식 주문·다른 정보 구매의 동시 초과 지출을 방지합니다.
 - 차감·구매 기록은 하나의 Transaction으로 처리합니다. 중간 SQL 실패 또는 처리 중 게임 일시정지/종료 확인 시 rollback합니다.

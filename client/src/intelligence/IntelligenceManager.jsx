@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import Panel from '../components/Panel'
 import ActionDialog, { ConfirmDialog, requestDialogClose } from '../components/ActionDialog'
 import { DEFAULT_INTELLIGENCE_PRICE, clueInput, intelligenceError, intelligenceRequest } from './api'
-const blank = () => ({ title: '', summary: '', content: '', price: String(DEFAULT_INTELLIGENCE_PRICE), availableRound: '1', isActive: true })
+const blank = () => ({ title: '', summary: '', content: '', price: String(DEFAULT_INTELLIGENCE_PRICE), availableRound: '1', isActive: true, eventId: null })
 export default function IntelligenceManager({ password, game, stale, onBusy }) {
   const [clues, setClues] = useState(null), [fresh, setFresh] = useState(false)
   const [form, setForm] = useState(blank), [editing, setEditing] = useState(null)

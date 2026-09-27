@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { getBroadcast } from '../broadcast/api'
 import { money } from '../game/model'
 import Panel from '../components/Panel'
+import RefreshIconButton from '../components/RefreshIconButton'
 export default function AdminResults({ revision }) {
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
@@ -23,7 +24,7 @@ export default function AdminResults({ revision }) {
     <Panel title={data?.ranking.final ? '확정된 최종 순위' : '현재 순위'}>
       <p>초기화 전에 결과를 확인하세요. 이름은 참가자 메뉴에서 확인할 수 있습니다.</p>
       {data?.ranking.rankings.length ? <ol>{data.ranking.rankings.map((row, index) => <li key={index}>{row.rank}위 · {money(row.totalAssets)}</li>)}</ol> : <p>집계된 순위가 없습니다.</p>}
-      <button type="button" className="secondary-button" onClick={() => setRetry(n => n + 1)}>결과 업데이트</button>
+      <RefreshIconButton label="결과 업데이트" onClick={() => setRetry(n => n + 1)} />
     </Panel>
   </>
 }

@@ -4,6 +4,7 @@ import Panel from '../components/Panel'
 import { ConfirmDialog } from '../components/ActionDialog'
 import { canBuy } from './api'
 import useIntelligenceStore from './useIntelligenceStore'
+import RefreshIconButton from '../components/RefreshIconButton'
 
 export default function IntelligencePanel(props) {
   return <IntelligenceStorePanel store={useIntelligenceStore(props)} />
@@ -33,7 +34,7 @@ export function IntelligenceStorePanel({ store }) {
     {store.error && <p role="alert" className="form-error">{store.error} 구매 요청은 자동 재전송하지 않습니다. 보관함과 잔액을 확인하세요.</p>}
     {!store.fresh && store.data && <p>마지막으로 확인한 정보입니다. 최신 조회가 완료될 때까지 구매할 수 없습니다.</p>}
     {store.message && <p role="status" className="intelligence-shop__status">{store.message}</p>}
-    <button type="button" className="secondary-button intelligence-shop__refresh" disabled={store.busy} onClick={store.refresh}>{store.busy ? '구매 확인 중…' : '정보 상점 업데이트'}</button>
+    <RefreshIconButton label="정보 상점 업데이트" loading={store.busy} className="intelligence-shop__refresh" disabled={store.busy} onClick={store.refresh} />
     {store.data ? <>
       {!store.data.purchaseOpen && <p>게임 진행 중에만 구매할 수 있습니다.</p>}
       <StoreItems data={store.data} options={store.options} onReview={openReview} />
@@ -60,7 +61,7 @@ export function IntelligenceLibraryPanel({ store }) {
   return <Panel title="내 정보 보관함">
     <p>구매를 완료한 정보와 구매 당시 결제 금액을 확인할 수 있습니다.</p>
     {store.error && <p role="alert" className="form-error">{store.error}</p>}
-    <button type="button" className="secondary-button" disabled={store.busy} onClick={store.refresh}>보관함 업데이트</button>
+    <RefreshIconButton label="보관함 업데이트" loading={store.busy} disabled={store.busy} onClick={store.refresh} />
     {store.data ? <IntelligenceLibrary purchases={store.data.purchases} /> : <p>{store.error ? '확인된 구매 정보가 없습니다.' : '보관함을 불러오고 있습니다.'}</p>}
   </Panel>
 }

@@ -57,7 +57,7 @@ test('healthy connection is compact; disconnected and failed states retain retry
 test('unresolved and pending orders disable the custom order surface', () => {
   for (const extra of [{ pending: true }, { unresolved: { orderId: 'test', companyId: 'A', quantity: 2, type: 'BUY' } }]) {
     const html = renderToStaticMarkup(createElement(Trading, { game: { status: 'RUNNING', tradingOpen: true }, trading: { ready: true, companies: [], account: { cash: 10, holdings: [] }, ...extra } }))
-    assert.match(html, /<button class="primary-button" type="button" disabled="">매수·매도 주문 열기<\/button>/)
+    assert.match(html, /<button class="primary-button order-launch-button" type="button" disabled="">주문하기<\/button>/)
     assert.doesNotMatch(html, /입력 초기화/)
   }
 })

@@ -24,10 +24,11 @@ import CompanySelectMenu from '../components/CompanySelectMenu'
 import MarketEventNotifications from '../components/MarketEventNotifications'
 import useEventNews from '../events/useEventNews'
 import WaitingGameNotice from '../components/WaitingGameNotice'
+import AssetStatusBar from '../components/AssetStatusBar'
+import { useSoundEffects } from '../audio/soundEffects'
 
 function GamePage() {
   const navigate = useNavigate()
-  const [floatingClock, setFloatingClock] = useState(false)
   const [floatingNews, setFloatingNews] = useState(false)
   const [newsFocus, setNewsFocus] = useState(null)
   const newsFocusSequence = useRef(0)
@@ -43,6 +44,13 @@ function GamePage() {
     stocks: trading.companies?.map((item) => ({ ...item, id: item.companyId })),
     holdings: trading.account?.holdings.filter((item) => item.quantity > 0),
   }
+  const sounds = useSoundEffects({
+    game: gameState.game,
+    notices: gameState.marketNotices,
+    orderResult: trading.result,
+    purchases: intelligence.data?.purchases || [],
+    error: trading.error || intelligence.error || gameState.error,
+  })
   const [selectedCompanyId, setSelectedCompanyId] = useState('')
   const [chartCompanyId, setChartCompanyId] = useState('')
   const [orderIntent, setOrderIntent] = useState(null)
@@ -92,8 +100,7 @@ function GamePage() {
   const screens = {
     market: (<UserDashboard showHoldings={false} game={gameState.game} snapshot={snapshot} selectedCompanyId={selectedCompanyId} onSelectCompany={id => { setSelectedCompanyId(id); navigate('/game/orders') }} />),
     news: (<EventNews game={gameState.game} revision={gameState.snapshot} focusRequest={newsFocus} feed={newsFeed} onOpenFloating={() => setFloatingNews(true)} />),
-    orders: (<><div className="game-context-actions"><button type="button" className="secondary-button" aria-pressed={floatingNews} onClick={() => setFloatingNews(value => !value)}>{floatingNews ? '뉴스 창 닫기' : '뉴스 창 열기'}</button></div><UserDashboard showMarket={false} game={gameState.game} snapshot={snapshot} selectedCompanyId={selectedCompanyId} onSelectCompany={id => { setSelectedCompanyId(id); navigate('/game/orders') }} onOrder={openPortfolioOrder} />
-<TradingPanel game={gameState.game} stale={gameState.loading || Boolean(gameState.error)} trading={trading} selectedCompanyId={selectedCompanyId} onSelectCompany={setSelectedCompanyId} orderIntent={orderIntent} /></>),
+    orders: (<><TradingPanel game={gameState.game} stale={gameState.loading || Boolean(gameState.error)} trading={trading} selectedCompanyId={selectedCompanyId} onSelectCompany={setSelectedCompanyId} orderIntent={orderIntent} /><div className="game-context-actions"><button type="button" className="secondary-button" aria-pressed={floatingNews} onClick={() => setFloatingNews(value => !value)}>{floatingNews ? '뉴스 창 닫기' : '뉴스 창 열기'}</button></div><UserDashboard showMarket={false} game={gameState.game} snapshot={snapshot} selectedCompanyId={selectedCompanyId} onSelectCompany={id => { setSelectedCompanyId(id); navigate('/game/orders') }} onOrder={openPortfolioOrder} /></>),
     history: (<><CompanySelectMenu companies={trading.companies || []} value={chartCompanyId} onChange={setChartCompanyId} placeholder="전체 기업 비교" /><PriceHistoryPanel companyId={chartCompanyId} onCompanyChange={setChartCompanyId} revision={gameState.snapshot} /><TradeHistoryPanel totalRounds={gameState.game?.totalRounds} revision={trading.account} /></>),
     ranking: (<RankingPanel userId={user.userId} game={gameState.game} revision={gameState.snapshot} />),
     intelligence: (intelligenceEnabled && <IntelligenceStorePanel store={intelligence} /> || <p>정보 기능이 비활성화되어 있습니다.</p>),
@@ -111,8 +118,9 @@ function GamePage() {
   return <NavigationGuard busy={trading.pending || isLoggingOut}>
     <PageShell area="game" menu={gameMenu} gameState={gameState}>
       {logoutError && <p className="page-error" role="alert">{logoutError}</p>}
-      <div className="game-clock-bar"><button type="button" className="secondary-button" onClick={() => setFloatingClock(value => !value)}>{floatingClock ? '타이머 본문에 고정' : '타이머 띄우기'}</button><FloatingGameTimer game={gameState.game} docked={!floatingClock} /></div>
+      <AssetStatusBar game={gameState.game} account={snapshot.account} muted={sounds.muted} onToggleMuted={sounds.toggleMuted} />
       <Outlet context={screens} />
+      <FloatingGameTimer game={gameState.game} />
       {floatingNews && <FloatingNews game={gameState.game} revision={gameState.snapshot} feed={newsFeed} focusRequest={newsFocus} onClose={closeFloatingNews} onOpenFull={openNewsTab} />}
     </PageShell>
     <WaitingGameNotice waiting={gameState.game?.status === 'WAITING'} />
