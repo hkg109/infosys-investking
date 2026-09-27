@@ -44,6 +44,7 @@ function GamePage() {
     holdings: trading.account?.holdings.filter((item) => item.quantity > 0),
   }
   const [selectedCompanyId, setSelectedCompanyId] = useState('')
+  const [chartCompanyId, setChartCompanyId] = useState('')
   const [orderIntent, setOrderIntent] = useState(null)
   const orderIntentId = useRef(0)
   const selectedInitialCompany = useRef(false)
@@ -93,7 +94,7 @@ function GamePage() {
     news: (<EventNews game={gameState.game} revision={gameState.snapshot} focusRequest={newsFocus} feed={newsFeed} onOpenFloating={() => setFloatingNews(true)} />),
     orders: (<><div className="game-context-actions"><button type="button" className="secondary-button" aria-pressed={floatingNews} onClick={() => setFloatingNews(value => !value)}>{floatingNews ? '뉴스 창 닫기' : '뉴스 창 열기'}</button></div><UserDashboard showMarket={false} game={gameState.game} snapshot={snapshot} selectedCompanyId={selectedCompanyId} onSelectCompany={id => { setSelectedCompanyId(id); navigate('/game/orders') }} onOrder={openPortfolioOrder} />
 <TradingPanel game={gameState.game} stale={gameState.loading || Boolean(gameState.error)} trading={trading} selectedCompanyId={selectedCompanyId} onSelectCompany={setSelectedCompanyId} orderIntent={orderIntent} /></>),
-    history: (<><CompanySelectMenu companies={trading.companies || []} value={selectedCompanyId} onChange={setSelectedCompanyId} /><PriceHistoryPanel companyId={selectedCompanyId} revision={gameState.snapshot} /><TradeHistoryPanel totalRounds={gameState.game?.totalRounds} revision={trading.account} /></>),
+    history: (<><CompanySelectMenu companies={trading.companies || []} value={chartCompanyId} onChange={setChartCompanyId} placeholder="전체 기업 비교" /><PriceHistoryPanel companyId={chartCompanyId} onCompanyChange={setChartCompanyId} revision={gameState.snapshot} /><TradeHistoryPanel totalRounds={gameState.game?.totalRounds} revision={trading.account} /></>),
     ranking: (<RankingPanel userId={user.userId} game={gameState.game} revision={gameState.snapshot} />),
     intelligence: (intelligenceEnabled && <IntelligenceStorePanel store={intelligence} /> || <p>정보 기능이 비활성화되어 있습니다.</p>),
     library: (intelligenceEnabled && <IntelligenceLibraryPanel store={intelligence} /> || <p>정보 기능이 비활성화되어 있습니다.</p>),

@@ -11,7 +11,7 @@ import { validateCompanies } from '../../client/src/companies/api.js'
 import { validateParticipants } from '../../client/src/admin/participants.js'
 import { validateStore, validateClues } from '../../client/src/intelligence/api.js'
 import { validateRanking } from '../../client/src/ranking/api.js'
-import { validateTradeHistory, validatePriceHistory } from '../../client/src/trading/historyApi.js'
+import { validateAllPriceHistories, validateTradeHistory, validatePriceHistory } from '../../client/src/trading/historyApi.js'
 import { validateBroadcast } from '../../client/src/broadcast/model.js'
 
 
@@ -92,6 +92,7 @@ test('stage 11: concurrent HTTP orders, process crash recovery, events and final
       ['/trading/portfolio', data => assert.ok(Number.isSafeInteger(data.account.cash))],
       ['/trading/orders/recovery', data => assert.ok(data && typeof data === 'object')],
       ['/trading/history', validateTradeHistory], ['/trading/companies/A/history', validatePriceHistory],
+      ['/trading/companies/history', validateAllPriceHistories],
       ['/rankings', validateRanking], ['/intelligence/me', validateStore],
     ]
     for (const [path, validate] of adminReads) {

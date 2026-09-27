@@ -9,6 +9,7 @@
 | `GET /api/trading/history?round=1` | 사용자 세션 쿠키 | 본인의 월별 체결·요약·실현손익 |
 | `GET /api/admin/participants/:userId/trades?round=1` | 관리자 Bearer | 지정 참가자의 월별 체결·요약·실현손익 |
 | `GET /api/trading/companies/:companyId/history` | 사용자 세션 쿠키 | 종목의 월별 시가·장중 사건 직후 가격·종가 |
+| `GET /api/trading/companies/history` | 사용자 세션 쿠키 | 활성 종목 전체의 월별 가격 이력 |
 
 `round`를 생략하면 전체 라운드 거래를 반환합니다. 게임의 전체 라운드 범위를 벗어나면 `400 INVALID_ROUND`입니다. 관리자 API는 `Authorization: Bearer <ADMIN_PASSWORD>`가 필요합니다.
 
@@ -79,6 +80,17 @@
 ```
 
 장중 사건이 발생하면 모든 활성 종목의 가격을 같은 시점에 저장합니다. 사건 영향을 받지 않은 종목도 변동 없는 스냅샷이 남으므로 종목별 차트의 시간축이 일치합니다. 같은 사건 재처리와 라운드 경계 재처리는 DB 고유 인덱스로 중복 저장되지 않습니다.
+
+전체 종목 응답은 위 주가 이력 응답을 `companies` 배열에 기업 코드 순으로 담습니다. 비활성 기업은 비교 차트에서 제외되며, 각 기업의 `history` 계약은 단일 종목 API와 같습니다.
+
+```json
+{
+  "companies": [
+    { "company": { "companyId": "A", "name": "한양양조", "description": "...", "active": true }, "history": [] },
+    { "company": { "companyId": "B", "name": "모빌한양", "description": "...", "active": true }, "history": [] }
+  ]
+}
+```
 
 ## DB·운영
 

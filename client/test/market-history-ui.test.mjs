@@ -6,8 +6,8 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { getPriceHistory, getTradeHistory, validatePriceHistory, validateTradeHistory } from '../src/trading/historyApi.js'
-import { chartGeometry, priceSeries, signedMoney } from '../src/trading/marketHistoryModel.js'
+import { getAllPriceHistories, getPriceHistory, getTradeHistory, validateAllPriceHistories, validatePriceHistory, validateTradeHistory } from '../src/trading/historyApi.js'
+import { chartGeometry, companyChartStyles, multiChartGeometry, multiPriceSeries, priceSeries, signedMoney } from '../src/trading/marketHistoryModel.js'
 
 const trade = {
   transactionId: 'transaction-1', orderId: 'order-1', round: 2, companyId: 'A', companyName: 'A 엔터',
@@ -29,10 +29,12 @@ const pricePayload = {
     ],
   }],
 }
+const allPricePayload = { companies: [pricePayload, { ...pricePayload, company: { ...pricePayload.company, companyId: 'B', name: 'B 모빌리티' } }] }
 
 test('market history validation accepts the documented backend contracts', () => {
   assert.equal(validateTradeHistory(tradePayload).summary.realizedProfit, 6000)
   assert.equal(validatePriceHistory(pricePayload).history[0].snapshots[1].event.title, '장중 속보')
+  assert.equal(validateAllPriceHistories(allPricePayload).companies.length, 2)
   assert.equal(signedMoney(6000), '+6,000원')
   assert.equal(signedMoney(-2000), '-2,000원')
   assert.equal(signedMoney(0), '0원')
@@ -57,16 +59,29 @@ test('history requests use the session cookie, safe encoded paths, and no cache'
   const calls = []
   t.mock.method(globalThis, 'fetch', async (url, options) => {
     calls.push({ url, options })
-    return Response.json(url.includes('/companies/') ? pricePayload : tradePayload)
+    return Response.json(url.endsWith('/companies/history') ? allPricePayload : url.includes('/companies/') ? pricePayload : tradePayload)
   })
   assert.equal((await getTradeHistory(2)).round, 2)
   assert.equal((await getPriceHistory('A/B')).company.companyId, 'A')
+  assert.equal((await getAllPriceHistories()).companies.length, 2)
   assert.equal(calls[0].url, '/api/trading/history?round=2')
   assert.equal(calls[1].url, '/api/trading/companies/A%2FB/history')
+  assert.equal(calls[2].url, '/api/trading/companies/history')
   for (const call of calls) {
     assert.equal(call.options.credentials, 'include')
     assert.equal(call.options.cache, 'no-store')
   }
+})
+
+test('multi-company chart uses stable styles and one shared scale', () => {
+  const groups = multiPriceSeries(allPricePayload.companies)
+  const graph = multiChartGeometry(groups)
+  assert.equal(graph.groups.length, 2)
+  assert.equal(groups[0].style, companyChartStyles.A)
+  assert.equal(groups[1].style, companyChartStyles.B)
+  assert.equal(graph.maximum, 12000)
+  assert.equal(graph.minimum, 10000)
+  assert.equal(graph.groups.every(group => group.points.length === 3), true)
 })
 
 test('chart series filters by month and keeps equal prices centered', () => {
@@ -85,13 +100,19 @@ test('price chart exposes event and price details without relying on color', asy
   try {
     const outfile = join(dir, 'price-chart.mjs')
     await build({ entryPoints: ['src/trading/PriceHistoryPanel.jsx'], outfile, bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic' })
-    const { PriceChart } = await import(pathToFileURL(outfile).href)
+    const { MultiPriceChart, PriceChart } = await import(pathToFileURL(outfile).href)
     const html = renderToStaticMarkup(createElement(PriceChart, { series: priceSeries(pricePayload.history), companyName: 'A 엔터' }))
     assert.match(html, /월별 주가 변동 차트/)
     assert.match(html, /장중 속보/)
     assert.match(html, /12,000원/)
     assert.match(html, /\+20%/)
     assert.match(html, /timeline-dot--intraday_event/)
+    const multi = renderToStaticMarkup(createElement(MultiPriceChart, { companies: multiPriceSeries(allPricePayload.companies), selectedCompanyId: 'A' }))
+    assert.match(multi, /전체 기업 월별 주가 비교 차트/)
+    assert.match(multi, /company-series--muted/)
+    assert.match(multi, /stroke-dasharray="10 4"/)
+    assert.match(multi, /A 엔터/)
+    assert.match(multi, /장중 속보/)
   } finally {
     await rm(dir, { recursive: true, force: true })
   }

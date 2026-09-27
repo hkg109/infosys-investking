@@ -135,6 +135,12 @@ export async function getCompanyPriceHistory(database, companyId, gameId = ACTIV
   }
 }
 
+export async function getAllCompanyPriceHistories(database, gameId = ACTIVE_GAME_ID) {
+  const companies = await database.query('SELECT id FROM companies WHERE is_active = TRUE ORDER BY id')
+  const histories = await Promise.all(companies.rows.map(({ id }) => getCompanyPriceHistory(database, id, gameId)))
+  return { companies: histories }
+}
+
 async function activeCompanies(client) {
   return (await client.query('SELECT id, current_price FROM companies WHERE is_active = TRUE ORDER BY id')).rows
 }
