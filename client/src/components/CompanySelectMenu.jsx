@@ -9,7 +9,7 @@ export function optionIndexAfterKey(current, length, key) {
   return current
 }
 
-export default function CompanySelectMenu({ companies = [], value = '', onChange, label = '차트 종목' }) {
+export default function CompanySelectMenu({ companies = [], value = '', onChange, label = '차트 종목', placeholder = '종목 선택' }) {
   const labelId = useId()
   const listboxId = useId()
   const rootRef = useRef(null)
@@ -87,7 +87,7 @@ export default function CompanySelectMenu({ companies = [], value = '', onChange
       onClick={() => open ? setOpen(false) : openAt(selectedIndex >= 0 ? selectedIndex : 0)}
       onKeyDown={handleButtonKeyDown}
     >
-      <span id={`${listboxId}-value`}>{selected?.name || (companies.length ? '종목 선택' : '표시할 종목 없음')}</span>
+      <span id={`${listboxId}-value`}>{selected?.name || (companies.length ? placeholder : '표시할 종목 없음')}</span>
       <span className="company-select__chevron" aria-hidden="true" />
     </button>
     {open && <ul

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { Router } from 'express'
 import { ACTIVE_GAME_ID, saveGameState } from './game-store.js'
 import { MarketHaltedError } from './market-gate.js'
-import { getCompanyPriceHistory, getTradeHistory, MarketHistoryError, parseRound } from './market-history.js'
+import { getAllCompanyPriceHistories, getCompanyPriceHistory, getTradeHistory, MarketHistoryError, parseRound } from './market-history.js'
 import { requireSessionUser } from './session-auth.js'
 
 const orderIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -183,6 +183,15 @@ export function createTradingRouter(database, engine, {
     try {
       const round = parseRound(request.query.round, request.gameAtReceipt.totalRounds)
       response.json(await getTradeHistory(database, request.user.id, { round }))
+    } catch (error) {
+      if (error instanceof MarketHistoryError) return response.status(error.status).json({ error: error.code, ...error.details })
+      next(error)
+    }
+  })
+
+  router.get('/companies/history', requireUser, async (_request, response, next) => {
+    try {
+      response.json(await getAllCompanyPriceHistories(database))
     } catch (error) {
       if (error instanceof MarketHistoryError) return response.status(error.status).json({ error: error.code, ...error.details })
       next(error)
