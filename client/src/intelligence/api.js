@@ -27,8 +27,8 @@ export function validateStore(data) {
       !integer(data.currentRound, 0, 1000) || !Array.isArray(data.items) || !Array.isArray(data.purchases)) throw new Error('INVALID_RESPONSE')
   // Whitelist public fields. Unpurchased content never enters component state.
   const items = unique(data.items.map(item => {
-    if (!item || typeof item.canPurchase !== 'boolean') throw new Error('INVALID_RESPONSE')
-    return { ...metadata(item), canPurchase: item.canPurchase }
+    if (!item || typeof item.canPurchase !== 'boolean' || (item.relatedEvent !== undefined && typeof item.relatedEvent !== 'boolean')) throw new Error('INVALID_RESPONSE')
+    return { ...metadata(item), relatedEvent: item.relatedEvent ?? false, canPurchase: item.canPurchase }
   }))
   const purchases = unique(data.purchases.map(item => {
     if (!item || !text(item.content, 5000) || typeof item.purchasedAt !== 'string' || !Number.isFinite(Date.parse(item.purchasedAt)) || !integer(item.paidCash, 1, 1000000)) throw new Error('INVALID_RESPONSE')

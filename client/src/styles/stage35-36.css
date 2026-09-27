@@ -1,0 +1,91 @@
+.intelligence-card__link {
+  justify-self: start;
+  border: 1px solid #9db3d2;
+  border-radius: 999px;
+  padding: .25rem .55rem;
+  color: #244b80;
+  background: #edf4ff;
+  font-size: .72rem;
+  font-weight: 800;
+}
+
+.intelligence-library__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.intelligence-library__card {
+  display: grid;
+  grid-template-rows: auto minmax(4rem, 1fr) auto auto;
+  gap: .85rem;
+  min-width: 0;
+  border: 1px solid #b7c7df;
+  border-radius: 14px;
+  padding: 1rem;
+  background: linear-gradient(145deg, #fff, #edf4ff);
+  box-shadow: 0 12px 28px rgba(16, 45, 86, .1);
+}
+.intelligence-library__card h3 { margin: 0; overflow-wrap: anywhere; }
+.intelligence-library__card dl { display: grid; gap: .35rem; margin: 0; }
+.intelligence-library__card dl > div { display: flex; justify-content: space-between; gap: .75rem; }
+.intelligence-library__card :is(dt, dd) { margin: 0; }
+.intelligence-library__card dt { color: #60708a; }
+.intelligence-library__card dd { text-align: right; font-weight: 800; }
+.intelligence-library__detail { display: grid; gap: 1rem; }
+.intelligence-library__summary { margin: 0; border-left: 4px solid #315fd4; padding: .85rem 1rem; background: #edf3ff; font-weight: 750; }
+.intelligence-library__detail .intelligence-content { min-height: 10rem; border-block: 1px solid #d4dfed; padding-block: 1rem; white-space: pre-wrap; line-height: 1.75; }
+.intelligence-library__detail footer { color: #60708a; font-size: .82rem; }
+
+.admin-table-wrap,
+.trade-month-table-wrap { width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; }
+.admin-data-table,
+.trade-month-table { width: 100%; min-width: 62rem; border-collapse: separate; border-spacing: 0; background: #fff; }
+.admin-data-table caption,
+.trade-month-table caption { padding: .75rem 0; text-align: left; font-weight: 850; }
+.admin-data-table :is(th, td),
+.trade-month-table :is(th, td) { border-bottom: 1px solid #d7e0ec; padding: .75rem; vertical-align: top; text-align: left; }
+.admin-data-table thead th,
+.trade-month-table thead th { position: sticky; top: 0; z-index: 2; color: #dfeaff; background: #173b70; white-space: nowrap; }
+.admin-data-table tbody > tr:hover,
+.trade-month-table tbody > tr:not(.trade-month-table__group):hover { background: #f4f7fc; }
+.admin-data-table tbody th:first-child,
+.trade-month-table tbody th:first-child { position: sticky; left: 0; z-index: 1; max-width: 18rem; background: inherit; }
+.admin-data-table tbody th strong,
+.admin-data-table tbody th small,
+.trade-month-table td strong,
+.trade-month-table td small { display: block; overflow-wrap: anywhere; }
+.admin-data-table tbody th small,
+.trade-month-table td small { margin-top: .3rem; color: #60708a; font-weight: 500; }
+.admin-data-table details { max-width: 22rem; margin-top: .4rem; }
+.admin-data-table details p { white-space: normal; overflow-wrap: anywhere; }
+.admin-data-table .event-actions { flex-wrap: nowrap; }
+.admin-data-table :is(input, select) { min-width: 7rem; width: 100%; }
+.schedule-draft-table td:nth-child(2) select { min-width: 18rem; }
+.admin-readonly-value { display: inline-flex; min-height: 42px; align-items: center; border: 1px solid #d5deea; border-radius: 8px; padding: .55rem .7rem; background: #f4f6f9; white-space: nowrap; }
+.admin-state { display: inline-flex; border-radius: 999px; padding: .3rem .55rem; font-size: .75rem; font-weight: 850; white-space: nowrap; }
+.admin-state--active { color: #17633b; background: #e4f7ed; }
+.admin-state--inactive { color: #8c2e24; background: #fdebe8; }
+.admin-state--neutral { color: #46556c; background: #edf1f6; }
+.admin-empty-cell { color: #69788e; background: #f6f8fb; text-align: center !important; }
+
+.trade-month-table { min-width: 68rem; }
+.trade-month-table__group th { position: static !important; color: #173b70; background: #eaf1fc !important; font-weight: 900; }
+.trade-month-table__total { display: block; margin-bottom: .45rem; color: #46556c; font-size: .75rem; line-height: 1.45; white-space: nowrap; }
+.trade-month-table .detail-button { min-height: 36px; white-space: nowrap; }
+.numeric-cell { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+@media (min-width: 40rem) {
+  .intelligence-library__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 60rem) {
+  .intelligence-library__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 40rem) {
+  .admin-data-table,
+  .trade-month-table { font-size: .82rem; }
+  .admin-data-table :is(th, td),
+  .trade-month-table :is(th, td) { padding: .6rem; }
+}

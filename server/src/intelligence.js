@@ -72,7 +72,12 @@ export async function saveClue(database, engine, id, input) {
           WHERE id=$8 RETURNING *`, [...values, selectedId])
     if (!result.rowCount) fail(404, 'CLUE_NOT_FOUND')
     requireWaiting({ ...game, live: engine.getSnapshot() })
-    return { clue: adminClue(result.rows[0]) }
+    const hydrated = await client.query(`SELECT clue.*,event.title AS event_title,
+      CASE WHEN clue.event_id IS NULL THEN 'UNRELATED' WHEN ge.applied_at IS NOT NULL THEN 'APPLIED'
+        WHEN ge.id IS NULL THEN 'UNASSIGNED' ELSE 'UPCOMING' END AS event_state
+      FROM intelligence_clues clue LEFT JOIN events event ON event.id=clue.event_id
+      LEFT JOIN game_events ge ON ge.event_id=clue.event_id AND ge.game_id=$2 WHERE clue.id=$1`, [result.rows[0].id, ACTIVE_GAME_ID])
+    return { clue: adminClue(hydrated.rows[0]) }
   })
 }
 export async function deactivateClue(database, engine, id) {
@@ -97,19 +102,20 @@ async function readStore(client, userId, engine, initialCash = 1_000_000) {
   const live = engine.getSnapshot(), round = Math.min(game.current_round, live.currentRound)
   const purchaseOpen = game.status === 'RUNNING' && live.status === 'RUNNING'
   // Query only public fields: unpurchased content is never loaded into catalog rows.
-  const rows = (await client.query(`SELECT clue.id,clue.title,clue.summary,clue.price,clue.available_round FROM intelligence_clues clue
+  const rows = (await client.query(`SELECT clue.id,clue.title,clue.summary,clue.price,clue.available_round,clue.event_id FROM intelligence_clues clue
     LEFT JOIN game_events ge ON ge.game_id=$2 AND ge.event_id=clue.event_id
     WHERE clue.is_active AND clue.available_round <= $1 AND (
       clue.event_id IS NULL OR ge.id IS NULL OR (ge.applied_at IS NULL AND ge.round_number >= $1)
-    ) ORDER BY clue.available_round,clue.created_at,clue.id`, [round, ACTIVE_GAME_ID])).rows
-  const owned = new Set(purchases.map(p => p.clueId))
+    ) AND NOT EXISTS (SELECT 1 FROM intelligence_purchases purchase
+      WHERE purchase.game_id=$2 AND purchase.user_id=$3 AND purchase.clue_id=clue.id)
+    ORDER BY clue.available_round,clue.created_at,clue.id`, [round, ACTIVE_GAME_ID, userId])).rows
   const cash = Number(wallet?.cash ?? initialCash)
   if (!Number.isSafeInteger(cash) || cash < 0) fail(503, 'CASH_OUT_OF_RANGE')
   return {
     cash,
     purchaseOpen,
     currentRound: Number(round),
-    items: rows.map(row => ({ ...metadata(row), canPurchase: purchaseOpen && !owned.has(row.id) })),
+    items: rows.map(row => ({ ...metadata(row), relatedEvent: Boolean(row.event_id), canPurchase: purchaseOpen })),
     purchases,
   }
 }
