@@ -20,3 +20,18 @@ node server/scripts/apply-qa37-39.mjs
 로컬 `infosys_investking` DB만 허용한다. 적용 전 pg_dump 백업을 저장소 바깥 `../DB-backups/`에 저장하며, 전체 변경을 한 트랜잭션으로 적용한다. PostgreSQL 도구 위치가 다르면 `PG_DUMP_PATH`를 지정한다. 게임 기록·참가자·지갑 초기화는 하지 않는다.
 
 2026-09-28 사용자 승인으로 기존 게임을 백업·초기화한 뒤 새 데이터를 로컬 DB에 적용했다. 기사·배정·단서 연결 전수 대조와 게임 시작 사전 검증을 통과했다. 과거 단발 적용 스크립트 대신 위 스크립트를 사용한다.
+
+## 2026-09-28 제목·기사 개정
+
+단서 24개의 제목을 주제 중심으로 변경하고, 공개 기사 48건·결과 기사 48건·유료 단서 24건에 현장 문단과 분석 노트를 추가했다. 공개 제목을 그대로 표시하되 구매 전 요약·본문은 숨긴다. 제목을 추가·수정할 때도 회사명이나 결과를 제목에 노출하지 않는다.
+
+기존 콘텐츠가 있는 로컬 DB는 다음 순서로 갱신한다. 각 스크립트는 변경 전 백업을 저장하고 대상을 전수 대조한다.
+
+```bash
+node server/scripts/update-clue-titles.mjs --dry-run
+node server/scripts/update-clue-titles.mjs
+node server/scripts/update-editorial-content.mjs --dry-run
+node server/scripts/update-editorial-content.mjs
+```
+
+제목 스크립트는 구매 기록의 제목도 변경하며, 본문 스크립트는 구매 기록의 본문도 최신 문구로 갱신한다. 가격·구매 금액·사건 배정·등락률은 변경하지 않는다. 본문 적용 중 실행 중인 게임은 잠시 일시정지 후 재개해 예약된 알림에도 새 문구를 반영한다. 로컬 적용 및 48건 기사/결과·24건 단서 대조 완료. 배포 서버 적용은 별도 작업이다.
