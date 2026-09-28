@@ -54,7 +54,7 @@ export function MultiPriceChart({ companies, selectedCompanyId = '' }) {
         })}
       </svg>
     </div>
-    {selected && <PriceTimeline points={visibleGroups.find(group => group.company.companyId === selectedCompanyId)?.points || []} />}
+    {selected && <details className="price-timeline-details"><summary>시가·종가·장중 기록 펼치기</summary><PriceTimeline points={visibleGroups.find(group => group.company.companyId === selectedCompanyId)?.points || []} /></details>}
   </>
 }
 

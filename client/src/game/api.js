@@ -15,6 +15,10 @@ async function request(path, options = {}) {
 export const getGame = () => request('')
 export const controlGame = (action, password) => request(`/admin/${action}`, { method: 'POST', headers: { Authorization: `Bearer ${password}` } })
 export const gameError = (error) => ({
+  INTRADAY_COUNT_REQUIRED: '모든 월에 장중 사건 2~4개를 배정한 뒤 시작해 주세요.',
+  EVENT_TYPE_MISMATCH: '장중 사건과 마감 사건의 배정 구분을 확인해 주세요.',
+  EVENT_RATE_LIMIT: '1~6월 ±30%, 7~12월 ±50% 변동률 상한을 확인해 주세요.',
+  EVENT_SPACING_INVALID: '장중 사건과 뉴스 간격을 30~80초로 설정해 주세요.',
   GAME_RESET_NOT_ALLOWED: '종료된 게임만 초기화할 수 있습니다.',
   GAME_RESET_IN_PROGRESS: '초기화가 진행 중입니다. 결과를 확인해 주세요.',
   DATABASE_UNAVAILABLE: '게임 DB를 사용할 수 없습니다.',

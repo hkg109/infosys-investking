@@ -11,6 +11,7 @@ import { createMarketGate, MarketHaltedError } from '../src/market-gate.js'
 import {
   applyScheduledEvent,
   createEvent,
+  updateEvent,
   createEventCoordinator,
   getGameSchedule,
   getRoundEvents,
@@ -65,6 +66,36 @@ test('PostgreSQL multi-event schedule supports empty rounds, intraday execution 
   const [first, second, closing] = await Promise.all([
     makeEvent('장중 상승', 10), makeEvent('장중 하락', -10), makeEvent('마감 상승', 5),
   ])
+  // At 4:00 publish all three warnings, then apply at 4:10 / 4:18 / 4:26.
+  const sharedOptions = { totalRounds: 2, tradingDurationMs: 270000, haltDurationMs: 3000 }
+  const sharedEvents = [first, second, closing].map((event,index) => ({ eventId: event.eventId,
+    triggerPhase: 'INTRADAY', triggerOffsetSeconds: 250 + 8 * index, newsRevealOffsetSeconds: 240 }))
+  await assert.rejects(saveGameSchedule(database, { rounds: [{ round: 1, events: sharedEvents.map((event,index) =>
+    index === 1 ? { ...event, triggerOffsetSeconds: 252 } : event) }] }, sharedOptions), { code: 'EVENT_SCHEDULE_CONFLICT' })
+  await saveGameSchedule(database, { rounds: [{ round: 1, events: sharedEvents }, { round: 2, events: [] }] }, sharedOptions)
+  const sharedTimers = [], sharedEmitted = []
+  const sharedStart = Date.now()
+  const sharedCoordinator = createEventCoordinator(database, { emit: (name,payload) => sharedEmitted.push({ name,payload }) }, {
+    now: () => sharedStart,
+    setTimer: (callback,delay) => { const timer = { callback,delay,unref() {} }; sharedTimers.push(timer); return timer },
+    clearTimer: () => {},
+  })
+  await sharedCoordinator.handleGameEvent({ name: 'round:start', payload: { status:'RUNNING', phase:'TRADING',
+    currentRound:1, tradingDurationSeconds:270, roundStartedAt:new Date(sharedStart).toISOString() } })
+  assert.equal(sharedEmitted.length,0)
+  assert.deepEqual(await getRoundEvents(database,1,undefined,{publishedOnly:true}),[])
+  assert.deepEqual(sharedTimers.map(timer=>timer.delay).sort((a,b)=>a-b), [240000,240000,240000,250000,258000,266000])
+  for (const timer of sharedTimers.filter(timer=>timer.delay===240000)) timer.callback()
+  await sharedCoordinator.waitForIdle()
+  assert.equal(sharedEmitted.filter(event=>event.name==='market:event:warning').length,3)
+  assert.equal(sharedEmitted.filter(event=>event.name==='news:publish').length,3)
+  assert.equal(sharedEmitted.filter(event=>event.name==='event:result').length,0)
+  assert.equal((await getRoundEvents(database,1,undefined,{publishedOnly:true})).length,3)
+  await sharedCoordinator.handleGameEvent({name:'game:pause'})
+  const typed=await createEvent(database,{title:'유형 고정 사건',news:'사전',result:'결과',eventType:'INTRADAY',effects:[{companyId:'A',changeRate:31}]})
+  await assert.rejects(saveGameSchedule(database,{rounds:[{round:1,events:[{eventId:typed.eventId,triggerPhase:'CLOSE'}]}]},sharedOptions),{code:'EVENT_TYPE_MISMATCH'})
+  await assert.rejects(saveGameSchedule(database,{rounds:[{round:1,events:[{eventId:typed.eventId,triggerPhase:'INTRADAY',triggerOffsetSeconds:90,newsRevealOffsetSeconds:60}]}]},sharedOptions),{code:'EVENT_RATE_LIMIT'})
+  await assert.rejects(updateEvent(database,typed.eventId,{...typed,eventType:'CLOSE'}),{code:'EVENT_TYPE_MISMATCH'})
   const scheduleInput = { rounds: [
     { round: 1, events: [
       { eventId: first.eventId, triggerPhase: 'INTRADAY', triggerOffsetSeconds: 10, preannounceSeconds: 2 },
@@ -75,6 +106,7 @@ test('PostgreSQL multi-event schedule supports empty rounds, intraday execution 
   ] }
   const options = { totalRounds: 2, tradingDurationMs: 60_000, haltDurationMs: 3_000 }
   const saved = await saveGameSchedule(database, scheduleInput, options)
+  await assert.rejects(updateEvent(database,first.eventId,{...first,effects:[{companyId:'A',changeRate:-31}]}),{code:'EVENT_RATE_LIMIT'})
   assert.equal(saved.length, 3)
   assert.deepEqual(saved.map(({ triggerPhase }) => triggerPhase), ['INTRADAY', 'INTRADAY', 'CLOSE'])
   assert.deepEqual(await getRoundEvents(database, 2), [])

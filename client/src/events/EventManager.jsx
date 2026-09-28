@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 import Panel from '../components/Panel'
 import ActionDialog, { ConfirmDialog, requestDialogClose } from '../components/ActionDialog'
 import { eventRequest, eventInput, eventError } from './api'
-const blank = () => ({ title: '', news: '', result: '', effects: [{ companyId: '', changeRate: '0' }] })
+const blank = () => ({ eventType: 'INTRADAY', title: '', news: '', result: '', effects: [{ companyId: '', changeRate: '0' }] })
 export default function EventManager({ password, game, stale, onBusy }) {
   const [events, setEvents] = useState(null)
   const [companies, setCompanies] = useState([])
@@ -68,7 +68,7 @@ export default function EventManager({ password, game, stale, onBusy }) {
   }
   const updateEffect = (index, field, value) => setForm(f => ({ ...f, effects: f.effects.map((item, i) => i === index ? { ...item, [field]: value } : item) }))
   return <Panel title="사건 관리">
-    <p className="trading-help">대기 중 사건을 등록하고 아래에서 월별로 배정하세요. 한 달에 여러 사건 또는 사건 없는 달을 구성할 수 있습니다. 주가 변동은 저장된 수동 배정대로만 적용됩니다. 배정이 없으면 사건 없이 진행합니다.</p>
+    <p className="trading-help">대기 중 사건을 등록하고 아래에서 월별로 배정하세요. 모든 월에 장중 사건 2~4개를 배정하세요. 주가 변동은 저장된 수동 배정대로만 적용됩니다. 배정을 완성해야 게임을 시작할 수 있습니다. 1~6월 ±30%, 7~12월 ±50% 상한입니다.</p>
     <button type="button" className="secondary-button" disabled={!password || busy || stale} onClick={load}>사건 목록 조회</button>
     {error && <p className="form-error" role="alert">{error}</p>}{message && <p role="status">{message}</p>}
     {uncertain && <p className="trading-help">사건·배정의 최신 상태를 확인하려면 목록을 먼저 조회해 주세요. 요청을 자동 재전송하지 않으며 입력 초안은 유지됩니다.</p>}
@@ -77,13 +77,14 @@ export default function EventManager({ password, game, stale, onBusy }) {
     {events && <div className="admin-table-wrap"><table className="admin-data-table event-admin-table"><caption>사건 원본과 월별 배정 상태</caption><thead><tr><th scope="col">사건</th><th scope="col">영향 종목</th><th scope="col">배정</th><th scope="col">뉴스 공개</th><th scope="col">주가 변동</th><th scope="col">상태</th><th scope="col">작업</th></tr></thead><tbody>{events.map(item => {
       const assigned = schedule.find(entry => entry.eventId === item.eventId)
       const status = assigned?.appliedAt ? '적용 완료' : assigned?.warningSentAt ? '뉴스 공개' : assigned ? '예정' : '대기'
-      return <tr key={item.eventId}><th scope="row"><strong>{item.title}</strong><small>{item.news}</small><details><summary>결과 기사 보기</summary><p>{item.result}</p></details></th><td>{item.effects.map(effect => `${effect.companyId} ${effect.changeRate > 0 ? '+' : ''}${effect.changeRate}%`).join(' · ')}</td><td>{assigned ? `${assigned.round}월 · ${assigned.triggerPhase === 'INTRADAY' ? '장중' : '마감'}` : '미배정'}</td><td>{assigned ? `${assigned.newsRevealOffsetSeconds}초` : '—'}</td><td>{assigned ? assigned.triggerPhase === 'INTRADAY' ? `${assigned.triggerOffsetSeconds}초` : '거래 마감' : '—'}</td><td><span className={`admin-state admin-state--${assigned?.appliedAt ? 'inactive' : assigned ? 'active' : 'neutral'}`}>{status}</span></td><td><div className="event-actions"><button type="button" className="secondary-button" disabled={!canEdit} onClick={() => { setEditing(item.eventId); setForm({ title: item.title, news: item.news, result: item.result, effects: item.effects.map(effect => ({ ...effect, changeRate: String(effect.changeRate) })) }); setEditorOpen(true); setDeleting(null); setMessage('') }}>수정</button><button type="button" className="secondary-button" disabled={!canEdit} onClick={() => setDeleting(item)}>삭제</button></div></td></tr>
+      return <tr key={item.eventId}><th scope="row"><strong>{item.title}</strong><small>{item.news}</small><details><summary>결과 기사 보기</summary><p>{item.result}</p></details></th><td>{item.effects.map(effect => `${effect.companyId} ${effect.changeRate > 0 ? '+' : ''}${effect.changeRate}%`).join(' · ')}</td><td>{assigned ? `${assigned.round}월 · ${assigned.triggerPhase === 'INTRADAY' ? '장중' : '마감'}` : '미배정'}</td><td>{assigned ? `${assigned.newsRevealOffsetSeconds}초` : '—'}</td><td>{assigned ? assigned.triggerPhase === 'INTRADAY' ? `${assigned.triggerOffsetSeconds}초` : '거래 마감' : '—'}</td><td><span className={`admin-state admin-state--${assigned?.appliedAt ? 'inactive' : assigned ? 'active' : 'neutral'}`}>{status}</span></td><td><div className="event-actions"><button type="button" className="secondary-button" disabled={!canEdit} onClick={() => { setEditing(item.eventId); setForm({ eventType: item.eventType || '', title: item.title, news: item.news, result: item.result, effects: item.effects.map(effect => ({ ...effect, changeRate: String(effect.changeRate) })) }); setEditorOpen(true); setDeleting(null); setMessage('') }}>수정</button><button type="button" className="secondary-button" disabled={!canEdit} onClick={() => setDeleting(item)}>삭제</button></div></td></tr>
     })}</tbody></table></div>}
     {events && <div className="list-toolbar"><p>등록 {events.length}개 · 배정 {schedule.length}개</p><div className="event-actions"><button type="button" className="secondary-button" onClick={() => setScheduleOpen(true)}>월별 배정 관리</button><button type="button" className="primary-button" disabled={!canEdit} onClick={() => { setEditing(null); setForm(blank()); setEditorOpen(true) }}>새 사건 등록</button></div></div>}
     <ConfirmDialog open={Boolean(deleting)} title="사건 삭제" onCancel={() => setDeleting(null)} onConfirm={remove} busy={busy} confirmDisabled={!canEdit} confirmLabel="삭제 확정" danger><p>“{deleting?.title}” 사건을 삭제할까요? 배정에 사용 중인 사건은 서버가 삭제를 막습니다.</p></ConfirmDialog>
     <ActionDialog open={editorOpen} title={editing ? '사건 수정' : '새 사건 등록'} eyebrow="MARKET EVENT" onClose={() => { setEditorOpen(false); setEditing(null); setForm(blank()) }} busy={busy} dirty={draftDirty} width="large">
     {events && <form className="event-form" onSubmit={save}>
       <fieldset disabled={!canEdit}>
+        <label>사건 종류<select value={form.eventType} onChange={e=>setForm({...form,eventType:e.target.value})}><option value="">기존 미분류</option><option value="INTRADAY">장중 사건</option><option value="CLOSE">정규 마감 사건</option></select></label>
         <label htmlFor="event-title">사건 제목</label><input id="event-title" maxLength={100} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} required />
         <label htmlFor="event-news">사전 뉴스 (참가자에게 공개)</label><textarea id="event-news" maxLength={2000} rows={4} value={form.news} onChange={e => setForm({ ...form, news: e.target.value })} required />
         <label htmlFor="event-result">사건 결과 (해당 사건 적용 후 공개)</label><textarea id="event-result" maxLength={2000} rows={4} value={form.result} onChange={e => setForm({ ...form, result: e.target.value })} required />

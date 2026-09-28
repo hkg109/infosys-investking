@@ -32,7 +32,8 @@ export function validateStore(data) {
   }))
   const purchases = unique(data.purchases.map(item => {
     if (!item || !text(item.content, 5000) || typeof item.purchasedAt !== 'string' || !Number.isFinite(Date.parse(item.purchasedAt)) || !integer(item.paidCash, 1, 1000000)) throw new Error('INVALID_RESPONSE')
-    return { ...metadata(item), content: item.content, purchasedAt: item.purchasedAt, paidCash: item.paidCash }
+    if (item.expired !== undefined && typeof item.expired !== 'boolean') throw new Error('INVALID_RESPONSE')
+    return { ...metadata(item), expired: item.expired ?? false, content: item.content, purchasedAt: item.purchasedAt, paidCash: item.paidCash }
   }))
   return { cash: data.cash, purchaseOpen: data.purchaseOpen, currentRound: data.currentRound, items, purchases }
 }

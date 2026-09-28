@@ -6,7 +6,7 @@ import { money } from '../game/model'
 import { newOrderId, orderError, orderPreview, quantityValue, tradingBlock } from '../trading/model'
 import RefreshIconButton from './RefreshIconButton'
 
-export default function TradingPanel({ game, stale, trading, selectedCompanyId, onSelectCompany, orderIntent }) {
+export default function TradingPanel({ game, stale, trading, selectedCompanyId, onSelectCompany, orderIntent, onIntentHandled }) {
   const [localCompanyId, setLocalCompanyId] = useState('')
   const companyId = selectedCompanyId ?? localCompanyId
   const setCompanyId = onSelectCompany || setLocalCompanyId
@@ -35,7 +35,9 @@ export default function TradingPanel({ game, stale, trading, selectedCompanyId, 
     setValidation('')
     setTouched(false)
     setOrderOpen(true)
+    onIntentHandled?.()
   }, [orderIntent?.requestId])
+  const companyName = id => trading.companies?.find(item => item.companyId === id)?.name || trading.account?.holdings?.find(item => item.companyId === id)?.name || '기업 정보 확인 중'
   const company = trading.companies?.find((item) => item.companyId === companyId)
   const quantity = quantityValue(quantityText)
   const preview = orderPreview({ company, account: trading.account, type, quantity })
@@ -73,10 +75,11 @@ export default function TradingPanel({ game, stale, trading, selectedCompanyId, 
       <fieldset disabled={frozen || Boolean(blocked)}>
         <legend className="sr-only">주문 입력</legend>
         <label htmlFor="order-company">종목</label>
-        <select id="order-company" value={companyId} onChange={(e) => { setCompanyId(e.target.value); setValidation('') }}>
+        <select aria-describedby="order-company-description" id="order-company" value={companyId} onChange={(e) => { setCompanyId(e.target.value); setValidation('') }}>
           <option value="">종목을 선택하세요</option>
           {(trading.companies || []).map((item) => <option key={item.companyId} value={item.companyId}>{item.name}</option>)}
         </select>
+        <aside id="order-company-description" className="order-company-description"><strong>{company?.name || "기업 소개"}</strong><p>{company?.description || "기업을 선택하면 하는 일과 주요 고객을 확인할 수 있습니다."}</p></aside>
         <span className="order-side-label">거래 종류</span>
         <div className="order-side-tabs" role="group" aria-label="거래 종류">
           <button type="button" className={type === 'BUY' ? 'is-active order-side--buy' : ''} aria-pressed={type === 'BUY'} onClick={() => { setTouched(true); setType('BUY'); setValidation('') }}>매수</button>
@@ -109,7 +112,7 @@ export default function TradingPanel({ game, stale, trading, selectedCompanyId, 
       <header><p className="eyebrow">PORTFOLIO</p><h3>내 보유 종목</h3><p>종목을 선택하면 주문창에 바로 반영됩니다.</p></header>
       {!trading.account?.holdings?.length ? <p className="empty-state">아직 보유한 주식이 없습니다.</p> : <ul>{trading.account.holdings.filter(item => item.quantity > 0).map(item => <li key={item.companyId}>
         <button type="button" aria-pressed={companyId === item.companyId} onClick={() => { setCompanyId(item.companyId); setType('SELL'); setQuantityText('1'); setValidation('') }}>
-          <span><strong>{item.name}</strong><small>{item.companyId}</small></span><span>{item.quantity.toLocaleString('ko-KR')}주<strong>{money(item.marketValue)}</strong></span>
+          <span><strong>{item.name}</strong></span><span>{item.quantity.toLocaleString('ko-KR')}주<strong>{money(item.marketValue)}</strong></span>
         </button>
       </li>)}</ul>}
       <div className="order-portfolio__cash"><span>주문 가능 현금</span><strong>{money(trading.account?.cash)}</strong></div>
@@ -117,7 +120,7 @@ export default function TradingPanel({ game, stale, trading, selectedCompanyId, 
     </div>
     </ActionDialog>
     {trading.unresolved && <div className="order-unresolved" role="status">
-      <p>{trading.unresolved.companyId} · {trading.unresolved.type === 'BUY' ? '매수' : '매도'} {trading.unresolved.quantity}주 주문을 확인 중입니다.</p>
+      <p>{companyName(trading.unresolved.companyId)} · {trading.unresolved.type === 'BUY' ? '매수' : '매도'} {trading.unresolved.quantity}주 주문을 확인 중입니다.</p>
       <p>새 주문을 만들지 않고 동일 주문 번호로 재확인합니다. 미체결 주문이면 현재 가격으로 체결될 수 있습니다.</p>
       <button type="button" className="secondary-button" disabled={trading.pending} onClick={() => trading.submit(trading.unresolved)}>같은 주문 확인</button>
       <button type="button" className="secondary-button" disabled={trading.pending} onClick={trading.cancel}>미체결 주문 취소</button>
@@ -125,10 +128,10 @@ export default function TradingPanel({ game, stale, trading, selectedCompanyId, 
     </div>}
     {trading.result && <div className="order-success" role="status">
       <strong>{trading.result.cancelled ? '미체결 주문을 취소했습니다.' : trading.result.duplicate ? '이미 처리된 주문을 확인했습니다.' : '거래가 완료되었습니다.'}</strong>
-      <p>{!trading.result.cancelled && <>{trading.result.companyId} · {trading.result.type === 'BUY' ? '매수' : '매도'} {trading.result.quantity}주 · 체결가 {money(trading.result.price)} · 총 {money(trading.result.totalPrice)}</>}</p>
+      <p>{!trading.result.cancelled && <>{companyName(trading.result.companyId)} · {trading.result.type === 'BUY' ? '매수' : '매도'} {trading.result.quantity}주 · 체결가 {money(trading.result.price)} · 총 {money(trading.result.totalPrice)}</>}</p>
       {Number.isInteger(resultHolding) && <p>체결 후 보유량 <strong>{resultHolding.toLocaleString('ko-KR')}주</strong></p>}
     </div>}
-    {trading.recovery?.history?.length > 0 && <details className="order-history"><summary>최근 거래 내역 (최대 20건)</summary><ul>{trading.recovery.history.map(tx => <li key={tx.orderId}>{tx.companyId} · {tx.type === 'BUY' ? '매수' : '매도'} {tx.quantity}주 · {money(tx.totalPrice)}<br /><small>{new Date(tx.createdAt).toLocaleString('ko-KR')}</small></li>)}</ul></details>}
+    {trading.recovery?.history?.length > 0 && <details className="order-history"><summary>최근 거래 내역 (최대 20건)</summary><ul>{trading.recovery.history.map(tx => <li key={tx.orderId}>{companyName(tx.companyId)} · {tx.type === 'BUY' ? '매수' : '매도'} {tx.quantity}주 · {money(tx.totalPrice)}<br /><small>{new Date(tx.createdAt).toLocaleString('ko-KR')}</small></li>)}</ul></details>}
     <RefreshIconButton label="자산·종목 업데이트" loading={trading.pending} className="trading-refresh" disabled={trading.pending} onClick={trading.refresh} />
   </Panel>
 }

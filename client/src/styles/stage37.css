@@ -1,0 +1,7 @@
+.intelligence-library__card.intelligence-library__card--expired { background:#e9edf1; color:#59636e; border-color:#c6cdd4; min-height:0; padding:12px; box-shadow:none; align-self:start; }
+.intelligence-library__card.intelligence-library__card--expired h3 { font-size:.9rem; margin:6px 0; }
+.intelligence-library__card.intelligence-library__card--expired dl { font-size:.75rem; margin:4px 0; }
+.intelligence-library__card.intelligence-library__card--expired .intelligence-card__topline { font-size:.7rem; }
+.order-company-description { padding:16px; border-left:4px solid #2362a0; background:#edf5ff; color:#162c44; border-radius:8px; }
+.order-company-description p { margin:6px 0 0; line-height:1.65; }
+.price-timeline-details summary { padding:12px; cursor:pointer; font-weight:700; }
