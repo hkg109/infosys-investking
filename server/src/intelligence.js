@@ -119,7 +119,7 @@ async function readStore(client, userId, engine, initialCash = 1_000_000) {
     cash,
     purchaseOpen,
     currentRound: Number(round),
-    items: rows.map(row => ({ ...metadata(row), title: `비공개 … ${['보고서','기록서','평가서','점검표','회의록'].find(suffix => row.title.endsWith(suffix)) || '자료'}`, summary: '구매 후 전체 제목과 내용을 확인할 수 있습니다.', relatedEvent: Boolean(row.event_id), canPurchase: purchaseOpen })),
+    items: rows.map(row => ({ ...metadata(row), summary: '구매 후 상세 분석과 판단 근거를 확인할 수 있습니다.', relatedEvent: Boolean(row.event_id), canPurchase: purchaseOpen })),
     purchases,
   }
 }
