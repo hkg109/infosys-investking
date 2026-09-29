@@ -62,7 +62,7 @@ export function PurchaseDialog({ review, item, store, priceChanged = false, onCa
 
 export function IntelligenceLibraryPanel({ store }) {
   return <Panel title="내 정보 보관함">
-    <p>구매를 완료한 정보와 구매 당시 결제 금액을 확인할 수 있습니다.</p>
+    <p>구매한 정보는 월이 지나거나 사건이 끝나도 이 게임의 보관함에서 다시 읽을 수 있습니다.</p>
     {store.error && <p role="alert" className="form-error">{store.error}</p>}
     <RefreshIconButton label="보관함 업데이트" loading={store.busy} disabled={store.busy} onClick={store.refresh} />
     {store.data ? <IntelligenceLibrary purchases={store.data.purchases} /> : <p>{store.error ? '확인된 구매 정보가 없습니다.' : '보관함을 불러오고 있습니다.'}</p>}
@@ -103,12 +103,12 @@ export function storeItemAction(state) {
 
 export function IntelligenceLibrary({ purchases }) {
   const [selected, setSelected] = useState(null)
-  const current = purchases.find(item => item.clueId === selected && !item.expired)
+  const current = purchases.find(item => item.clueId === selected)
   useEffect(() => { if (selected && !current) setSelected(null) }, [selected, current])
   return <section className="intelligence-library" aria-label="구매한 정보">{purchases.length ? <ul className="intelligence-library__grid">{purchases.map((item, index) => <li key={item.clueId} className={`intelligence-library__card${item.expired ? " intelligence-library__card--expired" : ""}`}>
     <div className="intelligence-card__topline"><span className="intelligence-card__slot">ARCHIVE {String(index + 1).padStart(2, '0')}</span><span className="intelligence-card__state">{item.expired ? "지난 정보" : "수집 완료"}</span></div>
     <h3>{item.title}</h3><dl><div><dt>구매 월</dt><dd>{item.availableRound}월 공개 정보</dd></div><div><dt>결제</dt><dd>{item.paidCash.toLocaleString('ko-KR')}원</dd></div></dl>
-    {!item.expired && <button type="button" className="intelligence-card__action" onClick={() => setSelected(item.clueId)}>정보 읽기</button>}
+    <button type="button" className="intelligence-card__action" onClick={() => setSelected(item.clueId)}>정보 읽기</button>
   </li>)}</ul> : <p>아직 구매한 정보가 없습니다.</p>}
   <ActionDialog open={Boolean(current)} title={current?.title || '구매 정보'} eyebrow="INTELLIGENCE ARCHIVE" onClose={() => setSelected(null)} width="medium">
     {current && <IntelligenceLibraryDetail item={current} />}

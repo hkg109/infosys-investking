@@ -39,3 +39,22 @@ test('floating news feed renders controls, current month, and market articles', 
     await rm(dir, { recursive: true, force: true })
   }
 })
+
+test('news updates do not pull scrolling back; another explicit click can focus again', async () => {
+  const { focusRequestedArticle } = await import('../src/events/useArticleFocus.js')
+  const calls = []
+  const article = { focus: options => calls.push(['focus', options]), scrollIntoView: options => calls.push(['scroll', options]) }
+  const articles = new Map(), handled = { current: null }
+  const request = { gameEventId: 'late-news', requestId: 1 }
+  focusRequestedArticle(articles, request, handled)
+  assert.equal(handled.current, null) // News may arrive after its notification.
+  articles.set('late-news', article)
+  focusRequestedArticle(articles, request, handled)
+  assert.equal(calls.length, 2)
+  for (let tick = 0; tick < 10; tick++) focusRequestedArticle(new Map(articles), { ...request }, handled)
+  assert.equal(calls.length, 2) // Timer/feed refreshes must not steal the reader's position.
+  focusRequestedArticle(articles, { ...request, requestId: 2 }, handled)
+  assert.equal(calls.length, 4)
+  assert.deepEqual(calls[0], ['focus', { preventScroll: true }])
+  assert.deepEqual(calls[1], ['scroll', { behavior: 'smooth', block: 'start' }])
+})
