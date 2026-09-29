@@ -1,5 +1,6 @@
+import useArticleFocus from './useArticleFocus'
 import { eventCountdown } from './countdown'
-import { useEffect, useRef, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Panel from '../components/Panel'
 import { money } from '../game/model'
 import useEventNews, { currentEvents } from './useEventNews'
@@ -10,14 +11,7 @@ export { currentEvents } from './useEventNews'
 export default function EventNews({ game, revision, focusRequest, feed: providedFeed, onOpenFloating }) {
   const fallbackFeed = useEventNews({ game, revision, enabled: !providedFeed })
   const { events, error, loading, refresh } = providedFeed || fallbackFeed
-  const articles = useRef(new Map())
-  useEffect(() => {
-    if (!focusRequest?.gameEventId) return
-    const article = articles.current.get(focusRequest.gameEventId)
-    if (!article) return
-    article.focus({ preventScroll: true })
-    article.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }, [events, focusRequest])
+  const articles = useArticleFocus(events, focusRequest)
   return <Panel title="시장 뉴스">
     <header className="newsroom-header">
       <div>

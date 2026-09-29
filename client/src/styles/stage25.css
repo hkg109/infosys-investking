@@ -259,7 +259,7 @@
   color: var(--color-ink);
   background: var(--color-paper);
   box-shadow: var(--shadow-dialog);
-  touch-action: none;
+  touch-action: auto;
 }
 
 .floating-news--minimized {
@@ -267,6 +267,7 @@
 }
 
 .floating-news__header {
+  flex-shrink: 0;
   min-height: 48px;
   display: flex;
   align-items: center;
@@ -277,6 +278,7 @@
 }
 
 .floating-news__drag {
+  touch-action: none;
   min-width: 5rem;
   min-height: 44px;
   display: flex;
@@ -313,6 +315,8 @@
 }
 
 .floating-news__feed {
+  align-content: start;
+  grid-auto-rows: max-content;
   min-height: 0;
   display: grid;
   gap: var(--space-sm);
@@ -379,6 +383,7 @@
 }
 
 .floating-news__resize {
+  touch-action: none;
   position: absolute;
   inset-inline-end: 0;
   inset-block-end: 0;

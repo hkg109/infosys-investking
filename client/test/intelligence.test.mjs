@@ -109,11 +109,11 @@ test('admin uses bearer and rejects malformed create/delete responses',async()=>
  }finally{globalThis.fetch=original}
 })
 
-test('expired library cards keep payment history but remove reading interaction',()=>{
+test('expired library cards retain reading access and payment history',()=>{
  const html=renderToStaticMarkup(createElement(IntelligenceLibrary,{purchases:[{...purchase,expired:true}]}))
  assert.match(html,/지난 정보/)
  assert.match(html,/intelligence-library__card--expired/)
- assert.doesNotMatch(html,/<button/)
+ assert.match(html,/정보 읽기/)
  assert.doesNotMatch(html,/구매자 전용/)
  const active=renderToStaticMarkup(createElement(IntelligenceLibrary,{purchases:[{...purchase,expired:false}]}))
  assert.match(active,/정보 읽기/)

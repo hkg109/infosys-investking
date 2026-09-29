@@ -1,3 +1,4 @@
+import useArticleFocus from '../events/useArticleFocus'
 import { useEffect, useRef, useState } from 'react'
 import { EventArticle } from '../events/EventNews'
 import useEventNews from '../events/useEventNews'
@@ -9,14 +10,7 @@ function browserStorage() {
 }
 
 export function FloatingNewsFeed({ game, events, error, loading, onRetry, onOpenFull, focusRequest }) {
-  const articles = useRef(new Map())
-  useEffect(() => {
-    if (!focusRequest?.gameEventId) return
-    const article = articles.current.get(focusRequest.gameEventId)
-    if (!article) return
-    article.focus({ preventScroll: true })
-    article.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }, [events, focusRequest])
+  const articles = useArticleFocus(events, focusRequest)
   return <div className="floating-news__feed">
     <div className="floating-news__summary">
       <div><span>MARKET WIRE</span><strong>{game?.currentRound > 0 ? `${game.currentRound}월 속보` : '시장 대기'}</strong></div>
