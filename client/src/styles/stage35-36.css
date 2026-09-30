@@ -89,3 +89,22 @@
   .admin-data-table :is(th, td),
   .trade-month-table :is(th, td) { padding: .6rem; }
 }
+
+/* Long article text must stay inside its column during horizontal scrolling. */
+.event-admin-table { table-layout: fixed; min-width: 86rem; }
+.event-admin-table th:nth-child(1) { width: 26rem; }
+.event-admin-table th:nth-child(2) { width: 16rem; }
+.event-admin-table th:nth-child(n+3) { width: 8rem; }
+.event-admin-table th:last-child { width: 12rem; }
+.event-admin-table tbody th:first-child {
+  position: static;
+  max-width: none;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.event-admin-table tbody th :is(strong, small, p) {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.event-admin-table td { white-space: normal; overflow-wrap: anywhere; }
+.event-admin-table details { max-width: 100%; }
